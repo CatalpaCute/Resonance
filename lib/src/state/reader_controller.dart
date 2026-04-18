@@ -1,0 +1,594 @@
+import 'package:flutter/foundation.dart';
+
+import '../models/app_route.dart';
+import '../models/article.dart';
+import '../models/feed_source.dart';
+import '../models/reader_settings.dart';
+import '../services/json_store.dart';
+import '../services/rss_service.dart';
+
+class ReaderController extends ChangeNotifier {
+  ReaderController({
+    required JsonStore store,
+    required RssService rssService,
+  })  : _store = store,
+        _rssService = rssService;
+
+  final JsonStore _store;
+  final RssService _rssService;
+
+  List<FeedSource> _feeds = <FeedSource>[];
+  List<Article> _articles = <Article>[];
+  ReaderSettings _settings = ReaderSettings.defaults;
+  AppRouteId _currentRoute = ReaderSettings.defaults.startupRoute;
+  BookmarkFilter _bookmarkFilter = BookmarkFilter.starred;
+  String? _activeSourceId;
+  String? _selectedArticleId;
+  bool _showOnlyUnread = false;
+  bool _isReady = false;
+  bool _isBusy = false;
+  bool _compactReaderOpen = false;
+  double _articleListPaneWidth = 360;
+  String? _errorMessage;
+  String? _statusMessage;
+  final Set<String> _refreshingFeedIds = <String>{};
+
+  List<FeedSource> get feeds => List<FeedSource>.unmodifiable(_feeds);
+  List<Article> get articles => List<Article>.unmodifiable(_articles);
+  ReaderSettings get settings => _settings;
+  AppRouteId get currentRoute => _currentRoute;
+  BookmarkFilter get bookmarkFilter => _bookmarkFilter;
+  String? get activeSourceId => _activeSourceId;
+  String? get selectedArticleId => _selectedArticleId;
+  bool get showOnlyUnread => _showOnlyUnread;
+  bool get isReady => _isReady;
+  bool get isBusy => _isBusy;
+  bool get compactReaderOpen => _compactReaderOpen;
+  double get articleListPaneWidth => _articleListPaneWidth;
+  String? get errorMessage => _errorMessage;
+  String? get statusMessage => _statusMessage;
+
+  FeedSource? get activeSource => _feedById(_activeSourceId);
+  Article? get selectedArticle => _articleById(_selectedArticleId);
+
+  bool get routeUsesReaderWorkspace {
+    return _currentRoute == AppRouteId.allArticles ||
+        _currentRoute == AppRouteId.sources ||
+        _currentRoute == AppRouteId.sourceDetail ||
+        _currentRoute == AppRouteId.bookmarks ||
+        _currentRoute == AppRouteId.readerDetail;
+  }
+
+  int get totalUnreadCount => _articles.where((Article item) => !item.isRead).length;
+
+  String get currentRouteTitle {
+    switch (_currentRoute) {
+      case AppRouteId.allArticles:
+        return '全部文章';
+      case AppRouteId.sources:
+        return '订阅源';
+      case AppRouteId.sourceDetail:
+        return activeSource?.title ?? '源内文章';
+      case AppRouteId.bookmarks:
+        return _bookmarkFilter == BookmarkFilter.starred ? '收藏' : '稍后读';
+      case AppRouteId.discoverAddSource:
+        return '添加订阅';
+      case AppRouteId.settings:
+        return '设置';
+      case AppRouteId.readerDetail:
+        return selectedArticle?.title ?? '阅读详情';
+    }
+  }
+
+  String get startupSummary {
+    switch (_settings.startupHomeMode) {
+      case StartupHomeMode.allArticles:
+        return '启动后优先进入全部文章流';
+      case StartupHomeMode.sources:
+        return '启动后优先进入订阅源';
+      case StartupHomeMode.bookmarks:
+        return '启动后优先进入收藏与稍后读';
+    }
+  }
+
+  List<Article> get visibleArticles {
+    Iterable<Article> items = _articles;
+
+    switch (_currentRoute) {
+      case AppRouteId.allArticles:
+        items = items.where((Article article) {
+          if (!_feedEnabled(article.sourceId)) {
+            return false;
+          }
+          if (_activeSourceId == null) {
+            return true;
+          }
+          return article.sourceId == _activeSourceId;
+        });
+        break;
+      case AppRouteId.sources:
+      case AppRouteId.sourceDetail:
+        items = items.where((Article article) => article.sourceId == _activeSourceId);
+        break;
+      case AppRouteId.bookmarks:
+        items = items.where((Article article) {
+          if (_bookmarkFilter == BookmarkFilter.starred) {
+            return article.starred;
+          }
+          return article.savedForLater;
+        });
+        if (_activeSourceId != null) {
+          items = items.where((Article article) => article.sourceId == _activeSourceId);
+        }
+        break;
+      case AppRouteId.readerDetail:
+        items = _selectedArticleId == null
+            ? const <Article>[]
+            : items.where((Article article) => article.id == _selectedArticleId);
+        break;
+      case AppRouteId.discoverAddSource:
+      case AppRouteId.settings:
+        items = const <Article>[];
+        break;
+    }
+
+    if (_showOnlyUnread) {
+      items = items.where((Article article) => !article.isRead);
+    }
+
+    final List<Article> sorted = items.toList()
+      ..sort((Article a, Article b) => b.publishedAt.compareTo(a.publishedAt));
+    return sorted;
+  }
+
+  Future<void> initialize() async {
+    try {
+      final PersistedReaderState persisted = await _store.load();
+      _feeds = persisted.feeds;
+      _articles = persisted.articles;
+      _settings = persisted.settings;
+      _currentRoute = _settings.startupRoute;
+      if (_feeds.isNotEmpty &&
+          (_currentRoute == AppRouteId.sources || _currentRoute == AppRouteId.sourceDetail)) {
+        _activeSourceId = _feeds.first.id;
+      } else {
+        _activeSourceId = null;
+      }
+    } catch (error) {
+      _errorMessage = '初始化本地数据失败：$error';
+    } finally {
+      _isReady = true;
+      notifyListeners();
+    }
+  }
+
+  void setCurrentRoute(AppRouteId route) {
+    _currentRoute = route;
+    _compactReaderOpen = false;
+    if (route == AppRouteId.allArticles) {
+      _activeSourceId = null;
+    }
+    if (route == AppRouteId.bookmarks) {
+      _activeSourceId = null;
+    }
+    if ((route == AppRouteId.sources || route == AppRouteId.sourceDetail) &&
+        _activeSourceId == null &&
+        _feeds.isNotEmpty) {
+      _activeSourceId = _feeds.first.id;
+    }
+    if (route == AppRouteId.bookmarks) {
+      _selectedArticleId = null;
+    }
+    notifyListeners();
+  }
+
+  void selectSource(FeedSource? source, {bool enterSourceDetail = false}) {
+    _activeSourceId = source?.id;
+    if (enterSourceDetail) {
+      _currentRoute = source == null ? AppRouteId.sources : AppRouteId.sourceDetail;
+    }
+    _compactReaderOpen = false;
+    _selectedArticleId = null;
+    notifyListeners();
+  }
+
+  void clearSourceFilter() {
+    _activeSourceId = null;
+    notifyListeners();
+  }
+
+  void selectBookmarkFilter(BookmarkFilter filter) {
+    _bookmarkFilter = filter;
+    _selectedArticleId = null;
+    notifyListeners();
+  }
+
+  Future<void> selectArticle(Article article, {required bool compactMode}) async {
+    _selectedArticleId = article.id;
+    _currentRoute = compactMode ? AppRouteId.readerDetail : _currentRoute;
+    _compactReaderOpen = compactMode;
+    if (!article.isRead) {
+      await _replaceArticle(article.copyWith(readState: ArticleReadState.read));
+    } else {
+      notifyListeners();
+    }
+  }
+
+  void closeCompactReader() {
+    _compactReaderOpen = false;
+    if (_currentRoute == AppRouteId.readerDetail) {
+      if (_activeSourceId != null && (_feeds.isNotEmpty)) {
+        _currentRoute = AppRouteId.sourceDetail;
+      } else {
+        _currentRoute = _settings.startupRoute;
+      }
+    }
+    notifyListeners();
+  }
+
+  Future<void> toggleReadState(Article article) async {
+    await _replaceArticle(
+      article.copyWith(
+        readState: article.isRead ? ArticleReadState.unread : ArticleReadState.read,
+      ),
+    );
+  }
+
+  Future<void> toggleStarred(Article article) async {
+    await _replaceArticle(article.copyWith(starred: !article.starred));
+  }
+
+  Future<void> toggleSavedForLater(Article article) async {
+    await _replaceArticle(article.copyWith(savedForLater: !article.savedForLater));
+  }
+
+  Future<void> setShowOnlyUnread(bool value) async {
+    _showOnlyUnread = value;
+    notifyListeners();
+  }
+
+  Future<void> setDesktopSidebarCollapsed(bool value) async {
+    _settings = _settings.copyWith(desktopSidebarCollapsed: value);
+    await _persistSettings();
+  }
+
+  Future<void> setMobileSidebarMode(MobileSidebarMode mode) async {
+    _settings = _settings.copyWith(mobileSidebarMode: mode);
+    await _persistSettings();
+  }
+
+  Future<void> setStartupHomeMode(StartupHomeMode mode) async {
+    _settings = _settings.copyWith(startupHomeMode: mode);
+    await _persistSettings();
+  }
+
+  Future<void> setThemeId(String themeId) async {
+    _settings = _settings.copyWith(themeId: themeId);
+    await _persistSettings();
+  }
+
+  Future<void> setArticleListDensity(ArticleListDensity density) async {
+    _settings = _settings.copyWith(articleListDensity: density);
+    await _persistSettings();
+  }
+
+  void setArticleListPaneWidth(double width) {
+    _articleListPaneWidth = width.clamp(280, 520);
+    notifyListeners();
+  }
+
+  Future<void> addFeed({
+    required String url,
+    String? title,
+  }) async {
+    final String normalizedUrl = _normalizeInputUrl(url);
+    final bool exists = _feeds.any((FeedSource source) => source.url == normalizedUrl);
+    if (exists) {
+      _errorMessage = '这个订阅地址已经存在了';
+      notifyListeners();
+      return;
+    }
+
+    await _runBusy(
+      '正在添加订阅源...',
+      () async {
+        final ParsedFeedResult parsed = await _rssService.fetchFeed(normalizedUrl);
+        final FeedSource source = FeedSource(
+          id: _makeId('feed'),
+          title: (title?.trim().isNotEmpty ?? false) ? title!.trim() : parsed.title,
+          url: normalizedUrl,
+          siteUrl: parsed.siteUrl,
+          iconUrl: parsed.iconUrl,
+          enabled: true,
+          lastFetchedAt: DateTime.now(),
+        );
+        _feeds = <FeedSource>[source, ..._feeds]..sort(_sortFeed);
+        _mergeArticlesForSource(source, parsed.articles);
+        _activeSourceId = source.id;
+        _currentRoute = AppRouteId.sourceDetail;
+        await _persistAll();
+        _statusMessage = '已添加订阅：${source.title}';
+      },
+    );
+  }
+
+  Future<void> updateFeed({
+    required FeedSource original,
+    required String url,
+    required String title,
+  }) async {
+    final String normalizedUrl = _normalizeInputUrl(url);
+    final bool exists = _feeds.any(
+      (FeedSource source) => source.id != original.id && source.url == normalizedUrl,
+    );
+    if (exists) {
+      _errorMessage = '另一个订阅源已经使用这个地址';
+      notifyListeners();
+      return;
+    }
+
+    await _runBusy(
+      '正在更新订阅源...',
+      () async {
+        final ParsedFeedResult parsed = await _rssService.fetchFeed(normalizedUrl);
+        final FeedSource nextSource = original.copyWith(
+          title: title.trim().isEmpty ? parsed.title : title.trim(),
+          url: normalizedUrl,
+          siteUrl: parsed.siteUrl,
+          iconUrl: parsed.iconUrl,
+          lastFetchedAt: DateTime.now(),
+        );
+        _feeds = _feeds.map((FeedSource item) {
+          return item.id == original.id ? nextSource : item;
+        }).toList()
+          ..sort(_sortFeed);
+        _mergeArticlesForSource(nextSource, parsed.articles);
+        await _persistAll();
+        _statusMessage = '已更新订阅：${nextSource.title}';
+      },
+    );
+  }
+
+  Future<void> removeFeed(String sourceId) async {
+    final FeedSource? source = _feedById(sourceId);
+    if (source == null) {
+      return;
+    }
+    _feeds = _feeds.where((FeedSource item) => item.id != sourceId).toList();
+    _articles = _articles.where((Article article) => article.sourceId != sourceId).toList();
+    if (_activeSourceId == sourceId) {
+      _activeSourceId = _feeds.isNotEmpty ? _feeds.first.id : null;
+    }
+    if (_selectedArticleId != null && _articleById(_selectedArticleId) == null) {
+      _selectedArticleId = null;
+    }
+    await _persistAll();
+    _statusMessage = '已删除订阅：${source.title}';
+    notifyListeners();
+  }
+
+  Future<void> refreshAllFeeds() async {
+    final List<FeedSource> candidates = _feeds.where((FeedSource source) => source.enabled).toList();
+    if (candidates.isEmpty) {
+      _errorMessage = '还没有可刷新的订阅源';
+      notifyListeners();
+      return;
+    }
+    await _runBusy(
+      '正在刷新全部订阅...',
+      () async {
+        for (final FeedSource source in candidates) {
+          await _refreshFeed(source);
+        }
+        await _persistAll();
+        _statusMessage = '刷新完成，共处理 ${candidates.length} 个订阅源';
+      },
+    );
+  }
+
+  Future<void> refreshSource(String sourceId) async {
+    final FeedSource? source = _feedById(sourceId);
+    if (source == null) {
+      return;
+    }
+    await _runBusy(
+      '正在刷新 ${source.title}...',
+      () async {
+        await _refreshFeed(source);
+        await _persistAll();
+        _statusMessage = '已刷新 ${source.title}';
+      },
+    );
+  }
+
+  bool isFeedRefreshing(String sourceId) => _refreshingFeedIds.contains(sourceId);
+
+  int unreadCountForSource(String? sourceId) {
+    return _articles.where((Article article) {
+      final bool matchesSource = sourceId == null ? true : article.sourceId == sourceId;
+      return matchesSource && !article.isRead;
+    }).length;
+  }
+
+  int articleCountForSource(String? sourceId) {
+    return _articles.where((Article article) {
+      return sourceId == null ? true : article.sourceId == sourceId;
+    }).length;
+  }
+
+  String sourceTitleForArticle(Article article) {
+    return _feedById(article.sourceId)?.title ?? '未知来源';
+  }
+
+  String? sourceIconForArticle(Article article) {
+    return _feedById(article.sourceId)?.iconUrl;
+  }
+
+  DateTime? lastSyncedAtForSource(String? sourceId) {
+    if (sourceId == null) {
+      final Iterable<DateTime> values = _feeds
+          .map((FeedSource source) => source.lastFetchedAt)
+          .whereType<DateTime>();
+      if (values.isEmpty) {
+        return null;
+      }
+      return values.reduce((DateTime a, DateTime b) => a.isAfter(b) ? a : b);
+    }
+    return _feedById(sourceId)?.lastFetchedAt;
+  }
+
+  void clearError() {
+    _errorMessage = null;
+    notifyListeners();
+  }
+
+  void clearStatus() {
+    _statusMessage = null;
+    notifyListeners();
+  }
+
+  FeedSource? _feedById(String? id) {
+    if (id == null) {
+      return null;
+    }
+    for (final FeedSource source in _feeds) {
+      if (source.id == id) {
+        return source;
+      }
+    }
+    return null;
+  }
+
+  Article? _articleById(String? id) {
+    if (id == null) {
+      return null;
+    }
+    for (final Article article in _articles) {
+      if (article.id == id) {
+        return article;
+      }
+    }
+    return null;
+  }
+
+  bool _feedEnabled(String sourceId) {
+    return _feedById(sourceId)?.enabled ?? false;
+  }
+
+  Future<void> _replaceArticle(Article nextArticle) async {
+    _articles = _articles.map((Article item) {
+      return item.id == nextArticle.id ? nextArticle : item;
+    }).toList()
+      ..sort((Article a, Article b) => b.publishedAt.compareTo(a.publishedAt));
+    await _store.saveArticles(_articles);
+    notifyListeners();
+  }
+
+  Future<void> _refreshFeed(FeedSource source) async {
+    _refreshingFeedIds.add(source.id);
+    notifyListeners();
+    try {
+      final ParsedFeedResult parsed = await _rssService.fetchFeed(source.url);
+      final FeedSource updatedSource = source.copyWith(
+        title: source.title.trim().isEmpty ? parsed.title : source.title,
+        siteUrl: parsed.siteUrl,
+        iconUrl: parsed.iconUrl,
+        lastFetchedAt: DateTime.now(),
+      );
+      _feeds = _feeds.map((FeedSource item) {
+        return item.id == source.id ? updatedSource : item;
+      }).toList()
+        ..sort(_sortFeed);
+      _mergeArticlesForSource(updatedSource, parsed.articles);
+    } finally {
+      _refreshingFeedIds.remove(source.id);
+      notifyListeners();
+    }
+  }
+
+  void _mergeArticlesForSource(
+    FeedSource source,
+    List<ParsedArticleDraft> drafts,
+  ) {
+    final Map<String, Article> currentById = <String, Article>{
+      for (final Article article in _articles) article.id: article,
+    };
+
+    for (final ParsedArticleDraft draft in drafts) {
+      final String articleId = _rssService.stableArticleId(source.id, draft);
+      final Article? existing = currentById[articleId];
+      currentById[articleId] = Article(
+        id: articleId,
+        sourceId: source.id,
+        title: draft.title,
+        author: draft.author,
+        publishedAt: draft.publishedAt,
+        summary: draft.summary,
+        content: draft.content,
+        url: draft.url,
+        readState: existing?.readState ?? ArticleReadState.unread,
+        starred: existing?.starred ?? false,
+        savedForLater: existing?.savedForLater ?? false,
+      );
+    }
+
+    _articles = currentById.values.toList()
+      ..sort((Article a, Article b) => b.publishedAt.compareTo(a.publishedAt));
+  }
+
+  Future<void> _persistSettings() async {
+    await _store.saveSettings(_settings);
+    notifyListeners();
+  }
+
+  Future<void> _persistAll() async {
+    await _store.saveFeeds(_feeds);
+    await _store.saveArticles(_articles);
+    await _store.saveSettings(_settings);
+    notifyListeners();
+  }
+
+  Future<void> _runBusy(
+    String status,
+    Future<void> Function() action,
+  ) async {
+    _errorMessage = null;
+    _statusMessage = status;
+    _isBusy = true;
+    notifyListeners();
+    try {
+      await action();
+    } catch (error) {
+      _errorMessage = error.toString();
+    } finally {
+      _isBusy = false;
+      notifyListeners();
+    }
+  }
+
+  String _normalizeInputUrl(String rawUrl) {
+    final String trimmed = rawUrl.trim();
+    if (trimmed.isEmpty) {
+      throw const FormatException('订阅地址不能为空');
+    }
+    if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
+      return trimmed;
+    }
+    return 'https://$trimmed';
+  }
+
+  String _makeId(String prefix) {
+    final int micros = DateTime.now().microsecondsSinceEpoch;
+    return '${prefix}_$micros';
+  }
+
+  int _sortFeed(FeedSource a, FeedSource b) {
+    final DateTime aTime = a.lastFetchedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final DateTime bTime = b.lastFetchedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final int byTime = bTime.compareTo(aTime);
+    if (byTime != 0) {
+      return byTime;
+    }
+    return a.title.toLowerCase().compareTo(b.title.toLowerCase());
+  }
+}
