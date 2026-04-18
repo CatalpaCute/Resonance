@@ -1,0 +1,114 @@
+name: Release Build
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-build-${{ github.event.release.id }}
+  cancel-in-progress: false
+
+jobs:
+  build-android:
+    name: Build Android APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Prepare Android signing files
+        shell: bash
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+
+          for secret_name in KEYSTORE_BASE64 KEYSTORE_PASSWORD KEY_ALIAS KEY_PASSWORD; do
+            if [ -z "${!secret_name:-}" ]; then
+              echo "Missing required secret: ${secret_name}" >&2
+              exit 1
+            fi
+          done
+
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/upload-keystore.jks
+
+          printf '%s\n' \
+            'storeFile=upload-keystore.jks' \
+            "storePassword=${KEYSTORE_PASSWORD}" \
+            "keyAlias=${KEY_ALIAS}" \
+            "keyPassword=${KEY_PASSWORD}" \
+            > android/key.properties
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Run tests
+        run: flutter test
+
+      - name: Build Android APK
+        run: flutter build apk --release
+
+      - name: Rename Android artifact
+        shell: bash
+        run: cp build/app/outputs/flutter-apk/app-release.apk rsstool-android-${{ github.event.release.tag_name }}.apk
+
+      - name: Upload Android artifact to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: rsstool-android-${{ github.event.release.tag_name }}.apk
+
+  build-windows:
+    name: Build Windows Package
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Build Windows
+        run: flutter build windows --release
+
+      - name: Package Windows output
+        shell: pwsh
+        run: |
+          $tag = "${{ github.event.release.tag_name }}"
+          $packageName = "rsstool-windows-$tag"
+          $packageDir = Join-Path $env:RUNNER_TEMP $packageName
+
+          New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
+          Copy-Item -Path "build\windows\x64\runner\Release\*" -Destination $packageDir -Recurse -Force
+
+          Compress-Archive -Path $packageDir -DestinationPath "$packageName.zip" -Force
+
+      - name: Upload Windows artifact to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: rsstool-windows-${{ github.event.release.tag_name }}.zip
