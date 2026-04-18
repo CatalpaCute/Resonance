@@ -38,7 +38,7 @@ class Article {
   bool get isRead => readState == ArticleReadState.read;
 
   String get readerText {
-    final text = (content?.trim().isNotEmpty ?? false) ? content!.trim() : (summary?.trim() ?? '');
+    final String text = (content?.trim().isNotEmpty ?? false) ? content!.trim() : (summary?.trim() ?? '');
     return text;
   }
 

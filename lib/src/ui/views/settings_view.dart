@@ -25,10 +25,10 @@ class SettingsView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text('阅读器设置', style: theme.textTheme.headlineSmall),
+              Text('设置', style: theme.textTheme.headlineSmall),
               const SizedBox(height: 8),
               Text(
-                '首版先把本地阅读流、主题和跨端导航稳定下来，WebDAV 同步后面再接。',
+                '先把本地阅读流、主题和跨端导航稳定下来，后面再接同步层。',
                 style: theme.textTheme.bodyMedium?.copyWith(color: palette.secondaryText),
               ),
             ],
@@ -142,7 +142,7 @@ class SettingsView extends StatelessWidget {
                   controller.setDesktopSidebarCollapsed(value);
                 },
                 title: const Text('桌面端默认折叠侧栏'),
-                subtitle: const Text('更像工具型工作台，给中间列表和右侧阅读区让出更多空间。'),
+                subtitle: const Text('给中间列表和右侧阅读区让出更多空间。'),
               ),
             ],
           ),
@@ -191,7 +191,7 @@ class SettingsView extends StatelessWidget {
       case MobileSidebarMode.drawer:
         return '始终通过抽屉打开左侧栏。';
       case MobileSidebarMode.rail:
-        return '始终用窄轨常驻，风格更统一。';
+        return '始终使用窄轨常驻，风格更统一。';
     }
   }
 }

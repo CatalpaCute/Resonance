@@ -90,6 +90,18 @@ class AppTheme {
     'neutral_minimal',
   ];
 
+  static const List<String> _fontFallback = <String>[
+    'Microsoft YaHei UI',
+    'Microsoft YaHei',
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'HarmonyOS Sans SC',
+    'Noto Sans CJK SC',
+    'Source Han Sans SC',
+    'Segoe UI Symbol',
+    'Segoe UI',
+  ];
+
   static String displayName(String id) {
     switch (id) {
       case 'warm_default':
@@ -235,12 +247,43 @@ class AppTheme {
   }
 
   static TextTheme _baseTextTheme(Color bodyColor) {
-    return Typography.blackMountainView.copyWith(
-      bodyLarge: TextStyle(color: bodyColor, height: 1.5),
-      bodyMedium: TextStyle(color: bodyColor, height: 1.5),
-      titleLarge: TextStyle(color: bodyColor, fontWeight: FontWeight.w700),
-      titleMedium: TextStyle(color: bodyColor, fontWeight: FontWeight.w600),
-      titleSmall: TextStyle(color: bodyColor, fontWeight: FontWeight.w600),
+    final TextTheme base = Typography.blackMountainView;
+
+    // 设计意图：为中文准备稳定的系统回退链，避免标题和正文命中不同字体导致粗细不一致。
+    return base.copyWith(
+      displayLarge: _decorateText(base.displayLarge, bodyColor),
+      displayMedium: _decorateText(base.displayMedium, bodyColor),
+      displaySmall: _decorateText(base.displaySmall, bodyColor),
+      headlineLarge: _decorateText(base.headlineLarge, bodyColor),
+      headlineMedium: _decorateText(base.headlineMedium, bodyColor),
+      headlineSmall: _decorateText(base.headlineSmall, bodyColor, fontWeight: FontWeight.w700, height: 1.2),
+      titleLarge: _decorateText(base.titleLarge, bodyColor, fontWeight: FontWeight.w700, height: 1.3),
+      titleMedium: _decorateText(base.titleMedium, bodyColor, fontWeight: FontWeight.w600, height: 1.3),
+      titleSmall: _decorateText(base.titleSmall, bodyColor, fontWeight: FontWeight.w600, height: 1.35),
+      bodyLarge: _decorateText(base.bodyLarge, bodyColor, height: 1.6),
+      bodyMedium: _decorateText(base.bodyMedium, bodyColor, height: 1.55),
+      bodySmall: _decorateText(base.bodySmall, bodyColor, height: 1.45),
+      labelLarge: _decorateText(base.labelLarge, bodyColor, fontWeight: FontWeight.w600),
+      labelMedium: _decorateText(base.labelMedium, bodyColor, fontWeight: FontWeight.w500),
+      labelSmall: _decorateText(base.labelSmall, bodyColor, fontWeight: FontWeight.w500),
+    );
+  }
+
+  static TextStyle? _decorateText(
+    TextStyle? base,
+    Color color, {
+    FontWeight? fontWeight,
+    double? height,
+  }) {
+    if (base == null) {
+      return null;
+    }
+
+    return base.copyWith(
+      color: color,
+      fontWeight: fontWeight ?? base.fontWeight,
+      height: height ?? base.height,
+      fontFamilyFallback: _fontFallback,
     );
   }
 }

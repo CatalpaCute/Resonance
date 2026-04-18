@@ -55,7 +55,7 @@ class _AddSourceViewState extends State<AddSourceView> {
                     Text('添加订阅源', style: theme.textTheme.headlineSmall),
                     const SizedBox(height: 8),
                     Text(
-                      '先把本地 RSS 流跑通。首版只做手动添加，不接 OPML，不做自动发现。',
+                      '先把本地 RSS 流跑通。首版只做手动添加，不接 OPML，也不做自动发现。',
                       style: theme.textTheme.bodyMedium?.copyWith(color: palette.secondaryText),
                     ),
                     const SizedBox(height: 20),
@@ -131,7 +131,7 @@ class _AddSourceViewState extends State<AddSourceView> {
                         return Padding(
                           padding: const EdgeInsets.only(bottom: 10),
                           child: Text(
-                            '• ${feed.title}',
+                            '· ${feed.title}',
                             style: theme.textTheme.bodyMedium?.copyWith(color: palette.secondaryText),
                           ),
                         );

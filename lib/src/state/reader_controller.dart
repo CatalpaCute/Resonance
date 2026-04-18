@@ -68,7 +68,7 @@ class ReaderController extends ChangeNotifier {
       case AppRouteId.sources:
         return '订阅源';
       case AppRouteId.sourceDetail:
-        return activeSource?.title ?? '源内文章';
+        return activeSource?.title ?? '来源文章';
       case AppRouteId.bookmarks:
         return _bookmarkFilter == BookmarkFilter.starred ? '收藏' : '稍后读';
       case AppRouteId.discoverAddSource:
@@ -165,10 +165,7 @@ class ReaderController extends ChangeNotifier {
   void setCurrentRoute(AppRouteId route) {
     _currentRoute = route;
     _compactReaderOpen = false;
-    if (route == AppRouteId.allArticles) {
-      _activeSourceId = null;
-    }
-    if (route == AppRouteId.bookmarks) {
+    if (route == AppRouteId.allArticles || route == AppRouteId.bookmarks) {
       _activeSourceId = null;
     }
     if ((route == AppRouteId.sources || route == AppRouteId.sourceDetail) &&
@@ -217,7 +214,7 @@ class ReaderController extends ChangeNotifier {
   void closeCompactReader() {
     _compactReaderOpen = false;
     if (_currentRoute == AppRouteId.readerDetail) {
-      if (_activeSourceId != null && (_feeds.isNotEmpty)) {
+      if (_activeSourceId != null && _feeds.isNotEmpty) {
         _currentRoute = AppRouteId.sourceDetail;
       } else {
         _currentRoute = _settings.startupRoute;
@@ -322,7 +319,7 @@ class ReaderController extends ChangeNotifier {
       (FeedSource source) => source.id != original.id && source.url == normalizedUrl,
     );
     if (exists) {
-      _errorMessage = '另一个订阅源已经使用这个地址';
+      _errorMessage = '另一个订阅源已经在使用这个地址';
       notifyListeners();
       return;
     }
@@ -513,10 +510,21 @@ class ReaderController extends ChangeNotifier {
     final Map<String, Article> currentById = <String, Article>{
       for (final Article article in _articles) article.id: article,
     };
+    final Map<String, Article> currentByUrl = <String, Article>{
+      for (final Article article in _articles)
+        if (article.sourceId == source.id && article.url.trim().isNotEmpty) article.url: article,
+    };
 
     for (final ParsedArticleDraft draft in drafts) {
-      final String articleId = _rssService.stableArticleId(source.id, draft);
-      final Article? existing = currentById[articleId];
+      final String draftUrl = draft.url.trim();
+      final String candidateId = _rssService.stableArticleId(source.id, draft);
+      final Article? existing = currentById[candidateId] ?? currentByUrl[draftUrl];
+      final String articleId = existing?.id ?? candidateId;
+
+      if (existing != null && existing.id != articleId) {
+        currentById.remove(existing.id);
+      }
+
       currentById[articleId] = Article(
         id: articleId,
         sourceId: source.id,
@@ -530,6 +538,10 @@ class ReaderController extends ChangeNotifier {
         starred: existing?.starred ?? false,
         savedForLater: existing?.savedForLater ?? false,
       );
+
+      if (draftUrl.isNotEmpty) {
+        currentByUrl[draftUrl] = currentById[articleId]!;
+      }
     }
 
     _articles = currentById.values.toList()

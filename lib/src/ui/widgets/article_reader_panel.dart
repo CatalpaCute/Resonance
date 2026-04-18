@@ -29,8 +29,8 @@ class ArticleReaderPanel extends StatelessWidget {
       radius: 30,
       child: article == null
           ? _EmptyReader(
-              title: '把文章点开，阅读区才会亮起来',
-              subtitle: '这一侧会显示正文、来源、阅读动作和原文跳转。',
+              title: '点开一篇文章，阅读区才会亮起来。',
+              subtitle: '这里会显示正文、来源、阅读动作和原文跳转。',
               compact: compact,
             )
           : Column(

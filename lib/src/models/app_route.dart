@@ -35,7 +35,7 @@ extension AppRouteIdX on AppRouteId {
       case AppRouteId.sources:
         return '订阅源';
       case AppRouteId.sourceDetail:
-        return '源内文章';
+        return '来源文章';
       case AppRouteId.bookmarks:
         return '收藏与稍后读';
       case AppRouteId.discoverAddSource:

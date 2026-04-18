@@ -168,7 +168,7 @@ class SourcePanel extends StatelessWidget {
                                   builder: (BuildContext dialogContext) {
                                     return AlertDialog(
                                       title: const Text('删除订阅源'),
-                                      content: Text('确认删除 ${source.title} 吗？对应文章缓存也会一起移除。'),
+                                      content: Text('确认删除 ${source.title} 吗？对应文章缓存也会一并移除。'),
                                       actions: <Widget>[
                                         TextButton(
                                           onPressed: () => Navigator.of(dialogContext).pop(false),

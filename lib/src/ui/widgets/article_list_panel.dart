@@ -205,7 +205,7 @@ class _ArticleTile extends StatelessWidget {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        article.readerText.isEmpty ? '这篇文章还没有可读摘要，打开原文看更多。' : article.readerText,
+                        article.readerText.isEmpty ? '这篇文章还没有可读摘要，打开原文查看更多。' : article.readerText,
                         maxLines: summaryLines,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.bodyMedium?.copyWith(color: palette.secondaryText),

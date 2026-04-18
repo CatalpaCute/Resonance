@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rsstool/src/services/rss_service.dart';
 
@@ -60,6 +62,33 @@ void main() {
       expect(parsed.articles.first.author, 'Editor');
       expect(parsed.articles.first.summary, 'Short summary');
       expect(parsed.articles.first.url, 'https://atom.example.com/entry');
+    });
+
+    test('decodes utf8 bytes when charset is omitted but xml declares encoding', () {
+      const String xml = '''
+      <?xml version="1.0" encoding="utf-8"?>
+      <feed xmlns="http://www.w3.org/2005/Atom">
+        <title>Cz`s Blog</title>
+        <link href="https://me.czzzz.work" rel="alternate" />
+        <entry>
+          <title>中文标题</title>
+          <link href="https://me.czzzz.work/post" />
+          <updated>2026-03-09T19:17:00Z</updated>
+          <summary>这是一段中文摘要。</summary>
+        </entry>
+      </feed>
+      ''';
+
+      final ParsedFeedResult parsed = RssService().parseFeedBytes(
+        utf8.encode(xml),
+        sourceUrl: 'https://me.czzzz.work/atom.xml',
+        contentTypeHeader: 'application/xml',
+      );
+
+      expect(parsed.title, 'Cz`s Blog');
+      expect(parsed.articles, hasLength(1));
+      expect(parsed.articles.first.title, '中文标题');
+      expect(parsed.articles.first.summary, '这是一段中文摘要。');
     });
   });
 }

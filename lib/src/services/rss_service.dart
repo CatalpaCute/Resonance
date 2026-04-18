@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:http/http.dart' as http;
@@ -47,7 +48,11 @@ class RssService {
     if (response.statusCode >= 400) {
       throw HttpException('拉取订阅失败，状态码 ${response.statusCode}', uri: uri);
     }
-    return parseFeedXml(response.body, sourceUrl: uri.toString());
+    return parseFeedBytes(
+      response.bodyBytes,
+      sourceUrl: uri.toString(),
+      contentTypeHeader: response.headers[HttpHeaders.contentTypeHeader],
+    );
   }
 
   ParsedFeedResult parseFeedXml(String xmlText, {required String sourceUrl}) {
@@ -61,6 +66,15 @@ class RssService {
       return _parseAtom(root, sourceUrl: sourceUrl);
     }
     throw const FormatException('暂不支持该订阅格式');
+  }
+
+  ParsedFeedResult parseFeedBytes(
+    List<int> bytes, {
+    required String sourceUrl,
+    String? contentTypeHeader,
+  }) {
+    final String xmlText = _decodeFeedPayload(bytes, contentTypeHeader: contentTypeHeader);
+    return parseFeedXml(xmlText, sourceUrl: sourceUrl);
   }
 
   ParsedFeedResult _parseRss(XmlElement root, {required String sourceUrl}) {
@@ -172,6 +186,112 @@ class RssService {
       throw const FormatException('请输入有效的订阅地址');
     }
     return uri;
+  }
+
+  // 设计意图：优先从 BOM、HTTP 头和 XML 声明恢复真实编码，避免服务器漏写 charset 时直接乱码。
+  String _decodeFeedPayload(List<int> bytes, {String? contentTypeHeader}) {
+    if (bytes.isEmpty) {
+      return '';
+    }
+
+    final String? bomEncoding = _detectBomEncoding(bytes);
+    final String? headerEncoding = _charsetFromContentType(contentTypeHeader);
+    final String? xmlEncoding = _xmlDeclaredEncoding(bytes);
+    final List<String> candidates = <String>[
+      if (bomEncoding != null) bomEncoding,
+      if (headerEncoding != null && headerEncoding != bomEncoding) headerEncoding,
+      if (xmlEncoding != null && xmlEncoding != bomEncoding && xmlEncoding != headerEncoding) xmlEncoding,
+      'utf-8',
+      'latin1',
+    ];
+
+    Object? lastError;
+    for (final String candidate in candidates) {
+      try {
+        return _decodeWithEncoding(bytes, candidate);
+      } catch (error) {
+        lastError = error;
+      }
+    }
+
+    throw FormatException('无法识别订阅源编码${lastError == null ? '' : '：$lastError'}');
+  }
+
+  String? _detectBomEncoding(List<int> bytes) {
+    if (bytes.length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF) {
+      return 'utf-8';
+    }
+    if (bytes.length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE) {
+      return 'utf-16le';
+    }
+    if (bytes.length >= 2 && bytes[0] == 0xFE && bytes[1] == 0xFF) {
+      return 'utf-16be';
+    }
+    return null;
+  }
+
+  String? _charsetFromContentType(String? contentTypeHeader) {
+    if (contentTypeHeader == null || contentTypeHeader.isEmpty) {
+      return null;
+    }
+    final RegExpMatch? match =
+        RegExp(r'''charset\s*=\s*["']?([^;"'\s]+)''', caseSensitive: false).firstMatch(contentTypeHeader);
+    return match == null ? null : _normalizeEncodingName(match.group(1)!);
+  }
+
+  String? _xmlDeclaredEncoding(List<int> bytes) {
+    final int sampleLength = bytes.length > 256 ? 256 : bytes.length;
+    final String sample = latin1.decode(bytes.take(sampleLength).toList());
+    final RegExpMatch? match =
+        RegExp(r'''encoding\s*=\s*["']([^"']+)["']''', caseSensitive: false).firstMatch(sample);
+    return match == null ? null : _normalizeEncodingName(match.group(1)!);
+  }
+
+  String _decodeWithEncoding(List<int> bytes, String encodingName) {
+    final String normalized = _normalizeEncodingName(encodingName);
+    switch (normalized) {
+      case 'utf-8':
+      case 'utf8':
+        return utf8.decode(bytes);
+      case 'latin1':
+      case 'iso-8859-1':
+      case 'iso8859-1':
+        return latin1.decode(bytes);
+      case 'ascii':
+      case 'us-ascii':
+        return ascii.decode(bytes);
+      case 'utf-16':
+      case 'utf-16le':
+        return _decodeUtf16(bytes, littleEndian: true);
+      case 'utf-16be':
+        return _decodeUtf16(bytes, littleEndian: false);
+      default:
+        throw UnsupportedError('暂不支持编码 $encodingName');
+    }
+  }
+
+  String _decodeUtf16(List<int> bytes, {required bool littleEndian}) {
+    int start = 0;
+    if (bytes.length >= 2) {
+      final bool hasLittleEndianBom = bytes[0] == 0xFF && bytes[1] == 0xFE;
+      final bool hasBigEndianBom = bytes[0] == 0xFE && bytes[1] == 0xFF;
+      if (hasLittleEndianBom || hasBigEndianBom) {
+        start = 2;
+      }
+    }
+
+    final List<int> codeUnits = <int>[];
+    for (int index = start; index + 1 < bytes.length; index += 2) {
+      final int codeUnit = littleEndian
+          ? bytes[index] | (bytes[index + 1] << 8)
+          : (bytes[index] << 8) | bytes[index + 1];
+      codeUnits.add(codeUnit);
+    }
+    return String.fromCharCodes(codeUnits);
+  }
+
+  String _normalizeEncodingName(String raw) {
+    return raw.trim().toLowerCase().replaceAll('_', '-');
   }
 
   XmlElement? _firstChild(XmlElement parent, Set<String> localNames) {
@@ -304,7 +424,9 @@ class RssService {
   }
 
   String stableArticleId(String sourceId, ParsedArticleDraft article) {
-    final String rawKey = '$sourceId::${article.url}::${article.title}';
+    final String rawKey = article.url.trim().isNotEmpty
+        ? '$sourceId::${article.url}'
+        : '$sourceId::${article.title}::${article.publishedAt.toIso8601String()}';
     return '${sourceId}_${_hash(rawKey)}';
   }
 
