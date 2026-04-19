@@ -281,9 +281,6 @@ class _ReaderHomeState extends State<ReaderHome> {
         onBack: controller.closeCompactReader,
       );
     }
-    if (controller.currentRoute == AppRouteId.sources) {
-      return SourcePanel(controller: controller, compact: true);
-    }
     return ArticleListPanel(controller: controller, compact: true);
   }
 }

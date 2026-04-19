@@ -58,7 +58,10 @@ class SettingsView extends StatelessWidget {
               }
             },
             child: Column(
-              children: StartupHomeMode.values.map((StartupHomeMode mode) {
+              children: <StartupHomeMode>[
+                StartupHomeMode.allArticles,
+                StartupHomeMode.bookmarks,
+              ].map((StartupHomeMode mode) {
                 return RadioListTile<StartupHomeMode>(
                   value: mode,
                   dense: compact,

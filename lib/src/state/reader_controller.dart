@@ -32,6 +32,7 @@ class ReaderController extends ChangeNotifier {
   bool _isReady = false;
   bool _isBusy = false;
   bool _compactReaderOpen = false;
+  AppRouteId _lastWorkspaceRoute = AppRouteId.allArticles;
   double _articleListPaneWidth = 360;
   String? _errorMessage;
   String? _statusMessage;
@@ -61,8 +62,6 @@ class ReaderController extends ChangeNotifier {
 
   bool get routeUsesReaderWorkspace {
     return _currentRoute == AppRouteId.allArticles ||
-        _currentRoute == AppRouteId.sources ||
-        _currentRoute == AppRouteId.sourceDetail ||
         _currentRoute == AppRouteId.bookmarks ||
         _currentRoute == AppRouteId.readerDetail;
   }
@@ -85,6 +84,8 @@ class ReaderController extends ChangeNotifier {
 
     switch (_currentRoute) {
       case AppRouteId.allArticles:
+      case AppRouteId.sources:
+      case AppRouteId.sourceDetail:
         items = items.where((Article article) {
           if (!_feedEnabled(article.sourceId)) {
             return false;
@@ -94,11 +95,6 @@ class ReaderController extends ChangeNotifier {
           }
           return article.sourceId == _activeSourceId;
         });
-        break;
-      case AppRouteId.sources:
-      case AppRouteId.sourceDetail:
-        items = items
-            .where((Article article) => article.sourceId == _activeSourceId);
         break;
       case AppRouteId.bookmarks:
         items = items.where((Article article) {
@@ -140,13 +136,8 @@ class ReaderController extends ChangeNotifier {
       _articles = persisted.articles;
       _settings = persisted.settings;
       _currentRoute = _settings.startupRoute;
-      if (_feeds.isNotEmpty &&
-          (_currentRoute == AppRouteId.sources ||
-              _currentRoute == AppRouteId.sourceDetail)) {
-        _activeSourceId = _feeds.first.id;
-      } else {
-        _activeSourceId = null;
-      }
+      _lastWorkspaceRoute = _currentRoute;
+      _activeSourceId = null;
     } catch (error) {
       _errorMessage = _strings.initializationFailed(error);
     } finally {
@@ -156,15 +147,14 @@ class ReaderController extends ChangeNotifier {
   }
 
   void setCurrentRoute(AppRouteId route) {
+    if (route == AppRouteId.sources || route == AppRouteId.sourceDetail) {
+      route = AppRouteId.allArticles;
+    }
     _currentRoute = route;
     _compactReaderOpen = false;
     if (route == AppRouteId.allArticles || route == AppRouteId.bookmarks) {
       _activeSourceId = null;
-    }
-    if ((route == AppRouteId.sources || route == AppRouteId.sourceDetail) &&
-        _activeSourceId == null &&
-        _feeds.isNotEmpty) {
-      _activeSourceId = _feeds.first.id;
+      _lastWorkspaceRoute = route;
     }
     if (route == AppRouteId.bookmarks) {
       _selectedArticleId = null;
@@ -175,8 +165,7 @@ class ReaderController extends ChangeNotifier {
   void selectSource(FeedSource? source, {bool enterSourceDetail = false}) {
     _activeSourceId = source?.id;
     if (enterSourceDetail) {
-      _currentRoute =
-          source == null ? AppRouteId.sources : AppRouteId.sourceDetail;
+      _currentRoute = AppRouteId.allArticles;
     }
     _compactReaderOpen = false;
     _selectedArticleId = null;
@@ -197,7 +186,10 @@ class ReaderController extends ChangeNotifier {
   Future<void> selectArticle(Article article,
       {required bool compactMode}) async {
     _selectedArticleId = article.id;
-    _currentRoute = compactMode ? AppRouteId.readerDetail : _currentRoute;
+    if (compactMode) {
+      _lastWorkspaceRoute = _currentRoute;
+      _currentRoute = AppRouteId.readerDetail;
+    }
     _compactReaderOpen = compactMode;
     if (!article.isRead) {
       await _replaceArticle(article.copyWith(readState: ArticleReadState.read));
@@ -209,11 +201,7 @@ class ReaderController extends ChangeNotifier {
   void closeCompactReader() {
     _compactReaderOpen = false;
     if (_currentRoute == AppRouteId.readerDetail) {
-      if (_activeSourceId != null && _feeds.isNotEmpty) {
-        _currentRoute = AppRouteId.sourceDetail;
-      } else {
-        _currentRoute = _settings.startupRoute;
-      }
+      _currentRoute = _lastWorkspaceRoute;
     }
     notifyListeners();
   }
@@ -305,10 +293,10 @@ class ReaderController extends ChangeNotifier {
           enabled: true,
           lastFetchedAt: DateTime.now(),
         );
-        _feeds = <FeedSource>[source, ..._feeds]..sort(_sortFeed);
+        _feeds = <FeedSource>[source, ..._feeds];
         _mergeArticlesForSource(source, parsed.articles);
         _activeSourceId = source.id;
-        _currentRoute = AppRouteId.sourceDetail;
+        _currentRoute = AppRouteId.discoverAddSource;
         await _persistAll();
         _statusMessage = _strings.addedFeed(source.title);
       },
@@ -345,8 +333,7 @@ class ReaderController extends ChangeNotifier {
         );
         _feeds = _feeds.map((FeedSource item) {
           return item.id == original.id ? nextSource : item;
-        }).toList()
-          ..sort(_sortFeed);
+        }).toList();
         _mergeArticlesForSource(nextSource, parsed.articles);
         await _persistAll();
         _statusMessage = _strings.updatedFeed(nextSource.title);
@@ -372,6 +359,29 @@ class ReaderController extends ChangeNotifier {
     }
     await _persistAll();
     _statusMessage = _strings.removedFeed(source.title);
+    notifyListeners();
+  }
+
+  Future<void> moveFeed(int oldIndex, int newIndex) async {
+    if (oldIndex < 0 ||
+        oldIndex >= _feeds.length ||
+        newIndex < 0 ||
+        newIndex > _feeds.length) {
+      return;
+    }
+
+    if (oldIndex < newIndex) {
+      newIndex -= 1;
+    }
+    if (oldIndex == newIndex) {
+      return;
+    }
+
+    final List<FeedSource> nextFeeds = List<FeedSource>.from(_feeds);
+    final FeedSource source = nextFeeds.removeAt(oldIndex);
+    nextFeeds.insert(newIndex, source);
+    _feeds = nextFeeds;
+    await _store.saveFeeds(_feeds);
     notifyListeners();
   }
 
@@ -508,8 +518,7 @@ class ReaderController extends ChangeNotifier {
       );
       _feeds = _feeds.map((FeedSource item) {
         return item.id == source.id ? updatedSource : item;
-      }).toList()
-        ..sort(_sortFeed);
+      }).toList();
       _mergeArticlesForSource(updatedSource, parsed.articles);
     } finally {
       _refreshingFeedIds.remove(source.id);
@@ -608,17 +617,5 @@ class ReaderController extends ChangeNotifier {
   String _makeId(String prefix) {
     final int micros = DateTime.now().microsecondsSinceEpoch;
     return '${prefix}_$micros';
-  }
-
-  int _sortFeed(FeedSource a, FeedSource b) {
-    final DateTime aTime =
-        a.lastFetchedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-    final DateTime bTime =
-        b.lastFetchedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-    final int byTime = bTime.compareTo(aTime);
-    if (byTime != 0) {
-      return byTime;
-    }
-    return a.title.toLowerCase().compareTo(b.title.toLowerCase());
   }
 }

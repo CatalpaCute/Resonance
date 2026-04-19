@@ -19,7 +19,7 @@ fun signingValue(key: String, envKey: String): String? =
         ?: System.getenv(envKey)?.takeIf { it.isNotBlank() }
 
 android {
-    namespace = "com.example.rsstool"
+    namespace = "work.czzzz.reader"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 
@@ -34,7 +34,7 @@ android {
 
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "com.example.rsstool"
+        applicationId = "work.czzzz.reader"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion

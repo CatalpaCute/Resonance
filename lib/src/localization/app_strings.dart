@@ -105,7 +105,7 @@ class AppStrings {
             ? savedForLater
             : starred;
       case AppRouteId.discoverAddSource:
-        return addSubscription;
+        return subscriptionManagement;
       case AppRouteId.settings:
         return settings;
       case AppRouteId.readerDetail:
@@ -148,9 +148,9 @@ class AppStrings {
         );
       case AppRouteId.discoverAddSource:
         return _text(
-          zhCn: '先把订阅源补齐，本地阅读流才会顺起来。',
-          zhHant: '先把訂閱源補齊，本地閱讀流才會順起來。',
-          en: 'Fill in your sources first so the reader can get moving.',
+          zhCn: '在这里统一添加、编辑、删除，并整理订阅顺序。',
+          zhHant: '在這裡統一添加、編輯、刪除，並整理訂閱順序。',
+          en: 'Add, edit, remove, and reorder subscriptions here.',
         );
       case AppRouteId.settings:
         return _text(
@@ -177,9 +177,9 @@ class AppStrings {
         );
       case StartupHomeMode.sources:
         return _text(
-          zhCn: '启动后优先进入订阅源',
-          zhHant: '啟動後優先進入訂閱源',
-          en: 'Open Sources on startup',
+          zhCn: '启动后优先进入全部文章',
+          zhHant: '啟動後優先進入全部文章',
+          en: 'Open All Articles on startup',
         );
       case StartupHomeMode.bookmarks:
         return _text(
@@ -195,7 +195,7 @@ class AppStrings {
       case StartupHomeMode.allArticles:
         return allArticles;
       case StartupHomeMode.sources:
-        return sources;
+        return allArticles;
       case StartupHomeMode.bookmarks:
         return bookmarksAndLater;
     }
@@ -211,9 +211,9 @@ class AppStrings {
         );
       case StartupHomeMode.sources:
         return _text(
-          zhCn: '适合先按站点整理，再进入文章。',
-          zhHant: '適合先按站點整理，再進入文章。',
-          en: 'Best when you prefer to organize sites first.',
+          zhCn: '适合快速扫一遍时间流。',
+          zhHant: '適合快速掃一遍時間流。',
+          en: 'Best for sweeping through the timeline quickly.',
         );
       case StartupHomeMode.bookmarks:
         return _text(
@@ -295,6 +295,21 @@ class AppStrings {
         zhCn: '添加订阅',
         zhHant: '添加訂閱',
         en: 'Add Subscription',
+      );
+  String get subscriptionManagement => _text(
+        zhCn: '订阅管理',
+        zhHant: '訂閱管理',
+        en: 'Subscription Management',
+      );
+  String get subscriptionManagementIntro => _text(
+        zhCn: '在这里集中管理订阅源。你可以添加、编辑、删除，并通过长按拖动调整顺序。',
+        zhHant: '在這裡集中管理訂閱源。你可以添加、編輯、刪除，並透過長按拖動調整順序。',
+        en: 'Manage sources here. Add, edit, remove, and long-press to reorder.',
+      );
+  String get currentSubscriptionsHint => _text(
+        zhCn: '长按右侧拖动柄可调整顺序，菜单里可以刷新、编辑或删除站点。',
+        zhHant: '長按右側拖動柄可調整順序，選單裡可以重新整理、編輯或刪除站點。',
+        en: 'Long-press the drag handle to reorder. Use the menu to refresh, edit, or delete.',
       );
   String get settings =>
       _text(zhCn: '设置', zhHant: '設定', en: 'Settings');

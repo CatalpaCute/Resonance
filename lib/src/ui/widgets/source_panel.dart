@@ -6,7 +6,6 @@ import '../../models/article.dart';
 import '../../models/feed_source.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
-import 'feed_editor_dialog.dart';
 import 'glass_card.dart';
 
 class SourcePanel extends StatelessWidget {
@@ -40,7 +39,7 @@ class SourcePanel extends StatelessWidget {
             actionIcon: controller.currentRoute == AppRouteId.bookmarks
                 ? null
                 : Icons.add_rounded,
-            actionTooltip: strings.addSourceTitle,
+            actionTooltip: strings.subscriptionManagement,
             onAction: controller.currentRoute == AppRouteId.bookmarks
                 ? null
                 : () {
@@ -74,14 +73,8 @@ class SourcePanel extends StatelessWidget {
           else
             _HintBlock(
               compact: compact,
-              title: controller.currentRoute == AppRouteId.sources ||
-                      controller.currentRoute == AppRouteId.sourceDetail
-                  ? strings.sourceManagementHintTitle
-                  : strings.sourceFilterHintTitle,
-              subtitle: controller.currentRoute == AppRouteId.sources ||
-                      controller.currentRoute == AppRouteId.sourceDetail
-                  ? strings.sourceManagementHintBody
-                  : strings.sourceFilterHintBody,
+              title: strings.sourceFilterHintTitle,
+              subtitle: strings.sourceFilterHintBody,
             ),
           SizedBox(height: compact ? 10 : 12),
           Wrap(
@@ -138,97 +131,11 @@ class SourcePanel extends StatelessWidget {
                     unread: controller.unreadCountForSource(source.id),
                     active: controller.activeSourceId == source.id,
                     onTap: () {
-                      if (controller.currentRoute == AppRouteId.sources ||
-                          controller.currentRoute == AppRouteId.sourceDetail) {
-                        controller.selectSource(
-                          source,
-                          enterSourceDetail: true,
-                        );
-                      } else {
-                        controller.selectSource(
-                          source,
-                          enterSourceDetail: false,
-                        );
-                      }
+                      controller.selectSource(
+                        source,
+                        enterSourceDetail: false,
+                      );
                     },
-                    trailing: controller.currentRoute == AppRouteId.sources ||
-                            controller.currentRoute == AppRouteId.sourceDetail
-                        ? PopupMenuButton<String>(
-                            padding: EdgeInsets.zero,
-                            onSelected: (String value) async {
-                              if (value == 'refresh') {
-                                await controller.refreshSource(source.id);
-                                return;
-                              }
-                              if (value == 'edit') {
-                                final FeedEditorResult? result =
-                                    await showDialog<FeedEditorResult>(
-                                  context: context,
-                                  builder: (BuildContext dialogContext) {
-                                    return FeedEditorDialog(
-                                      dialogTitle: strings.editSource,
-                                      confirmText: strings.update,
-                                      initialTitle: source.title,
-                                      initialUrl: source.url,
-                                    );
-                                  },
-                                );
-                                if (result != null) {
-                                  await controller.updateFeed(
-                                    original: source,
-                                    url: result.url,
-                                    title: result.title,
-                                  );
-                                }
-                                return;
-                              }
-                              final bool? confirmed = await showDialog<bool>(
-                                context: context,
-                                builder: (BuildContext dialogContext) {
-                                  return AlertDialog(
-                                    title: Text(strings.deleteSource),
-                                    content: Text(
-                                      strings.deleteSourceConfirm(source.title),
-                                    ),
-                                    actions: <Widget>[
-                                      TextButton(
-                                        onPressed: () => Navigator.of(
-                                          dialogContext,
-                                        ).pop(false),
-                                        child: Text(strings.cancel),
-                                      ),
-                                      FilledButton(
-                                        onPressed: () => Navigator.of(
-                                          dialogContext,
-                                        ).pop(true),
-                                        child: Text(strings.delete),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              );
-                              if (confirmed == true) {
-                                await controller.removeFeed(source.id);
-                              }
-                            },
-                            itemBuilder:
-                                (BuildContext popupContext) =>
-                                    <PopupMenuEntry<String>>[
-                              PopupMenuItem<String>(
-                                value: 'refresh',
-                                child: Text(strings.refresh),
-                              ),
-                              PopupMenuItem<String>(
-                                value: 'edit',
-                                child: Text(strings.edit),
-                              ),
-                              PopupMenuItem<String>(
-                                value: 'delete',
-                                child: Text(strings.delete),
-                              ),
-                            ],
-                          )
-                        : null,
                   );
                 }),
                 if (controller.feeds.isEmpty)
@@ -351,7 +258,6 @@ class _SourceTile extends StatelessWidget {
     required this.unread,
     required this.active,
     required this.onTap,
-    this.trailing,
   });
 
   final bool compact;
@@ -361,7 +267,6 @@ class _SourceTile extends StatelessWidget {
   final int unread;
   final bool active;
   final VoidCallback onTap;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -440,12 +345,11 @@ class _SourceTile extends StatelessWidget {
                   ],
                 ),
               ),
-              trailing ??
-                  Icon(
-                    Icons.chevron_right_rounded,
-                    size: 18,
-                    color: palette.tertiaryText,
-                  ),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: palette.tertiaryText,
+              ),
             ],
           ),
         ),

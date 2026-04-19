@@ -60,15 +60,6 @@ class NavigationSidebar extends StatelessWidget {
                           onTap: () => _navigate(AppRouteId.allArticles),
                         ),
                         _NavItem(
-                          icon: Icons.rss_feed_outlined,
-                          activeIcon: Icons.rss_feed_rounded,
-                          label: context.strings.sources,
-                          active: controller.currentRoute == AppRouteId.sources ||
-                              controller.currentRoute == AppRouteId.sourceDetail,
-                          collapsed: collapsed,
-                          onTap: () => _navigate(AppRouteId.sources),
-                        ),
-                        _NavItem(
                           icon: Icons.bookmark_outline_rounded,
                           activeIcon: Icons.bookmark_rounded,
                           label: context.strings.bookmarksAndLater,
@@ -79,7 +70,7 @@ class NavigationSidebar extends StatelessWidget {
                         _NavItem(
                           icon: Icons.add_circle_outline_rounded,
                           activeIcon: Icons.add_circle_rounded,
-                          label: context.strings.addSubscription,
+                          label: context.strings.subscriptionManagement,
                           active: controller.currentRoute == AppRouteId.discoverAddSource,
                           collapsed: collapsed,
                           onTap: () => _navigate(AppRouteId.discoverAddSource),

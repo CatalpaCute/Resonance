@@ -49,7 +49,7 @@ class ReaderSettings {
       case StartupHomeMode.allArticles:
         return AppRouteId.allArticles;
       case StartupHomeMode.sources:
-        return AppRouteId.sources;
+        return AppRouteId.allArticles;
       case StartupHomeMode.bookmarks:
         return AppRouteId.bookmarks;
     }
