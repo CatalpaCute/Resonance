@@ -44,7 +44,6 @@ class ReaderApp extends StatelessWidget {
             systemNavigationBarIconBrightness:
                 isDark ? Brightness.light : Brightness.dark,
             systemNavigationBarContrastEnforced: false,
-            statusBarContrastEnforced: false,
           ),
         );
 
