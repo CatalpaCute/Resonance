@@ -18,6 +18,11 @@ enum ArticleListDensity {
   compact,
 }
 
+enum ArticleContentMode {
+  rich,
+  textOnly,
+}
+
 class ReaderSettings {
   const ReaderSettings({
     required this.startupHomeMode,
@@ -25,6 +30,7 @@ class ReaderSettings {
     required this.mobileSidebarMode,
     required this.desktopSidebarCollapsed,
     required this.articleListDensity,
+    required this.articleContentMode,
     required this.appLanguageMode,
   });
 
@@ -33,6 +39,7 @@ class ReaderSettings {
   final MobileSidebarMode mobileSidebarMode;
   final bool desktopSidebarCollapsed;
   final ArticleListDensity articleListDensity;
+  final ArticleContentMode articleContentMode;
   final AppLanguageMode appLanguageMode;
 
   static const ReaderSettings defaults = ReaderSettings(
@@ -41,6 +48,7 @@ class ReaderSettings {
     mobileSidebarMode: MobileSidebarMode.adaptive,
     desktopSidebarCollapsed: false,
     articleListDensity: ArticleListDensity.comfortable,
+    articleContentMode: ArticleContentMode.rich,
     appLanguageMode: AppLanguageMode.system,
   );
 
@@ -61,6 +69,7 @@ class ReaderSettings {
     MobileSidebarMode? mobileSidebarMode,
     bool? desktopSidebarCollapsed,
     ArticleListDensity? articleListDensity,
+    ArticleContentMode? articleContentMode,
     AppLanguageMode? appLanguageMode,
   }) {
     return ReaderSettings(
@@ -70,6 +79,7 @@ class ReaderSettings {
       desktopSidebarCollapsed:
           desktopSidebarCollapsed ?? this.desktopSidebarCollapsed,
       articleListDensity: articleListDensity ?? this.articleListDensity,
+      articleContentMode: articleContentMode ?? this.articleContentMode,
       appLanguageMode: appLanguageMode ?? this.appLanguageMode,
     );
   }
@@ -81,6 +91,7 @@ class ReaderSettings {
       'mobileSidebarMode': mobileSidebarMode.name,
       'desktopSidebarCollapsed': desktopSidebarCollapsed,
       'articleListDensity': articleListDensity.name,
+      'articleContentMode': articleContentMode.name,
       'appLanguageMode': appLanguageMode.storageValue,
     };
   }
@@ -101,6 +112,10 @@ class ReaderSettings {
       articleListDensity: ArticleListDensity.values.firstWhere(
         (ArticleListDensity value) => value.name == json['articleListDensity'],
         orElse: () => defaults.articleListDensity,
+      ),
+      articleContentMode: ArticleContentMode.values.firstWhere(
+        (ArticleContentMode value) => value.name == json['articleContentMode'],
+        orElse: () => defaults.articleContentMode,
       ),
       appLanguageMode:
           AppLanguageModeX.fromStorageValue(json['appLanguageMode'] as String?),

@@ -254,6 +254,11 @@ class ReaderController extends ChangeNotifier {
     await _persistSettings();
   }
 
+  Future<void> setArticleContentMode(ArticleContentMode mode) async {
+    _settings = _settings.copyWith(articleContentMode: mode);
+    await _persistSettings();
+  }
+
   Future<void> setAppLanguageMode(AppLanguageMode mode) async {
     _settings = _settings.copyWith(appLanguageMode: mode);
     await _persistSettings();

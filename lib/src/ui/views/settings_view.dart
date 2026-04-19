@@ -98,6 +98,35 @@ class SettingsView extends StatelessWidget {
         SizedBox(height: compact ? 12 : 14),
         _SettingsSection(
           compact: compact,
+          title: strings.articleDisplayMode,
+          subtitle: strings.articleDisplayModeHint,
+          child: SegmentedButton<ArticleContentMode>(
+            direction: compact ? Axis.vertical : Axis.horizontal,
+            segments: <ButtonSegment<ArticleContentMode>>[
+              ButtonSegment<ArticleContentMode>(
+                value: ArticleContentMode.rich,
+                label: Text(
+                  strings.articleContentModeLabel(ArticleContentMode.rich),
+                ),
+              ),
+              ButtonSegment<ArticleContentMode>(
+                value: ArticleContentMode.textOnly,
+                label: Text(
+                  strings.articleContentModeLabel(ArticleContentMode.textOnly),
+                ),
+              ),
+            ],
+            selected: <ArticleContentMode>{
+              controller.settings.articleContentMode,
+            },
+            onSelectionChanged: (Set<ArticleContentMode> values) {
+              controller.setArticleContentMode(values.first);
+            },
+          ),
+        ),
+        SizedBox(height: compact ? 12 : 14),
+        _SettingsSection(
+          compact: compact,
           title: strings.mobileSidebar,
           child: RadioGroup<MobileSidebarMode>(
             groupValue: controller.settings.mobileSidebarMode,

@@ -7,8 +7,8 @@ import 'app_language.dart';
 
 class AppBrand {
   static const String mark = 'R';
-  static const String nameZhCn = '回声';
-  static const String nameZhHant = '回聲';
+  static const String nameZhCn = '回响';
+  static const String nameZhHant = '回響';
   static const String nameEn = 'Resonance';
   static const String fullName = 'Resonance';
 }
@@ -113,68 +113,9 @@ class AppStrings {
     }
   }
 
-  String routeSubtitle(AppRouteId route, {required bool compact}) {
-    switch (route) {
-      case AppRouteId.allArticles:
-        return compact
-            ? _text(
-                zhCn: '先扫一遍时间流，再点进文章阅读。',
-                zhHant: '先掃一遍時間流，再點進文章閱讀。',
-                en: 'Scan the timeline first, then open an article.',
-              )
-            : _text(
-                zhCn: '把订阅内容摊开在一张画布里，方便连贯浏览。',
-                zhHant: '把訂閱內容攤開在一張畫布裡，方便連貫瀏覽。',
-                en: 'Keep the reading flow on one calm canvas.',
-              );
-      case AppRouteId.sources:
-      case AppRouteId.sourceDetail:
-        return compact
-            ? _text(
-                zhCn: '先看订阅源，再进入文章。',
-                zhHant: '先看訂閱源，再進入文章。',
-                en: 'Manage sources first, then open articles.',
-              )
-            : _text(
-                zhCn: '左边筛来源，中间扫列表，右边进正文。',
-                zhHant: '左邊篩來源，中間掃列表，右邊進正文。',
-                en: 'Filter on the left, skim in the middle, read on the right.',
-              );
-      case AppRouteId.bookmarks:
-        return _text(
-          zhCn: '把收藏和稍后读收拢到同一个长期阅读箱里。',
-          zhHant: '把收藏和稍後讀收攏到同一個長期閱讀箱裡。',
-          en: 'Keep starred and later items in one long-term queue.',
-        );
-      case AppRouteId.discoverAddSource:
-        return _text(
-          zhCn: '在这里统一添加、编辑、删除，并整理订阅顺序。',
-          zhHant: '在這裡統一添加、編輯、刪除，並整理訂閱順序。',
-          en: 'Add, edit, remove, and reorder subscriptions here.',
-        );
-      case AppRouteId.settings:
-        return _text(
-          zhCn: '这里管理启动页、主题、语言和移动端导航。',
-          zhHant: '這裡管理啟動頁、主題、語言和移動端導航。',
-          en: 'Manage startup behavior, theme, language, and mobile navigation.',
-        );
-      case AppRouteId.readerDetail:
-        return _text(
-          zhCn: '正文阅读优先保留干净版面和就近操作。',
-          zhHant: '正文閱讀優先保留乾淨版面和就近操作。',
-          en: 'Keep the reading view clean and the actions close at hand.',
-        );
-    }
-  }
-
   String startupSummary(StartupHomeMode mode) {
     switch (mode) {
       case StartupHomeMode.allArticles:
-        return _text(
-          zhCn: '启动后优先进入全部文章',
-          zhHant: '啟動後優先進入全部文章',
-          en: 'Open All Articles on startup',
-        );
       case StartupHomeMode.sources:
         return _text(
           zhCn: '启动后优先进入全部文章',
@@ -193,7 +134,6 @@ class AppStrings {
   String startupLabel(StartupHomeMode mode) {
     switch (mode) {
       case StartupHomeMode.allArticles:
-        return allArticles;
       case StartupHomeMode.sources:
         return allArticles;
       case StartupHomeMode.bookmarks:
@@ -204,21 +144,16 @@ class AppStrings {
   String startupDesc(StartupHomeMode mode) {
     switch (mode) {
       case StartupHomeMode.allArticles:
-        return _text(
-          zhCn: '适合快速扫一遍时间流。',
-          zhHant: '適合快速掃一遍時間流。',
-          en: 'Best for sweeping through the timeline quickly.',
-        );
       case StartupHomeMode.sources:
         return _text(
-          zhCn: '适合快速扫一遍时间流。',
-          zhHant: '適合快速掃一遍時間流。',
+          zhCn: '适合快速扫读时间流。',
+          zhHant: '適合快速掃讀時間流。',
           en: 'Best for sweeping through the timeline quickly.',
         );
       case StartupHomeMode.bookmarks:
         return _text(
-          zhCn: '适合把阅读器当成长期收藏箱。',
-          zhHant: '適合把閱讀器當成長期收藏箱。',
+          zhCn: '适合把阅读器当作长期收纳箱。',
+          zhHant: '適合把閱讀器當作長期收納箱。',
           en: 'Best when you treat the reader as a long-term archive.',
         );
     }
@@ -231,7 +166,7 @@ class AppStrings {
       case MobileSidebarMode.drawer:
         return _text(zhCn: '抽屉侧栏', zhHant: '抽屜側欄', en: 'Drawer');
       case MobileSidebarMode.rail:
-        return _text(zhCn: '窄轨常驻', zhHant: '窄軌常駐', en: 'Rail');
+        return _text(zhCn: '窄栏常驻', zhHant: '窄欄常駐', en: 'Rail');
     }
   }
 
@@ -239,21 +174,21 @@ class AppStrings {
     switch (mode) {
       case MobileSidebarMode.adaptive:
         return _text(
-          zhCn: '小屏抽屉，大屏窄轨，默认最稳。',
-          zhHant: '小屏抽屜，大屏窄軌，預設最穩。',
-          en: 'Drawer on small screens and rail on wider screens.',
+          zhCn: '小屏抽屉，大屏窄栏，默认更稳。',
+          zhHant: '小屏抽屜，大屏窄欄，預設更穩。',
+          en: 'Use a drawer on small screens and a rail on wider screens.',
         );
       case MobileSidebarMode.drawer:
         return _text(
-          zhCn: '始终通过抽屉打开左侧栏。',
-          zhHant: '始終透過抽屜打開左側欄。',
+          zhCn: '始终通过抽屉打开导航。',
+          zhHant: '始終透過抽屜打開導覽。',
           en: 'Always open navigation as a drawer.',
         );
       case MobileSidebarMode.rail:
         return _text(
-          zhCn: '始终保留一条窄轨，布局更统一。',
-          zhHant: '始終保留一條窄軌，佈局更統一。',
-          en: 'Always keep a slim rail visible.',
+          zhCn: '始终保留窄栏，并可从顶部按钮打开完整侧栏。',
+          zhHant: '始終保留窄欄，並可從頂部按鈕打開完整側欄。',
+          en: 'Keep a slim rail visible and open the full drawer from the top button.',
         );
     }
   }
@@ -264,6 +199,15 @@ class AppStrings {
         return _text(zhCn: '舒展', zhHant: '舒展', en: 'Comfortable');
       case ArticleListDensity.compact:
         return _text(zhCn: '紧凑', zhHant: '緊湊', en: 'Compact');
+    }
+  }
+
+  String articleContentModeLabel(ArticleContentMode mode) {
+    switch (mode) {
+      case ArticleContentMode.rich:
+        return _text(zhCn: '完整版文章', zhHant: '完整版文章', en: 'Rich Article');
+      case ArticleContentMode.textOnly:
+        return _text(zhCn: '纯文本文章', zhHant: '純文字文章', en: 'Text Only');
     }
   }
 
@@ -304,12 +248,12 @@ class AppStrings {
   String get subscriptionManagementIntro => _text(
         zhCn: '在这里集中管理订阅源。你可以添加、编辑、删除，并通过长按拖动调整顺序。',
         zhHant: '在這裡集中管理訂閱源。你可以添加、編輯、刪除，並透過長按拖動調整順序。',
-        en: 'Manage sources here. Add, edit, remove, and long-press to reorder.',
+        en: 'Manage sources here. Add, edit, remove, and long-press to reorder them.',
       );
   String get currentSubscriptionsHint => _text(
         zhCn: '长按右侧拖动柄可调整顺序，菜单里可以刷新、编辑或删除站点。',
         zhHant: '長按右側拖動柄可調整順序，選單裡可以重新整理、編輯或刪除站點。',
-        en: 'Long-press the drag handle to reorder. Use the menu to refresh, edit, or delete.',
+        en: 'Long-press the drag handle to reorder. Use the menu to refresh, edit, or delete a source.',
       );
   String get settings =>
       _text(zhCn: '设置', zhHant: '設定', en: 'Settings');
@@ -328,24 +272,31 @@ class AppStrings {
         en: 'Local Reader',
       );
   String get settingsIntro => _text(
-        zhCn: '这里先收好启动页、主题、语言和侧栏行为，后面再接同步层。',
-        zhHant: '這裡先收好啟動頁、主題、語言和側欄行為，後面再接同步層。',
-        en: 'Tune startup, theme, language, and navigation before sync comes online.',
+        zhCn: '这里先收好启动页、主题、语言、文章显示方式和移动端导航。',
+        zhHant: '這裡先整理啟動頁、主題、語言、文章顯示方式和移動端導覽。',
+        en: 'Tune startup, theme, language, article display, and mobile navigation here.',
       );
   String get startupPage =>
       _text(zhCn: '启动页', zhHant: '啟動頁', en: 'Startup Page');
   String get visualTheme =>
       _text(zhCn: '视觉主题', zhHant: '視覺主題', en: 'Theme');
+  String get articleDisplayMode =>
+      _text(zhCn: '文章显示', zhHant: '文章顯示', en: 'Article Display');
+  String get articleDisplayModeHint => _text(
+        zhCn: '完整版保留图片和媒体占位，纯文本只显示段落与换行。',
+        zhHant: '完整版保留圖片與媒體佔位，純文字只顯示段落與換行。',
+        en: 'Rich mode keeps images and media placeholders. Text-only mode shows paragraphs and line breaks only.',
+      );
   String get mobileSidebar =>
-      _text(zhCn: '移动端左侧栏', zhHant: '移動端左側欄', en: 'Mobile Sidebar');
+      _text(zhCn: '移动端侧栏', zhHant: '移動端側欄', en: 'Mobile Sidebar');
   String get readingDensity =>
       _text(zhCn: '阅读密度', zhHant: '閱讀密度', en: 'Reading Density');
   String get interfaceLanguage =>
       _text(zhCn: '界面语言', zhHant: '介面語言', en: 'Interface Language');
   String get interfaceLanguageHint => _text(
-        zhCn: '切换后立即生效。跟随系统时，会在简体中文、繁体中文和 English 之间自动匹配。',
-        zhHant: '切換後立即生效。跟隨系統時，會在簡體中文、繁體中文和 English 之間自動匹配。',
-        en: 'Changes apply immediately. Follow System automatically picks Simplified Chinese, Traditional Chinese, or English.',
+        zhCn: '切换后立刻生效。跟随系统时，会在简体中文、繁体中文和 English 之间自动匹配。',
+        zhHant: '切換後立刻生效。跟隨系統時，會在簡體中文、繁體中文和 English 之間自動匹配。',
+        en: 'Changes apply immediately. Follow System picks Simplified Chinese, Traditional Chinese, or English automatically.',
       );
   String get desktopSidebarCollapsedTitle => _text(
         zhCn: '桌面端默认折叠侧栏',
@@ -354,7 +305,7 @@ class AppStrings {
       );
   String get desktopSidebarCollapsedHint => _text(
         zhCn: '给文章列表和阅读区让出更多空间。',
-        zhHant: '給文章列表和閱讀區讓出更多空間。',
+        zhHant: '讓文章列表和閱讀區獲得更多空間。',
         en: 'Leave more room for the list and reader.',
       );
 
@@ -362,12 +313,6 @@ class AppStrings {
         zhCn: '$count 篇可见文章',
         zhHant: '$count 篇可見文章',
         en: '$count visible article${count == 1 ? '' : 's'}',
-      );
-
-  String feedCountStat(int count) => _text(
-        zhCn: '$count 个订阅',
-        zhHant: '$count 個訂閱',
-        en: '$count source${count == 1 ? '' : 's'}',
       );
 
   String unreadCountStat(int count) => _text(
@@ -378,7 +323,7 @@ class AppStrings {
 
   String get refreshCurrentView => _text(
         zhCn: '刷新当前视图',
-        zhHant: '刷新目前視圖',
+        zhHant: '重新整理目前視圖',
         en: 'Refresh Current View',
       );
   String get noReadableSummary => _text(
@@ -390,15 +335,15 @@ class AppStrings {
       _text(zhCn: '这里还没有文章', zhHant: '這裡還沒有文章', en: 'No Articles Yet');
   String get emptyArticleListBody => _text(
         zhCn: '先添加订阅源，或者放宽当前筛选条件。',
-        zhHant: '先添加訂閱源，或者放寬目前篩選條件。',
+        zhHant: '先添加訂閱源，或放寬目前的篩選條件。',
         en: 'Add a subscription first, or loosen the current filters.',
       );
 
-  String starAction(bool starred) => starred
+  String starAction(bool value) => value
       ? _text(zhCn: '取消收藏', zhHant: '取消收藏', en: 'Remove Star')
       : _text(zhCn: '收藏', zhHant: '收藏', en: 'Star');
 
-  String readLaterAction(bool saved) => saved
+  String readLaterAction(bool value) => value
       ? _text(zhCn: '取消稍后读', zhHant: '取消稍後讀', en: 'Remove from Later')
       : _text(zhCn: '稍后读', zhHant: '稍後讀', en: 'Read Later');
 
@@ -420,22 +365,17 @@ class AppStrings {
       );
   String get emptyReaderBody => _text(
         zhCn: '正文、来源、阅读动作和原文跳转都会收在同一块版面里。',
-        zhHant: '正文、來源、閱讀動作和原文跳轉都會收在同一塊版面裡。',
+        zhHant: '正文、來源、閱讀動作和原文跳轉都會留在同一塊版面裡。',
         en: 'Body text, source info, actions, and the original link stay together here.',
       );
   String get addSourceTitle =>
       _text(zhCn: '添加订阅源', zhHant: '添加訂閱源', en: 'Add Source');
-  String get addSourceIntro => _text(
-        zhCn: '先把本地 RSS 流跑通。首版只做手动添加，不接 OPML，也不做自动发现。',
-        zhHant: '先把本地 RSS 流跑通。首版只做手動添加，不接 OPML，也不做自動發現。',
-        en: 'Get the local RSS flow working first. This version only supports manual entry.',
-      );
   String get feedUrlLabel =>
       _text(zhCn: 'RSS / Atom 地址', zhHant: 'RSS / Atom 位址', en: 'RSS / Atom URL');
   String get feedUrlHint => 'https://example.com/feed.xml';
   String get enterFeedAddress => _text(
         zhCn: '请输入订阅地址',
-        zhHant: '請輸入訂閱地址',
+        zhHant: '請輸入訂閱位址',
         en: 'Enter a subscription URL',
       );
   String get displayName =>
@@ -467,16 +407,6 @@ class AppStrings {
         zhHant: '收藏與篩選',
         en: 'Bookmarks & Filters',
       );
-  String get sourceManagementHintTitle => _text(
-        zhCn: '把订阅源收成一列，管理起来会更稳。',
-        zhHant: '把訂閱源收成一列，管理起來會更穩。',
-        en: 'Keeping sources in one column makes them easier to manage.',
-      );
-  String get sourceManagementHintBody => _text(
-        zhCn: '这里负责站点管理、刷新和编辑。',
-        zhHant: '這裡負責站點管理、刷新和編輯。',
-        en: 'This area handles source management, refresh, and editing.',
-      );
   String get sourceFilterHintTitle => _text(
         zhCn: '先按来源筛一层，再进文章会更清楚。',
         zhHant: '先按來源篩一層，再進文章會更清楚。',
@@ -488,15 +418,14 @@ class AppStrings {
         en: 'The default is All Articles, but you can narrow down to one site.',
       );
   String get refreshAll =>
-      _text(zhCn: '刷新全部', zhHant: '刷新全部', en: 'Refresh All');
+      _text(zhCn: '刷新全部', zhHant: '重新整理全部', en: 'Refresh All');
   String get unreadOnly =>
       _text(zhCn: '仅未读', zhHant: '僅未讀', en: 'Unread Only');
   String get allSources =>
       _text(zhCn: '全部来源', zhHant: '全部來源', en: 'All Sources');
   String get editSource =>
       _text(zhCn: '编辑订阅源', zhHant: '編輯訂閱源', en: 'Edit Source');
-  String get update =>
-      _text(zhCn: '更新', zhHant: '更新', en: 'Update');
+  String get update => _text(zhCn: '更新', zhHant: '更新', en: 'Update');
   String get deleteSource =>
       _text(zhCn: '删除订阅源', zhHant: '刪除訂閱源', en: 'Delete Source');
 
@@ -506,14 +435,10 @@ class AppStrings {
         en: 'Delete $title? Its cached articles will be removed as well.',
       );
 
-  String get refresh =>
-      _text(zhCn: '刷新', zhHant: '刷新', en: 'Refresh');
-  String get edit =>
-      _text(zhCn: '编辑', zhHant: '編輯', en: 'Edit');
-  String get delete =>
-      _text(zhCn: '删除', zhHant: '刪除', en: 'Delete');
-  String get cancel =>
-      _text(zhCn: '取消', zhHant: '取消', en: 'Cancel');
+  String get refresh => _text(zhCn: '刷新', zhHant: '重新整理', en: 'Refresh');
+  String get edit => _text(zhCn: '编辑', zhHant: '編輯', en: 'Edit');
+  String get delete => _text(zhCn: '删除', zhHant: '刪除', en: 'Delete');
+  String get cancel => _text(zhCn: '取消', zhHant: '取消', en: 'Cancel');
   String get save => _text(zhCn: '保存', zhHant: '儲存', en: 'Save');
   String get feedTitleAutoHint => _text(
         zhCn: '留空时会自动使用订阅标题',
@@ -527,7 +452,7 @@ class AppStrings {
       );
   String get emptySourcePanel => _text(
         zhCn: '先添加一个订阅源，文章列表才会开始生长。',
-        zhHant: '先添加一個訂閱源，文章列表才會開始長出內容。',
+        zhHant: '先添加一個訂閱源，文章列表才會開始出現。',
         en: 'Add at least one source before the article list can start growing.',
       );
 
@@ -548,13 +473,13 @@ class AppStrings {
 
   String get duplicateFeedAddress => _text(
         zhCn: '这个订阅地址已经存在',
-        zhHant: '這個訂閱地址已經存在',
+        zhHant: '這個訂閱位址已經存在',
         en: 'This subscription URL already exists',
       );
 
   String get updatingFeedAddressInUse => _text(
         zhCn: '另一个订阅源已经在使用这个地址',
-        zhHant: '另一個訂閱源已經在使用這個地址',
+        zhHant: '另一個訂閱源已經在使用這個位址',
         en: 'Another source is already using this URL',
       );
 
@@ -590,31 +515,31 @@ class AppStrings {
 
   String get noRefreshableFeeds => _text(
         zhCn: '还没有可刷新的订阅源',
-        zhHant: '還沒有可刷新的訂閱源',
+        zhHant: '還沒有可重新整理的訂閱源',
         en: 'There are no sources to refresh yet',
       );
 
   String get refreshingAllFeeds => _text(
         zhCn: '正在刷新全部订阅...',
-        zhHant: '正在刷新全部訂閱...',
+        zhHant: '正在重新整理全部訂閱...',
         en: 'Refreshing all sources...',
       );
 
   String refreshedAllFeeds(int count) => _text(
         zhCn: '刷新完成，共处理 $count 个订阅源',
-        zhHant: '刷新完成，共處理 $count 個訂閱源',
+        zhHant: '重新整理完成，共處理 $count 個訂閱源',
         en: 'Refresh complete. Processed $count source${count == 1 ? '' : 's'}.',
       );
 
   String refreshingFeed(String title) => _text(
         zhCn: '正在刷新 $title...',
-        zhHant: '正在刷新 $title...',
+        zhHant: '正在重新整理 $title...',
         en: 'Refreshing $title...',
       );
 
   String refreshedFeed(String title) => _text(
         zhCn: '已刷新 $title',
-        zhHant: '已刷新 $title',
+        zhHant: '已重新整理 $title',
         en: 'Refreshed $title',
       );
 
@@ -626,7 +551,7 @@ class AppStrings {
 
   String get subscriptionAddressRequired => _text(
         zhCn: '订阅地址不能为空',
-        zhHant: '訂閱地址不能為空',
+        zhHant: '訂閱位址不能為空',
         en: 'Subscription URL cannot be empty',
       );
 }

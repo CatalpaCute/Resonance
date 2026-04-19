@@ -11,6 +11,7 @@ void main() {
         mobileSidebarMode: MobileSidebarMode.rail,
         desktopSidebarCollapsed: true,
         articleListDensity: ArticleListDensity.compact,
+        articleContentMode: ArticleContentMode.textOnly,
         appLanguageMode: AppLanguageMode.zhHant,
       );
 
@@ -22,6 +23,7 @@ void main() {
       expect(restored.mobileSidebarMode, MobileSidebarMode.rail);
       expect(restored.desktopSidebarCollapsed, isTrue);
       expect(restored.articleListDensity, ArticleListDensity.compact);
+      expect(restored.articleContentMode, ArticleContentMode.textOnly);
       expect(restored.appLanguageMode, AppLanguageMode.zhHant);
     });
 
@@ -37,6 +39,8 @@ void main() {
           ReaderSettings.defaults.desktopSidebarCollapsed);
       expect(restored.articleListDensity,
           ReaderSettings.defaults.articleListDensity);
+      expect(restored.articleContentMode,
+          ReaderSettings.defaults.articleContentMode);
       expect(restored.appLanguageMode, ReaderSettings.defaults.appLanguageMode);
     });
   });

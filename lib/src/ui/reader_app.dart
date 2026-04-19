@@ -99,137 +99,138 @@ class _ReaderHomeState extends State<ReaderHome> {
             final bool compact = constraints.maxWidth < 980;
             final bool useDrawer = _useDrawer(constraints.maxWidth);
             final bool useRail = compact && !useDrawer;
+            final double topInset =
+                _useWindowsWindowChrome ? 0 : MediaQuery.viewPaddingOf(context).top;
+            final Widget mobileDrawer = Drawer(
+              width: 236,
+              backgroundColor: palette.sidebarBackground,
+              elevation: 0,
+              child: Padding(
+                padding: EdgeInsets.only(top: topInset),
+                child: NavigationSidebar(
+                  controller: controller,
+                  collapsed: false,
+                  showCollapseToggle: false,
+                  onNavigate: () => Navigator.of(context).pop(),
+                ),
+              ),
+            );
 
             return Scaffold(
               key: _scaffoldKey,
               backgroundColor: palette.shellBackground,
-              drawer: useDrawer
-                  ? Drawer(
-                      width: 236,
-                      backgroundColor: palette.sidebarBackground,
-                      elevation: 0,
-                      child: NavigationSidebar(
-                        controller: controller,
-                        collapsed: false,
-                        showCollapseToggle: false,
-                        onNavigate: () => Navigator.of(context).pop(),
-                      ),
-                    )
-                  : null,
-              body: SafeArea(
-                top: !_useWindowsWindowChrome,
-                bottom: false,
-                child: Column(
-                  children: <Widget>[
-                    _ShellHeader(
-                      controller: controller,
-                      compact: compact,
-                      sidebarCollapsed:
-                          controller.settings.desktopSidebarCollapsed,
-                      showSidebarToggle: !compact && !useRail,
-                      onSidebarToggle: () {
-                        controller.setDesktopSidebarCollapsed(
-                          !controller.settings.desktopSidebarCollapsed,
-                        );
-                      },
-                      showMenuButton: useDrawer,
-                      onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                    ),
-                    Expanded(
-                      child: Row(
-                        children: <Widget>[
-                          if (!compact)
-                            NavigationSidebar(
-                              controller: controller,
-                              collapsed: controller.settings.desktopSidebarCollapsed,
-                              showCollapseToggle: true,
-                              onToggleCollapse: () {
-                                controller.setDesktopSidebarCollapsed(
-                                  !controller.settings.desktopSidebarCollapsed,
+              drawer: compact ? mobileDrawer : null,
+              body: Column(
+                children: <Widget>[
+                  _ShellHeader(
+                    controller: controller,
+                    compact: compact,
+                    topInset: topInset,
+                    sidebarCollapsed:
+                        controller.settings.desktopSidebarCollapsed,
+                    showSidebarToggle: !compact && !useRail,
+                    onSidebarToggle: () {
+                      controller.setDesktopSidebarCollapsed(
+                        !controller.settings.desktopSidebarCollapsed,
+                      );
+                    },
+                    showMenuButton: compact,
+                    onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                  ),
+                  Expanded(
+                    child: Row(
+                      children: <Widget>[
+                        if (!compact)
+                          NavigationSidebar(
+                            controller: controller,
+                            collapsed: controller.settings.desktopSidebarCollapsed,
+                            showCollapseToggle: true,
+                            onToggleCollapse: () {
+                              controller.setDesktopSidebarCollapsed(
+                                !controller.settings.desktopSidebarCollapsed,
+                              );
+                            },
+                          ),
+                        if (useRail)
+                          NavigationSidebar(
+                            controller: controller,
+                            collapsed: true,
+                            showCollapseToggle: false,
+                          ),
+                        Expanded(
+                          child: AnimatedContainer(
+                            duration: _shellMotionDuration,
+                            curve: _shellMotionCurve,
+                            color: palette.chromeBackground,
+                            padding: EdgeInsets.fromLTRB(
+                              compact ? 6 : 10,
+                              compact ? 6 : 6,
+                              compact
+                                  ? 6
+                                  : controller.settings.desktopSidebarCollapsed
+                                      ? 12
+                                      : 10,
+                              compact ? 6 : 10,
+                            ),
+                            child: TweenAnimationBuilder<double>(
+                              tween: Tween<double>(
+                                end: compact
+                                    ? 0
+                                    : controller.settings.desktopSidebarCollapsed
+                                        ? 1
+                                        : 0,
+                              ),
+                              duration: _shellMotionDuration,
+                              curve: _shellMotionCurve,
+                              child: _MainCanvas(
+                                compact: compact,
+                                child: Column(
+                                  children: <Widget>[
+                                    if (controller.errorMessage != null)
+                                      _InlineBanner(
+                                        icon: Icons.warning_amber_rounded,
+                                        text: controller.errorMessage!,
+                                        kind: _BannerKind.error,
+                                        compact: compact,
+                                        onClose: controller.clearError,
+                                      ),
+                                    if (controller.statusMessage != null)
+                                      _InlineBanner(
+                                        icon: Icons.sync_rounded,
+                                        text: controller.statusMessage!,
+                                        kind: _BannerKind.info,
+                                        compact: compact,
+                                        onClose: controller.clearStatus,
+                                      ),
+                                    Expanded(
+                                      child: _buildBody(
+                                        context,
+                                        compact: compact,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              builder: (
+                                BuildContext context,
+                                double value,
+                                Widget? child,
+                              ) {
+                                return Transform.translate(
+                                  offset: Offset(
+                                    compact ? 0 : value * 4,
+                                    0,
+                                  ),
+                                  child: child,
                                 );
                               },
                             ),
-                          if (useRail)
-                            NavigationSidebar(
-                              controller: controller,
-                              collapsed: true,
-                              showCollapseToggle: false,
-                            ),
-                          Expanded(
-                            child: AnimatedContainer(
-                              duration: _shellMotionDuration,
-                              curve: _shellMotionCurve,
-                              color: palette.chromeBackground,
-                              padding: EdgeInsets.fromLTRB(
-                                compact ? 6 : 10,
-                                compact ? 6 : 6,
-                                compact
-                                    ? 6
-                                    : controller.settings.desktopSidebarCollapsed
-                                        ? 12
-                                        : 10,
-                                compact ? 6 : 10,
-                              ),
-                              child: TweenAnimationBuilder<double>(
-                                tween: Tween<double>(
-                                  end: compact
-                                      ? 0
-                                      : controller.settings.desktopSidebarCollapsed
-                                          ? 1
-                                          : 0,
-                                ),
-                                duration: _shellMotionDuration,
-                                curve: _shellMotionCurve,
-                                child: _MainCanvas(
-                                  compact: compact,
-                                  child: Column(
-                                    children: <Widget>[
-                                      if (controller.errorMessage != null)
-                                        _InlineBanner(
-                                          icon: Icons.warning_amber_rounded,
-                                          text: controller.errorMessage!,
-                                          kind: _BannerKind.error,
-                                          compact: compact,
-                                          onClose: controller.clearError,
-                                        ),
-                                      if (controller.statusMessage != null)
-                                        _InlineBanner(
-                                          icon: Icons.sync_rounded,
-                                          text: controller.statusMessage!,
-                                          kind: _BannerKind.info,
-                                          compact: compact,
-                                          onClose: controller.clearStatus,
-                                        ),
-                                      Expanded(
-                                        child: _buildBody(
-                                          context,
-                                          compact: compact,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                builder: (
-                                  BuildContext context,
-                                  double value,
-                                  Widget? child,
-                                ) {
-                                  return Transform.translate(
-                                    offset: Offset(
-                                      compact ? 0 : value * 4,
-                                      0,
-                                    ),
-                                    child: child,
-                                  );
-                                },
-                              ),
-                            ),
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             );
           },
@@ -329,6 +330,7 @@ class _ShellHeader extends StatelessWidget {
   const _ShellHeader({
     required this.controller,
     required this.compact,
+    required this.topInset,
     required this.sidebarCollapsed,
     required this.showSidebarToggle,
     required this.onSidebarToggle,
@@ -338,6 +340,7 @@ class _ShellHeader extends StatelessWidget {
 
   final ReaderController controller;
   final bool compact;
+  final double topInset;
   final bool sidebarCollapsed;
   final bool showSidebarToggle;
   final VoidCallback onSidebarToggle;
@@ -348,9 +351,11 @@ class _ShellHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
+    final double headerHeight = compact ? 52 : 40;
 
     return Container(
-      height: compact ? 50 : 40,
+      height: headerHeight + topInset,
+      padding: EdgeInsets.only(top: topInset),
       decoration: BoxDecoration(
         color: palette.chromeBackground,
         border: Border(
@@ -362,10 +367,9 @@ class _ShellHeader extends StatelessWidget {
           if (compact)
             IconButton(
               onPressed: showMenuButton ? onMenuPressed : null,
-              icon: Icon(
-                showMenuButton ? Icons.menu_rounded : Icons.rss_feed_rounded,
-              ),
+              icon: const Icon(Icons.menu_rounded),
               splashRadius: 18,
+              tooltip: strings.subscriptionManagement,
             )
           else
             const SizedBox(width: 12),
@@ -418,11 +422,13 @@ class _ShellHeader extends StatelessWidget {
           if (compact)
             Padding(
               padding: const EdgeInsets.only(right: 10),
-              child: _CompactStat(text: strings.unreadCountStat(controller.totalUnreadCount)),
+              child: _CompactStat(
+                text: strings.unreadCountStat(controller.totalUnreadCount),
+              ),
             ),
           if (_useWindowsWindowChrome && !compact)
             _WindowActions(brightness: Theme.of(context).brightness)
-          else
+          else if (!compact)
             const SizedBox(width: 10),
         ],
       ),
@@ -483,7 +489,7 @@ class _MobileHeaderTitle extends StatelessWidget {
     return Row(
       children: <Widget>[
         const _BrandMark(compact: true),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,

@@ -4,6 +4,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 import '../../localization/app_strings.dart';
 import '../../models/article.dart';
+import '../../models/reader_settings.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
 import 'glass_card.dart';
@@ -136,6 +137,7 @@ class ArticleReaderPanel extends StatelessWidget {
                     child: _ReaderBody(
                       article: article,
                       compact: compact,
+                      contentMode: controller.settings.articleContentMode,
                       strings: strings,
                       onOpenUrl: _openOriginal,
                     ),
@@ -176,12 +178,14 @@ class _ReaderBody extends StatelessWidget {
   const _ReaderBody({
     required this.article,
     required this.compact,
+    required this.contentMode,
     required this.strings,
     required this.onOpenUrl,
   });
 
   final Article article;
   final bool compact;
+  final ArticleContentMode contentMode;
   final AppStrings strings;
   final Future<void> Function(String url) onOpenUrl;
 
@@ -190,6 +194,7 @@ class _ReaderBody extends StatelessWidget {
     final String readerHtml = article.readerHtml.trim();
     final String readerText = article.readerText.trim();
     final ReaderPalette palette = AppTheme.paletteOf(context);
+    final bool useTextOnly = contentMode == ArticleContentMode.textOnly;
     final TextStyle? readerStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
           height: compact ? 1.75 : 1.9,
         );
@@ -208,7 +213,7 @@ class _ReaderBody extends StatelessWidget {
 
     return Scrollbar(
       child: SingleChildScrollView(
-        child: readerHtml.isNotEmpty
+        child: !useTextOnly && readerHtml.isNotEmpty
             ? HtmlWidget(
                 readerHtml,
                 textStyle: readerStyle,
