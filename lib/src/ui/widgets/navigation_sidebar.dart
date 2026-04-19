@@ -97,13 +97,6 @@ class NavigationSidebar extends StatelessWidget {
                       children: <Widget>[
                         _LockEntry(collapsed: collapsed),
                         const SizedBox(height: 10),
-                        if (showCollapseToggle) ...<Widget>[
-                          _SidebarToggleButton(
-                            collapsed: collapsed,
-                            onTap: onToggleCollapse,
-                          ),
-                          const SizedBox(height: 10),
-                        ],
                         _ProfileCard(
                           controller: controller,
                           collapsed: collapsed,
@@ -358,51 +351,6 @@ class _ProfileCard extends StatelessWidget {
                     ),
                   ],
                 ),
-        ),
-      ),
-    );
-  }
-}
-
-class _SidebarToggleButton extends StatelessWidget {
-  const _SidebarToggleButton({
-    required this.collapsed,
-    required this.onTap,
-  });
-
-  final bool collapsed;
-  final VoidCallback? onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final ReaderPalette palette = AppTheme.paletteOf(context);
-
-    return Align(
-      alignment: Alignment.center,
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            width: collapsed ? 38 : 44,
-            height: collapsed ? 38 : 36,
-            decoration: BoxDecoration(
-              color: palette.panelBackground,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: palette.border),
-            ),
-            alignment: Alignment.center,
-            child: Icon(
-              collapsed
-                  ? Icons.keyboard_tab_rounded
-                  : Icons.keyboard_tab_rounded,
-              size: 18,
-              color: palette.secondaryText,
-              textDirection:
-                  collapsed ? TextDirection.rtl : TextDirection.ltr,
-            ),
-          ),
         ),
       ),
     );

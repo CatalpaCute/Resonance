@@ -122,6 +122,14 @@ class _ReaderHomeState extends State<ReaderHome> {
                     _ShellHeader(
                       controller: controller,
                       compact: compact,
+                      sidebarCollapsed:
+                          controller.settings.desktopSidebarCollapsed,
+                      showSidebarToggle: !compact && !useRail,
+                      onSidebarToggle: () {
+                        controller.setDesktopSidebarCollapsed(
+                          !controller.settings.desktopSidebarCollapsed,
+                        );
+                      },
                       showMenuButton: useDrawer,
                       onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
                     ),
@@ -289,12 +297,18 @@ class _ShellHeader extends StatelessWidget {
   const _ShellHeader({
     required this.controller,
     required this.compact,
+    required this.sidebarCollapsed,
+    required this.showSidebarToggle,
+    required this.onSidebarToggle,
     required this.showMenuButton,
     required this.onMenuPressed,
   });
 
   final ReaderController controller;
   final bool compact;
+  final bool sidebarCollapsed;
+  final bool showSidebarToggle;
+  final VoidCallback onSidebarToggle;
   final bool showMenuButton;
   final VoidCallback onMenuPressed;
 
@@ -325,8 +339,19 @@ class _ShellHeader extends StatelessWidget {
             const SizedBox(width: 12),
           if (!compact)
             Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: _BrandMark(compact: false),
+              padding: const EdgeInsets.only(right: 10),
+              child: Row(
+                children: <Widget>[
+                  const _BrandMark(compact: false),
+                  if (showSidebarToggle) ...<Widget>[
+                    const SizedBox(width: 10),
+                    _HeaderSidebarToggle(
+                      collapsed: sidebarCollapsed,
+                      onTap: onSidebarToggle,
+                    ),
+                  ],
+                ],
+              ),
             ),
           Expanded(
             child: compact
@@ -477,6 +502,121 @@ class _CompactStat extends StatelessWidget {
         style: Theme.of(context).textTheme.bodySmall,
       ),
     );
+  }
+}
+
+class _HeaderSidebarToggle extends StatelessWidget {
+  const _HeaderSidebarToggle({
+    required this.collapsed,
+    required this.onTap,
+  });
+
+  final bool collapsed;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Tooltip(
+      message: collapsed ? '展开侧栏' : '收起侧栏',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(10),
+          child: Container(
+            width: 26,
+            height: 26,
+            decoration: BoxDecoration(
+              color: palette.panelBackground,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: palette.border),
+            ),
+            alignment: Alignment.center,
+            child: _PanelToggleGlyph(
+              collapsed: collapsed,
+              color: palette.secondaryText,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PanelToggleGlyph extends StatelessWidget {
+  const _PanelToggleGlyph({
+    required this.collapsed,
+    required this.color,
+  });
+
+  final bool collapsed;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      size: const Size(15, 15),
+      painter: _PanelToggleGlyphPainter(
+        color: color,
+        collapsed: collapsed,
+      ),
+    );
+  }
+}
+
+class _PanelToggleGlyphPainter extends CustomPainter {
+  const _PanelToggleGlyphPainter({
+    required this.color,
+    required this.collapsed,
+  });
+
+  final Color color;
+  final bool collapsed;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint stroke = Paint()
+      ..color = color
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1.35
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final RRect panel = RRect.fromRectAndRadius(
+      Rect.fromLTWH(1.2, 1.4, size.width - 2.4, size.height - 2.8),
+      const Radius.circular(2.4),
+    );
+    canvas.drawRRect(panel, stroke);
+
+    final double dividerX = collapsed ? 5.2 : 9.8;
+    canvas.drawLine(
+      Offset(dividerX, 3),
+      Offset(dividerX, size.height - 3),
+      stroke,
+    );
+
+    final Path arrow = Path();
+    if (collapsed) {
+      arrow
+        ..moveTo(8.3, size.height / 2)
+        ..lineTo(11.1, 5.2)
+        ..moveTo(8.3, size.height / 2)
+        ..lineTo(11.1, size.height - 5.2);
+    } else {
+      arrow
+        ..moveTo(6.9, size.height / 2)
+        ..lineTo(4.1, 5.2)
+        ..moveTo(6.9, size.height / 2)
+        ..lineTo(4.1, size.height - 5.2);
+    }
+    canvas.drawPath(arrow, stroke);
+  }
+
+  @override
+  bool shouldRepaint(covariant _PanelToggleGlyphPainter other) {
+    return other.color != color || other.collapsed != collapsed;
   }
 }
 
