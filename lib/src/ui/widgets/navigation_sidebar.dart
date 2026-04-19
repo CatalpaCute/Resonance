@@ -24,10 +24,9 @@ class NavigationSidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
-    final AppStrings strings = context.strings;
 
     return Container(
-      width: collapsed ? 60 : 184,
+      width: collapsed ? 62 : 176,
       decoration: BoxDecoration(
         color: palette.sidebarBackground,
         border: Border(
@@ -36,12 +35,12 @@ class NavigationSidebar extends StatelessWidget {
       ),
       child: Column(
         children: <Widget>[
-          _BrandHeader(collapsed: collapsed),
+          const SizedBox(height: 10),
           Expanded(
             child: Padding(
               padding: EdgeInsets.fromLTRB(
                 collapsed ? 8 : 10,
-                10,
+                4,
                 collapsed ? 8 : 10,
                 8,
               ),
@@ -54,50 +53,42 @@ class NavigationSidebar extends StatelessWidget {
                         _NavItem(
                           icon: Icons.home_outlined,
                           activeIcon: Icons.home_rounded,
-                          label: strings.home,
-                          active:
-                              controller.currentRoute == AppRouteId.allArticles,
+                          label: context.strings.home,
+                          active: controller.currentRoute == AppRouteId.allArticles,
                           collapsed: collapsed,
-                          badge: controller.totalUnreadCount > 0
-                              ? '${controller.totalUnreadCount}'
-                              : null,
+                          badge: controller.totalUnreadCount > 0 ? '${controller.totalUnreadCount}' : null,
                           onTap: () => _navigate(AppRouteId.allArticles),
                         ),
                         _NavItem(
                           icon: Icons.rss_feed_outlined,
                           activeIcon: Icons.rss_feed_rounded,
-                          label: strings.sources,
-                          active:
-                              controller.currentRoute == AppRouteId.sources ||
-                                  controller.currentRoute ==
-                                      AppRouteId.sourceDetail,
+                          label: context.strings.sources,
+                          active: controller.currentRoute == AppRouteId.sources ||
+                              controller.currentRoute == AppRouteId.sourceDetail,
                           collapsed: collapsed,
                           onTap: () => _navigate(AppRouteId.sources),
                         ),
                         _NavItem(
                           icon: Icons.bookmark_outline_rounded,
                           activeIcon: Icons.bookmark_rounded,
-                          label: strings.bookmarksAndLater,
-                          active:
-                              controller.currentRoute == AppRouteId.bookmarks,
+                          label: context.strings.bookmarksAndLater,
+                          active: controller.currentRoute == AppRouteId.bookmarks,
                           collapsed: collapsed,
                           onTap: () => _navigate(AppRouteId.bookmarks),
                         ),
                         _NavItem(
                           icon: Icons.add_circle_outline_rounded,
                           activeIcon: Icons.add_circle_rounded,
-                          label: strings.addSubscription,
-                          active: controller.currentRoute ==
-                              AppRouteId.discoverAddSource,
+                          label: context.strings.addSubscription,
+                          active: controller.currentRoute == AppRouteId.discoverAddSource,
                           collapsed: collapsed,
                           onTap: () => _navigate(AppRouteId.discoverAddSource),
                         ),
                         _NavItem(
                           icon: Icons.tune_rounded,
                           activeIcon: Icons.tune_rounded,
-                          label: strings.settings,
-                          active:
-                              controller.currentRoute == AppRouteId.settings,
+                          label: context.strings.settings,
+                          active: controller.currentRoute == AppRouteId.settings,
                           collapsed: collapsed,
                           onTap: () => _navigate(AppRouteId.settings),
                         ),
@@ -140,76 +131,6 @@ class NavigationSidebar extends StatelessWidget {
   }
 }
 
-class _BrandHeader extends StatelessWidget {
-  const _BrandHeader({
-    required this.collapsed,
-  });
-
-  final bool collapsed;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ReaderPalette palette = AppTheme.paletteOf(context);
-    final AppStrings strings = context.strings;
-
-    return Container(
-      height: 58,
-      padding: EdgeInsets.symmetric(horizontal: collapsed ? 0 : 14),
-      decoration: BoxDecoration(
-        border: Border(
-          bottom: BorderSide(color: palette.divider),
-        ),
-      ),
-      alignment: collapsed ? Alignment.center : Alignment.centerLeft,
-      child: collapsed
-          ? _brandMark(context)
-          : Row(
-              children: <Widget>[
-                _brandMark(context),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    strings.appName,
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-    );
-  }
-
-  Widget _brandMark(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-
-    return Container(
-      width: 22,
-      height: 22,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(5),
-        gradient: LinearGradient(
-          colors: <Color>[
-            theme.colorScheme.primary.withValues(alpha: 0.86),
-            theme.colorScheme.primary.withValues(alpha: 0.24),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      alignment: Alignment.center,
-      child: Text(
-        AppBrand.mark,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.onPrimary,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-}
-
 class _NavItem extends StatelessWidget {
   const _NavItem({
     required this.icon,
@@ -233,8 +154,7 @@ class _NavItem extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
-    final Color textColor =
-        active ? theme.colorScheme.onSurface : palette.secondaryText;
+    final Color textColor = active ? theme.colorScheme.onSurface : palette.secondaryText;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
@@ -243,31 +163,29 @@ class _NavItem extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
-          height: 42,
+          height: 40,
           padding: EdgeInsets.symmetric(horizontal: collapsed ? 0 : 10),
           decoration: BoxDecoration(
             color: active ? palette.hover : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
-            mainAxisAlignment:
-                collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
+            mainAxisAlignment: collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
             children: <Widget>[
-              Container(
-                width: 2,
-                height: 18,
-                decoration: BoxDecoration(
-                  color:
-                      active ? theme.colorScheme.primary : Colors.transparent,
-                  borderRadius: BorderRadius.circular(999),
+              if (!collapsed)
+                Container(
+                  width: 2,
+                  height: 16,
+                  margin: const EdgeInsets.only(right: 8),
+                  decoration: BoxDecoration(
+                    color: active ? theme.colorScheme.primary : Colors.transparent,
+                    borderRadius: BorderRadius.circular(999),
+                  ),
                 ),
-              ),
-              SizedBox(width: collapsed ? 0 : 8),
               Icon(
                 active ? activeIcon : icon,
-                size: 19,
-                color:
-                    active ? theme.colorScheme.primary : palette.secondaryText,
+                size: 18,
+                color: active ? theme.colorScheme.primary : palette.secondaryText,
               ),
               if (!collapsed) ...<Widget>[
                 const SizedBox(width: 10),
@@ -316,18 +234,17 @@ class _LockEntry extends StatelessWidget {
       borderRadius: BorderRadius.circular(12),
       onTap: () {},
       child: Container(
-        height: 40,
+        height: 38,
         padding: EdgeInsets.symmetric(horizontal: collapsed ? 0 : 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
-          mainAxisAlignment:
-              collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
+          mainAxisAlignment: collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
           children: <Widget>[
             Icon(
               Icons.lock_outline_rounded,
-              size: 18,
+              size: 17,
               color: palette.secondaryText,
             ),
             if (!collapsed) ...<Widget>[
@@ -390,8 +307,7 @@ class _ProfileCard extends StatelessWidget {
                       width: 28,
                       height: 28,
                       decoration: BoxDecoration(
-                        color:
-                            theme.colorScheme.primary.withValues(alpha: 0.18),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.18),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       alignment: Alignment.center,
@@ -411,8 +327,7 @@ class _ProfileCard extends StatelessWidget {
                       width: 32,
                       height: 32,
                       decoration: BoxDecoration(
-                        color:
-                            theme.colorScheme.primary.withValues(alpha: 0.18),
+                        color: theme.colorScheme.primary.withValues(alpha: 0.18),
                         borderRadius: BorderRadius.circular(9),
                       ),
                       alignment: Alignment.center,
@@ -454,9 +369,7 @@ class _ProfileCard extends StatelessWidget {
                         visualDensity: VisualDensity.compact,
                         onPressed: onToggleCollapse,
                         icon: Icon(
-                          collapsed
-                              ? Icons.chevron_right_rounded
-                              : Icons.expand_more_rounded,
+                          collapsed ? Icons.chevron_right_rounded : Icons.chevron_left_rounded,
                           color: palette.secondaryText,
                           size: 18,
                         ),

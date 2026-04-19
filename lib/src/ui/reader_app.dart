@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:window_manager/window_manager.dart';
 
 import '../localization/app_language.dart';
 import '../localization/app_strings.dart';
@@ -13,6 +15,9 @@ import 'widgets/article_list_panel.dart';
 import 'widgets/article_reader_panel.dart';
 import 'widgets/navigation_sidebar.dart';
 import 'widgets/source_panel.dart';
+
+final bool _useWindowsWindowChrome =
+    !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 
 class ReaderApp extends StatelessWidget {
   const ReaderApp({
@@ -35,6 +40,12 @@ class ReaderApp extends StatelessWidget {
           localeListResolutionCallback: AppStrings.resolveLocaleList,
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
           theme: AppTheme.themeFor(controller.settings.themeId),
+          builder: (BuildContext context, Widget? child) {
+            if (_useWindowsWindowChrome && child != null) {
+              return VirtualWindowFrame(child: child);
+            }
+            return child ?? const SizedBox.shrink();
+          },
           home: ReaderHome(controller: controller),
         );
       },
@@ -77,7 +88,7 @@ class _ReaderHomeState extends State<ReaderHome> {
               backgroundColor: palette.shellBackground,
               drawer: useDrawer
                   ? Drawer(
-                      width: 252,
+                      width: 236,
                       backgroundColor: palette.sidebarBackground,
                       elevation: 0,
                       child: NavigationSidebar(
@@ -89,18 +100,23 @@ class _ReaderHomeState extends State<ReaderHome> {
                     )
                   : null,
               body: SafeArea(
+                top: !_useWindowsWindowChrome,
                 bottom: false,
                 child: Column(
                   children: <Widget>[
-                    _WindowChrome(compact: compact),
+                    _ShellHeader(
+                      controller: controller,
+                      compact: compact,
+                      showMenuButton: useDrawer,
+                      onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                    ),
                     Expanded(
                       child: Row(
                         children: <Widget>[
                           if (!compact)
                             NavigationSidebar(
                               controller: controller,
-                              collapsed:
-                                  controller.settings.desktopSidebarCollapsed,
+                              collapsed: controller.settings.desktopSidebarCollapsed,
                               showCollapseToggle: true,
                               onToggleCollapse: () {
                                 controller.setDesktopSidebarCollapsed(
@@ -118,27 +134,21 @@ class _ReaderHomeState extends State<ReaderHome> {
                             child: Container(
                               color: palette.chromeBackground,
                               padding: EdgeInsets.fromLTRB(
-                                compact ? 10 : 14,
-                                10,
-                                14,
-                                14,
+                                compact ? 6 : 10,
+                                compact ? 6 : 6,
+                                compact ? 6 : 10,
+                                compact ? 6 : 10,
                               ),
                               child: _MainCanvas(
+                                compact: compact,
                                 child: Column(
                                   children: <Widget>[
-                                    _ContextBar(
-                                      controller: controller,
-                                      compact: compact,
-                                      showMenuButton: useDrawer,
-                                      onMenuPressed: () => _scaffoldKey
-                                          .currentState
-                                          ?.openDrawer(),
-                                    ),
                                     if (controller.errorMessage != null)
                                       _InlineBanner(
                                         icon: Icons.warning_amber_rounded,
                                         text: controller.errorMessage!,
                                         kind: _BannerKind.error,
+                                        compact: compact,
                                         onClose: controller.clearError,
                                       ),
                                     if (controller.statusMessage != null)
@@ -146,6 +156,7 @@ class _ReaderHomeState extends State<ReaderHome> {
                                         icon: Icons.sync_rounded,
                                         text: controller.statusMessage!,
                                         kind: _BannerKind.info,
+                                        compact: compact,
                                         onClose: controller.clearStatus,
                                       ),
                                     Expanded(
@@ -210,7 +221,7 @@ class _ReaderHomeState extends State<ReaderHome> {
     return Row(
       children: <Widget>[
         SizedBox(
-          width: 268,
+          width: 248,
           child: _WorkspacePane(
             showTrailingDivider: true,
             child: SourcePanel(controller: controller, compact: false),
@@ -231,7 +242,7 @@ class _ReaderHomeState extends State<ReaderHome> {
             );
           },
           child: const SizedBox(
-            width: 8,
+            width: 10,
             child: Center(child: _ResizeHandle()),
           ),
         ),
@@ -262,22 +273,26 @@ class _ReaderHomeState extends State<ReaderHome> {
   }
 }
 
-class _WindowChrome extends StatelessWidget {
-  const _WindowChrome({
+class _ShellHeader extends StatelessWidget {
+  const _ShellHeader({
+    required this.controller,
     required this.compact,
+    required this.showMenuButton,
+    required this.onMenuPressed,
   });
 
+  final ReaderController controller;
   final bool compact;
+  final bool showMenuButton;
+  final VoidCallback onMenuPressed;
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
 
     return Container(
-      height: compact ? 46 : 42,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: compact ? 50 : 40,
       decoration: BoxDecoration(
         color: palette.chromeBackground,
         border: Border(
@@ -286,47 +301,255 @@ class _WindowChrome extends StatelessWidget {
       ),
       child: Row(
         children: <Widget>[
-          Container(
-            width: 18,
-            height: 18,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(4),
-              gradient: LinearGradient(
-                colors: <Color>[
-                  theme.colorScheme.primary.withValues(alpha: 0.88),
-                  theme.colorScheme.primary.withValues(alpha: 0.30),
-                ],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+          if (compact)
+            IconButton(
+              onPressed: showMenuButton ? onMenuPressed : null,
+              icon: Icon(
+                showMenuButton ? Icons.menu_rounded : Icons.rss_feed_rounded,
               ),
+              splashRadius: 18,
+            )
+          else
+            const SizedBox(width: 12),
+          if (!compact)
+            Padding(
+              padding: const EdgeInsets.only(right: 12),
+              child: _BrandMark(compact: false),
             ),
-            alignment: Alignment.center,
-            child: Text(
-              AppBrand.mark,
-              style: theme.textTheme.labelSmall?.copyWith(
-                color: theme.colorScheme.onPrimary,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+          Expanded(
+            child: compact
+                ? _MobileHeaderTitle(
+                    controller: controller,
+                    strings: strings,
+                  )
+                : DragToMoveArea(
+                    child: SizedBox.expand(
+                      child: Row(
+                        children: <Widget>[
+                          Text(
+                            strings.appName,
+                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  fontWeight: FontWeight.w600,
+                                ),
+                          ),
+                          const SizedBox(width: 16),
+                          Text(
+                            controller.currentRouteTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: palette.secondaryText,
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
           ),
-          const SizedBox(width: 10),
-          Text(
-            strings.appName,
-            style: theme.textTheme.titleSmall?.copyWith(
-              fontWeight: FontWeight.w600,
+          if (compact)
+            Padding(
+              padding: const EdgeInsets.only(right: 10),
+              child: _CompactStat(text: strings.unreadCountStat(controller.totalUnreadCount)),
             ),
-          ),
+          if (_useWindowsWindowChrome && !compact)
+            _WindowActions(brightness: Theme.of(context).brightness)
+          else
+            const SizedBox(width: 10),
         ],
       ),
     );
   }
 }
 
+class _BrandMark extends StatelessWidget {
+  const _BrandMark({
+    required this.compact,
+  });
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return Container(
+      width: compact ? 24 : 20,
+      height: compact ? 24 : 20,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(compact ? 8 : 6),
+        gradient: LinearGradient(
+          colors: <Color>[
+            theme.colorScheme.primary.withValues(alpha: 0.90),
+            theme.colorScheme.primary.withValues(alpha: 0.28),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        AppBrand.mark,
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileHeaderTitle extends StatelessWidget {
+  const _MobileHeaderTitle({
+    required this.controller,
+    required this.strings,
+  });
+
+  final ReaderController controller;
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Row(
+      children: <Widget>[
+        const _BrandMark(compact: true),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                controller.currentRouteTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              Text(
+                strings.appName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: palette.secondaryText,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _CompactStat extends StatelessWidget {
+  const _CompactStat({
+    required this.text,
+  });
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: palette.panelBackground,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: palette.border),
+      ),
+      child: Text(
+        text,
+        style: Theme.of(context).textTheme.bodySmall,
+      ),
+    );
+  }
+}
+
+class _WindowActions extends StatefulWidget {
+  const _WindowActions({
+    required this.brightness,
+  });
+
+  final Brightness brightness;
+
+  @override
+  State<_WindowActions> createState() => _WindowActionsState();
+}
+
+class _WindowActionsState extends State<_WindowActions> with WindowListener {
+  bool _isMaximized = false;
+
+  @override
+  void initState() {
+    super.initState();
+    windowManager.addListener(this);
+    _syncState();
+  }
+
+  Future<void> _syncState() async {
+    _isMaximized = await windowManager.isMaximized();
+    if (mounted) {
+      setState(() {});
+    }
+  }
+
+  @override
+  void dispose() {
+    windowManager.removeListener(this);
+    super.dispose();
+  }
+
+  @override
+  void onWindowMaximize() {
+    setState(() {
+      _isMaximized = true;
+    });
+  }
+
+  @override
+  void onWindowUnmaximize() {
+    setState(() {
+      _isMaximized = false;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: <Widget>[
+        WindowCaptionButton.minimize(
+          brightness: widget.brightness,
+          onPressed: () => windowManager.minimize(),
+        ),
+        _isMaximized
+            ? WindowCaptionButton.unmaximize(
+                brightness: widget.brightness,
+                onPressed: () => windowManager.unmaximize(),
+              )
+            : WindowCaptionButton.maximize(
+                brightness: widget.brightness,
+                onPressed: () => windowManager.maximize(),
+              ),
+        WindowCaptionButton.close(
+          brightness: widget.brightness,
+          onPressed: () => windowManager.close(),
+        ),
+      ],
+    );
+  }
+}
+
 class _MainCanvas extends StatelessWidget {
   const _MainCanvas({
+    required this.compact,
     required this.child,
   });
 
+  final bool compact;
   final Widget child;
 
   @override
@@ -336,12 +559,12 @@ class _MainCanvas extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: palette.canvasBackground,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(compact ? 12 : 18),
         border: Border.all(color: palette.border),
         gradient: LinearGradient(
           colors: <Color>[
             palette.canvasBackground,
-            palette.panelMutedBackground,
+            palette.panelMutedBackground.withValues(alpha: compact ? 0.55 : 0.80),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -378,127 +601,6 @@ class _WorkspacePane extends StatelessWidget {
   }
 }
 
-class _ContextBar extends StatelessWidget {
-  const _ContextBar({
-    required this.controller,
-    required this.compact,
-    required this.showMenuButton,
-    required this.onMenuPressed,
-  });
-
-  final ReaderController controller;
-  final bool compact;
-  final bool showMenuButton;
-  final VoidCallback onMenuPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ReaderPalette palette = AppTheme.paletteOf(context);
-    final AppStrings strings = context.strings;
-
-    return Container(
-      height: compact ? 60 : 58,
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 12 : 18,
-      ),
-      decoration: BoxDecoration(
-        color: palette.canvasBackground.withValues(alpha: 0.72),
-        border: Border(
-          bottom: BorderSide(color: palette.divider),
-        ),
-      ),
-      child: Row(
-        children: <Widget>[
-          if (showMenuButton)
-            IconButton(
-              onPressed: onMenuPressed,
-              icon: const Icon(Icons.menu_rounded),
-              splashRadius: 18,
-            ),
-          if (showMenuButton) const SizedBox(width: 4),
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(
-                  controller.currentRouteTitle,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleLarge,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  _subtitleForRoute(context, controller.currentRoute, compact),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: palette.secondaryText,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.end,
-            children: <Widget>[
-              _StatTag(
-                icon: Icons.rss_feed_rounded,
-                label: strings.feedCountStat(controller.feeds.length),
-              ),
-              _StatTag(
-                icon: Icons.mark_email_unread_outlined,
-                label: strings.unreadCountStat(controller.totalUnreadCount),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  String _subtitleForRoute(
-      BuildContext context, AppRouteId route, bool compact) {
-    return AppStrings.of(context).routeSubtitle(route, compact: compact);
-  }
-}
-
-class _StatTag extends StatelessWidget {
-  const _StatTag({
-    required this.icon,
-    required this.label,
-  });
-
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final ReaderPalette palette = AppTheme.paletteOf(context);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: BoxDecoration(
-        color: palette.panelBackground,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: palette.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 15, color: palette.secondaryText),
-          const SizedBox(width: 6),
-          Text(label),
-        ],
-      ),
-    );
-  }
-}
-
 enum _BannerKind {
   info,
   error,
@@ -509,12 +611,14 @@ class _InlineBanner extends StatelessWidget {
     required this.icon,
     required this.text,
     required this.kind,
+    required this.compact,
     required this.onClose,
   });
 
   final IconData icon;
   final String text;
   final _BannerKind kind;
+  final bool compact;
   final VoidCallback onClose;
 
   @override
@@ -522,17 +626,18 @@ class _InlineBanner extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final bool isError = kind == _BannerKind.error;
-    final Color foreground =
-        isError ? theme.colorScheme.error : theme.colorScheme.primary;
-    final Color background =
-        foreground.withValues(alpha: isError ? 0.09 : 0.08);
+    final Color foreground = isError ? theme.colorScheme.error : theme.colorScheme.primary;
+    final Color background = foreground.withValues(alpha: isError ? 0.09 : 0.08);
 
     return Container(
-      margin: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      margin: EdgeInsets.fromLTRB(compact ? 10 : 12, 10, compact ? 10 : 12, 0),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10 : 14,
+        vertical: compact ? 9 : 11,
+      ),
       decoration: BoxDecoration(
         color: background,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: foreground.withValues(alpha: 0.14)),
       ),
       child: Row(
@@ -542,14 +647,19 @@ class _InlineBanner extends StatelessWidget {
           Expanded(
             child: Text(
               text,
+              maxLines: compact ? 3 : 2,
+              overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodyMedium?.copyWith(color: foreground),
             ),
           ),
           IconButton(
             visualDensity: VisualDensity.compact,
             onPressed: onClose,
-            icon: Icon(Icons.close_rounded,
-                size: 16, color: palette.secondaryText),
+            icon: Icon(
+              Icons.close_rounded,
+              size: 16,
+              color: palette.secondaryText,
+            ),
           ),
         ],
       ),
@@ -566,7 +676,7 @@ class _ResizeHandle extends StatelessWidget {
 
     return Container(
       width: 2,
-      height: 72,
+      height: 56,
       decoration: BoxDecoration(
         color: palette.border,
         borderRadius: BorderRadius.circular(999),

@@ -22,14 +22,18 @@ class SourcePanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppStrings strings = context.strings;
-
     final Widget content = Padding(
-      padding:
-          EdgeInsets.fromLTRB(compact ? 16 : 18, 18, compact ? 16 : 18, 18),
+      padding: EdgeInsets.fromLTRB(
+        compact ? 12 : 16,
+        compact ? 12 : 16,
+        compact ? 12 : 16,
+        compact ? 10 : 14,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           _PanelHeader(
+            compact: compact,
             title: controller.currentRoute == AppRouteId.bookmarks
                 ? strings.bookmarksAndFilters
                 : strings.sourcesAndFilters,
@@ -43,28 +47,33 @@ class SourcePanel extends StatelessWidget {
                     controller.setCurrentRoute(AppRouteId.discoverAddSource);
                   },
           ),
-          const SizedBox(height: 12),
-          if (controller.currentRoute == AppRouteId.bookmarks) ...<Widget>[
+          SizedBox(height: compact ? 8 : 10),
+          if (controller.currentRoute == AppRouteId.bookmarks)
             SegmentedButton<BookmarkFilter>(
+              style: ButtonStyle(
+                visualDensity:
+                    compact ? VisualDensity.compact : VisualDensity.standard,
+              ),
               segments: <ButtonSegment<BookmarkFilter>>[
                 ButtonSegment<BookmarkFilter>(
                   value: BookmarkFilter.starred,
                   label: Text(strings.starred),
-                  icon: Icon(Icons.star_rounded),
+                  icon: const Icon(Icons.star_rounded),
                 ),
                 ButtonSegment<BookmarkFilter>(
                   value: BookmarkFilter.savedForLater,
                   label: Text(strings.savedForLater),
-                  icon: Icon(Icons.schedule_rounded),
+                  icon: const Icon(Icons.schedule_rounded),
                 ),
               ],
               selected: <BookmarkFilter>{controller.bookmarkFilter},
               onSelectionChanged: (Set<BookmarkFilter> value) {
                 controller.selectBookmarkFilter(value.first);
               },
-            ),
-          ] else
+            )
+          else
             _HintBlock(
+              compact: compact,
               title: controller.currentRoute == AppRouteId.sources ||
                       controller.currentRoute == AppRouteId.sourceDetail
                   ? strings.sourceManagementHintTitle
@@ -74,20 +83,28 @@ class SourcePanel extends StatelessWidget {
                   ? strings.sourceManagementHintBody
                   : strings.sourceFilterHintBody,
             ),
-          const SizedBox(height: 14),
-          Row(
+          SizedBox(height: compact ? 10 : 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: <Widget>[
-              Expanded(
-                child: OutlinedButton.icon(
-                  onPressed: controller.refreshAllFeeds,
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: Text(strings.refreshAll),
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: compact ? 12 : 14,
+                    vertical: compact ? 10 : 12,
+                  ),
                 ),
+                onPressed: controller.refreshAllFeeds,
+                icon: const Icon(Icons.refresh_rounded),
+                label: Text(strings.refreshAll),
               ),
-              const SizedBox(width: 10),
               if (controller.currentRoute == AppRouteId.allArticles ||
                   controller.currentRoute == AppRouteId.bookmarks)
                 FilterChip(
+                  materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  visualDensity:
+                      compact ? VisualDensity.compact : VisualDensity.standard,
                   label: Text(strings.unreadOnly),
                   selected: controller.showOnlyUnread,
                   onSelected: (bool value) {
@@ -96,13 +113,15 @@ class SourcePanel extends StatelessWidget {
                 ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: compact ? 10 : 12),
           Expanded(
             child: ListView(
+              padding: EdgeInsets.zero,
               children: <Widget>[
                 if (controller.currentRoute == AppRouteId.allArticles ||
                     controller.currentRoute == AppRouteId.bookmarks)
                   _SourceTile(
+                    compact: compact,
                     source: null,
                     title: strings.allSources,
                     count: controller.articleCountForSource(null),
@@ -112,6 +131,7 @@ class SourcePanel extends StatelessWidget {
                   ),
                 ...controller.feeds.map((FeedSource source) {
                   return _SourceTile(
+                    compact: compact,
                     source: source,
                     title: source.title,
                     count: controller.articleCountForSource(source.id),
@@ -120,20 +140,27 @@ class SourcePanel extends StatelessWidget {
                     onTap: () {
                       if (controller.currentRoute == AppRouteId.sources ||
                           controller.currentRoute == AppRouteId.sourceDetail) {
-                        controller.selectSource(source,
-                            enterSourceDetail: true);
+                        controller.selectSource(
+                          source,
+                          enterSourceDetail: true,
+                        );
                       } else {
-                        controller.selectSource(source,
-                            enterSourceDetail: false);
+                        controller.selectSource(
+                          source,
+                          enterSourceDetail: false,
+                        );
                       }
                     },
                     trailing: controller.currentRoute == AppRouteId.sources ||
                             controller.currentRoute == AppRouteId.sourceDetail
                         ? PopupMenuButton<String>(
+                            padding: EdgeInsets.zero,
                             onSelected: (String value) async {
                               if (value == 'refresh') {
                                 await controller.refreshSource(source.id);
-                              } else if (value == 'edit') {
+                                return;
+                              }
+                              if (value == 'edit') {
                                 final FeedEditorResult? result =
                                     await showDialog<FeedEditorResult>(
                                   context: context,
@@ -153,40 +180,40 @@ class SourcePanel extends StatelessWidget {
                                     title: result.title,
                                   );
                                 }
-                              } else if (value == 'delete') {
-                                final bool? confirmed = await showDialog<bool>(
-                                  context: context,
-                                  builder: (BuildContext dialogContext) {
-                                    return AlertDialog(
-                                      title: Text(strings.deleteSource),
-                                      content: Text(
-                                        strings
-                                            .deleteSourceConfirm(source.title),
+                                return;
+                              }
+                              final bool? confirmed = await showDialog<bool>(
+                                context: context,
+                                builder: (BuildContext dialogContext) {
+                                  return AlertDialog(
+                                    title: Text(strings.deleteSource),
+                                    content: Text(
+                                      strings.deleteSourceConfirm(source.title),
+                                    ),
+                                    actions: <Widget>[
+                                      TextButton(
+                                        onPressed: () => Navigator.of(
+                                          dialogContext,
+                                        ).pop(false),
+                                        child: Text(strings.cancel),
                                       ),
-                                      actions: <Widget>[
-                                        TextButton(
-                                          onPressed: () =>
-                                              Navigator.of(dialogContext)
-                                                  .pop(false),
-                                          child: Text(strings.cancel),
-                                        ),
-                                        FilledButton(
-                                          onPressed: () =>
-                                              Navigator.of(dialogContext)
-                                                  .pop(true),
-                                          child: Text(strings.delete),
-                                        ),
-                                      ],
-                                    );
-                                  },
-                                );
-                                if (confirmed == true) {
-                                  await controller.removeFeed(source.id);
-                                }
+                                      FilledButton(
+                                        onPressed: () => Navigator.of(
+                                          dialogContext,
+                                        ).pop(true),
+                                        child: Text(strings.delete),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              );
+                              if (confirmed == true) {
+                                await controller.removeFeed(source.id);
                               }
                             },
-                            itemBuilder: (BuildContext popupContext) =>
-                                <PopupMenuEntry<String>>[
+                            itemBuilder:
+                                (BuildContext popupContext) =>
+                                    <PopupMenuEntry<String>>[
                               PopupMenuItem<String>(
                                 value: 'refresh',
                                 child: Text(strings.refresh),
@@ -206,7 +233,7 @@ class SourcePanel extends StatelessWidget {
                 }),
                 if (controller.feeds.isEmpty)
                   Padding(
-                    padding: const EdgeInsets.only(top: 18),
+                    padding: EdgeInsets.only(top: compact ? 12 : 16),
                     child: Text(
                       strings.emptySourcePanel,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -227,6 +254,7 @@ class SourcePanel extends StatelessWidget {
 
     return GlassCard(
       padding: EdgeInsets.zero,
+      radius: 14,
       child: content,
     );
   }
@@ -234,12 +262,14 @@ class SourcePanel extends StatelessWidget {
 
 class _PanelHeader extends StatelessWidget {
   const _PanelHeader({
+    required this.compact,
     required this.title,
     this.actionIcon,
     this.actionTooltip,
     this.onAction,
   });
 
+  final bool compact;
   final String title;
   final IconData? actionIcon;
   final String? actionTooltip;
@@ -254,11 +284,15 @@ class _PanelHeader extends StatelessWidget {
         Expanded(
           child: Text(
             title,
-            style: theme.textTheme.titleLarge,
+            style: compact
+                ? theme.textTheme.titleMedium
+                : theme.textTheme.titleLarge,
           ),
         ),
         if (actionIcon != null)
           IconButton(
+            visualDensity:
+                compact ? VisualDensity.compact : VisualDensity.standard,
             onPressed: onAction,
             tooltip: actionTooltip,
             icon: Icon(actionIcon),
@@ -270,10 +304,12 @@ class _PanelHeader extends StatelessWidget {
 
 class _HintBlock extends StatelessWidget {
   const _HintBlock({
+    required this.compact,
     required this.title,
     required this.subtitle,
   });
 
+  final bool compact;
   final String title;
   final String subtitle;
 
@@ -283,7 +319,7 @@ class _HintBlock extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
 
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: EdgeInsets.all(compact ? 11 : 14),
       decoration: BoxDecoration(
         color: palette.panelMutedBackground,
         borderRadius: BorderRadius.circular(14),
@@ -293,11 +329,12 @@ class _HintBlock extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Text(title, style: theme.textTheme.titleSmall),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             subtitle,
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: palette.secondaryText),
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: palette.secondaryText,
+            ),
           ),
         ],
       ),
@@ -307,6 +344,7 @@ class _HintBlock extends StatelessWidget {
 
 class _SourceTile extends StatelessWidget {
   const _SourceTile({
+    required this.compact,
     required this.source,
     required this.title,
     required this.count,
@@ -316,6 +354,7 @@ class _SourceTile extends StatelessWidget {
     this.trailing,
   });
 
+  final bool compact;
   final FeedSource? source;
   final String title;
   final int count;
@@ -332,12 +371,15 @@ class _SourceTile extends StatelessWidget {
     final AppStrings strings = context.strings;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.only(bottom: 4),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 9 : 11,
+            vertical: compact ? 8 : 10,
+          ),
           decoration: BoxDecoration(
             color: active ? palette.hover : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
@@ -348,8 +390,8 @@ class _SourceTile extends StatelessWidget {
           child: Row(
             children: <Widget>[
               Container(
-                width: 34,
-                height: 34,
+                width: compact ? 30 : 34,
+                height: compact ? 30 : 34,
                 decoration: BoxDecoration(
                   color: palette.panelMutedBackground,
                   borderRadius: BorderRadius.circular(10),
@@ -375,7 +417,7 @@ class _SourceTile extends StatelessWidget {
                         },
                       ),
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: compact ? 8 : 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

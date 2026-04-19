@@ -25,8 +25,12 @@ class ArticleReaderPanel extends StatelessWidget {
     final AppStrings strings = context.strings;
 
     final Widget content = Padding(
-      padding:
-          EdgeInsets.fromLTRB(compact ? 16 : 20, 18, compact ? 16 : 20, 18),
+      padding: EdgeInsets.fromLTRB(
+        compact ? 12 : 18,
+        compact ? 12 : 16,
+        compact ? 12 : 18,
+        compact ? 10 : 16,
+      ),
       child: article == null
           ? _EmptyReader(compact: compact)
           : Column(
@@ -37,6 +41,7 @@ class ArticleReaderPanel extends StatelessWidget {
                   children: <Widget>[
                     if (compact && onBack != null)
                       IconButton(
+                        visualDensity: VisualDensity.compact,
                         onPressed: onBack,
                         icon: const Icon(Icons.arrow_back_rounded),
                       ),
@@ -46,37 +51,40 @@ class ArticleReaderPanel extends StatelessWidget {
                         children: <Widget>[
                           Text(
                             controller.sourceTitleForArticle(article),
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  color:
-                                      AppTheme.paletteOf(context).secondaryText,
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.paletteOf(context).secondaryText,
                                 ),
                           ),
-                          const SizedBox(height: 8),
+                          const SizedBox(height: 6),
                           Text(
                             article.title,
-                            style: Theme.of(context).textTheme.headlineSmall,
+                            style: compact
+                                ? Theme.of(context).textTheme.titleLarge
+                                : Theme.of(context).textTheme.headlineSmall,
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 14),
+                SizedBox(height: compact ? 10 : 12),
                 Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
+                  spacing: compact ? 6 : 8,
+                  runSpacing: compact ? 6 : 8,
                   children: <Widget>[
                     _MetaChip(
-                        icon: Icons.event_rounded,
-                        label: _formatTime(article.publishedAt)),
+                      compact: compact,
+                      icon: Icons.event_rounded,
+                      label: _formatTime(article.publishedAt),
+                    ),
                     if (article.author != null && article.author!.isNotEmpty)
                       _MetaChip(
-                          icon: Icons.edit_note_rounded,
-                          label: article.author!),
+                        compact: compact,
+                        icon: Icons.edit_note_rounded,
+                        label: article.author!,
+                      ),
                     _ActionChip(
+                      compact: compact,
                       icon: article.isRead
                           ? Icons.mark_email_unread_outlined
                           : Icons.done_rounded,
@@ -84,6 +92,7 @@ class ArticleReaderPanel extends StatelessWidget {
                       onTap: () => controller.toggleReadState(article),
                     ),
                     _ActionChip(
+                      compact: compact,
                       icon: article.starred
                           ? Icons.star_rounded
                           : Icons.star_border_rounded,
@@ -91,6 +100,7 @@ class ArticleReaderPanel extends StatelessWidget {
                       onTap: () => controller.toggleStarred(article),
                     ),
                     _ActionChip(
+                      compact: compact,
                       icon: article.savedForLater
                           ? Icons.schedule_rounded
                           : Icons.schedule_outlined,
@@ -98,34 +108,35 @@ class ArticleReaderPanel extends StatelessWidget {
                       onTap: () => controller.toggleSavedForLater(article),
                     ),
                     _ActionChip(
+                      compact: compact,
                       icon: Icons.open_in_new_rounded,
                       label: strings.openOriginal,
                       onTap: () => _openOriginal(article.url),
                     ),
                   ],
                 ),
-                const SizedBox(height: 18),
+                SizedBox(height: compact ? 12 : 14),
                 Expanded(
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
+                    padding: EdgeInsets.fromLTRB(
+                      compact ? 12 : 18,
+                      compact ? 12 : 16,
+                      compact ? 12 : 18,
+                      compact ? 12 : 16,
+                    ),
                     decoration: BoxDecoration(
                       color: AppTheme.paletteOf(context).panelMutedBackground,
                       borderRadius: BorderRadius.circular(16),
-                      border:
-                          Border.all(color: AppTheme.paletteOf(context).border),
+                      border: Border.all(color: AppTheme.paletteOf(context).border),
                     ),
                     child: article.readerText.trim().isEmpty
                         ? Center(
                             child: Text(
                               strings.noReadableBody,
                               textAlign: TextAlign.center,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodyMedium
-                                  ?.copyWith(
-                                    color: AppTheme.paletteOf(context)
-                                        .secondaryText,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppTheme.paletteOf(context).secondaryText,
                                   ),
                             ),
                           )
@@ -133,10 +144,9 @@ class ArticleReaderPanel extends StatelessWidget {
                             child: SingleChildScrollView(
                               child: SelectableText(
                                 article.readerText,
-                                style: Theme.of(context)
-                                    .textTheme
-                                    .bodyLarge
-                                    ?.copyWith(height: 1.9),
+                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                      height: compact ? 1.75 : 1.9,
+                                    ),
                               ),
                             ),
                           ),
@@ -152,6 +162,7 @@ class ArticleReaderPanel extends StatelessWidget {
 
     return GlassCard(
       padding: EdgeInsets.zero,
+      radius: 14,
       child: content,
     );
   }
@@ -174,10 +185,12 @@ class ArticleReaderPanel extends StatelessWidget {
 
 class _MetaChip extends StatelessWidget {
   const _MetaChip({
+    required this.compact,
     required this.icon,
     required this.label,
   });
 
+  final bool compact;
   final IconData icon;
   final String label;
 
@@ -186,7 +199,10 @@ class _MetaChip extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 8 : 10,
+        vertical: compact ? 6 : 8,
+      ),
       decoration: BoxDecoration(
         color: palette.panelBackground,
         borderRadius: BorderRadius.circular(999),
@@ -195,9 +211,12 @@ class _MetaChip extends StatelessWidget {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Icon(icon, size: 15, color: palette.secondaryText),
+          Icon(icon, size: compact ? 14 : 15, color: palette.secondaryText),
           const SizedBox(width: 6),
-          Text(label),
+          Text(
+            label,
+            style: compact ? Theme.of(context).textTheme.bodySmall : null,
+          ),
         ],
       ),
     );
@@ -206,21 +225,45 @@ class _MetaChip extends StatelessWidget {
 
 class _ActionChip extends StatelessWidget {
   const _ActionChip({
+    required this.compact,
     required this.icon,
     required this.label,
     required this.onTap,
   });
 
+  final bool compact;
   final IconData icon;
   final String label;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(999),
-      child: _MetaChip(icon: icon, label: label),
+      child: Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 8 : 10,
+          vertical: compact ? 6 : 8,
+        ),
+        decoration: BoxDecoration(
+          color: compact ? palette.panelMutedBackground : palette.panelBackground,
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(color: palette.border),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(icon, size: 15, color: palette.secondaryText),
+            if (!compact) ...<Widget>[
+              const SizedBox(width: 6),
+              Text(label),
+            ],
+          ],
+        ),
+      ),
     );
   }
 }
@@ -240,13 +283,15 @@ class _EmptyReader extends StatelessWidget {
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 28),
+        padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Text(
               strings.appName,
-              style: theme.textTheme.displaySmall?.copyWith(
+              style:
+                  (compact ? theme.textTheme.headlineMedium : theme.textTheme.displaySmall)
+                      ?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: theme.colorScheme.primary.withValues(alpha: 0.78),
               ),

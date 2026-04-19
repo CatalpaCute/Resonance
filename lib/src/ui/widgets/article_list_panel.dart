@@ -24,8 +24,12 @@ class ArticleListPanel extends StatelessWidget {
     final AppStrings strings = context.strings;
 
     final Widget content = Padding(
-      padding:
-          EdgeInsets.fromLTRB(compact ? 16 : 18, 18, compact ? 16 : 18, 18),
+      padding: EdgeInsets.fromLTRB(
+        compact ? 12 : 16,
+        compact ? 12 : 16,
+        compact ? 12 : 16,
+        compact ? 10 : 14,
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -35,8 +39,12 @@ class ArticleListPanel extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(controller.currentRouteTitle,
-                        style: Theme.of(context).textTheme.titleLarge),
+                    Text(
+                      controller.currentRouteTitle,
+                      style: compact
+                          ? Theme.of(context).textTheme.titleMedium
+                          : Theme.of(context).textTheme.titleLarge,
+                    ),
                     const SizedBox(height: 4),
                     Text(
                       strings.visibleArticleCount(articles.length),
@@ -51,6 +59,8 @@ class ArticleListPanel extends StatelessWidget {
                   controller.currentRoute == AppRouteId.sourceDetail ||
                   controller.currentRoute == AppRouteId.sources)
                 IconButton(
+                  visualDensity:
+                      compact ? VisualDensity.compact : VisualDensity.standard,
                   onPressed: () {
                     if (controller.activeSourceId == null) {
                       controller.refreshAllFeeds();
@@ -61,15 +71,14 @@ class ArticleListPanel extends StatelessWidget {
                   tooltip: strings.refreshCurrentView,
                   icon: Icon(
                     controller.activeSourceId != null &&
-                            controller
-                                .isFeedRefreshing(controller.activeSourceId!)
+                            controller.isFeedRefreshing(controller.activeSourceId!)
                         ? Icons.sync_rounded
                         : Icons.refresh_rounded,
                   ),
                 ),
             ],
           ),
-          const SizedBox(height: 14),
+          SizedBox(height: compact ? 8 : 10),
           if (articles.isEmpty)
             Expanded(
               child: _EmptyListState(compact: compact),
@@ -84,9 +93,9 @@ class ArticleListPanel extends StatelessWidget {
                 ),
                 itemBuilder: (BuildContext context, int index) {
                   final Article article = articles[index];
-                  final bool active =
-                      controller.selectedArticleId == article.id;
+                  final bool active = controller.selectedArticleId == article.id;
                   return _ArticleTile(
+                    compact: compact,
                     article: article,
                     active: active,
                     sourceTitle: controller.sourceTitleForArticle(article),
@@ -117,6 +126,7 @@ class ArticleListPanel extends StatelessWidget {
 
     return GlassCard(
       padding: EdgeInsets.zero,
+      radius: 14,
       child: content,
     );
   }
@@ -124,6 +134,7 @@ class ArticleListPanel extends StatelessWidget {
 
 class _ArticleTile extends StatelessWidget {
   const _ArticleTile({
+    required this.compact,
     required this.article,
     required this.active,
     required this.sourceTitle,
@@ -134,6 +145,7 @@ class _ArticleTile extends StatelessWidget {
     required this.onReadToggle,
   });
 
+  final bool compact;
   final Article article;
   final bool active;
   final String sourceTitle;
@@ -148,16 +160,21 @@ class _ArticleTile extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
-    final double vertical = density == ArticleListDensity.compact ? 10 : 14;
-    final int summaryLines = density == ArticleListDensity.compact ? 2 : 3;
+    final double vertical =
+        density == ArticleListDensity.compact ? 9 : (compact ? 9 : 12);
+    final int summaryLines =
+        density == ArticleListDensity.compact ? 2 : (compact ? 2 : 3);
 
     return InkWell(
       onTap: onOpen,
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: 2, vertical: vertical),
+        padding: EdgeInsets.symmetric(
+          horizontal: compact ? 0 : 2,
+          vertical: vertical,
+        ),
         decoration: BoxDecoration(
           color: active ? palette.hover : Colors.transparent,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(compact ? 10 : 12),
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,19 +182,21 @@ class _ArticleTile extends StatelessWidget {
             Container(
               width: 6,
               height: 6,
-              margin: const EdgeInsets.only(top: 8, right: 10, left: 8),
+              margin: EdgeInsets.only(
+                top: 8,
+                right: compact ? 8 : 10,
+                left: compact ? 6 : 8,
+              ),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: article.isRead
-                    ? Colors.transparent
-                    : theme.colorScheme.primary,
-                border:
-                    article.isRead ? Border.all(color: palette.border) : null,
+                color:
+                    article.isRead ? Colors.transparent : theme.colorScheme.primary,
+                border: article.isRead ? Border.all(color: palette.border) : null,
               ),
             ),
             Expanded(
               child: Padding(
-                padding: const EdgeInsets.only(right: 8),
+                padding: const EdgeInsets.only(right: 6),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
@@ -201,7 +220,7 @@ class _ArticleTile extends StatelessWidget {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 6),
+                    SizedBox(height: compact ? 4 : 5),
                     Text(
                       article.title,
                       maxLines: 2,
@@ -210,7 +229,7 @@ class _ArticleTile extends StatelessWidget {
                         fontWeight: active ? FontWeight.w700 : FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: compact ? 4 : 6),
                     Text(
                       article.readerText.isEmpty
                           ? strings.noReadableSummary
@@ -221,11 +240,10 @@ class _ArticleTile extends StatelessWidget {
                         color: palette.secondaryText,
                       ),
                     ),
-                    const SizedBox(height: 10),
+                    SizedBox(height: compact ? 6 : 8),
                     Row(
                       children: <Widget>[
-                        if (article.author != null &&
-                            article.author!.isNotEmpty)
+                        if (article.author != null && article.author!.isNotEmpty)
                           Expanded(
                             child: Text(
                               article.author!,
@@ -243,7 +261,7 @@ class _ArticleTile extends StatelessWidget {
                               ? Icons.star_rounded
                               : Icons.star_border_rounded,
                           active: article.starred,
-                          tooltip: context.strings.starAction(article.starred),
+                          tooltip: strings.starAction(article.starred),
                           onTap: onStarToggle,
                         ),
                         _TinyAction(
@@ -251,8 +269,7 @@ class _ArticleTile extends StatelessWidget {
                               ? Icons.schedule_rounded
                               : Icons.schedule_outlined,
                           active: article.savedForLater,
-                          tooltip: context.strings
-                              .readLaterAction(article.savedForLater),
+                          tooltip: strings.readLaterAction(article.savedForLater),
                           onTap: onSaveToggle,
                         ),
                         _TinyAction(
@@ -260,8 +277,7 @@ class _ArticleTile extends StatelessWidget {
                               ? Icons.mark_email_unread_outlined
                               : Icons.done_rounded,
                           active: article.isRead,
-                          tooltip:
-                              context.strings.readStateAction(article.isRead),
+                          tooltip: strings.readStateAction(article.isRead),
                           onTap: onReadToggle,
                         ),
                       ],
@@ -306,11 +322,11 @@ class _TinyAction extends StatelessWidget {
     return IconButton(
       visualDensity: VisualDensity.compact,
       splashRadius: 16,
+      constraints: const BoxConstraints.tightFor(width: 28, height: 28),
       onPressed: onTap,
-      icon: Icon(icon, size: 18),
-      color: active
-          ? Theme.of(context).colorScheme.primary
-          : palette.secondaryText,
+      icon: Icon(icon, size: 16),
+      color:
+          active ? Theme.of(context).colorScheme.primary : palette.secondaryText,
       tooltip: tooltip,
     );
   }
@@ -331,16 +347,16 @@ class _EmptyListState extends StatelessWidget {
 
     return Center(
       child: Padding(
-        padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 24),
+        padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Icon(
               Icons.menu_book_outlined,
-              size: compact ? 40 : 48,
+              size: compact ? 34 : 44,
               color: palette.tertiaryText,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
               strings.emptyArticleListTitle,
               style: theme.textTheme.titleMedium,
