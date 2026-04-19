@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'src/services/json_store.dart';
@@ -9,6 +9,10 @@ import 'src/ui/reader_app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (defaultTargetPlatform == TargetPlatform.android) {
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  }
 
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
     await windowManager.ensureInitialized();

@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:window_manager/window_manager.dart';
 
@@ -32,6 +33,21 @@ class ReaderApp extends StatelessWidget {
     return AnimatedBuilder(
       animation: controller,
       builder: (BuildContext context, _) {
+        final ThemeData theme = AppTheme.themeFor(controller.settings.themeId);
+        final bool isDark = theme.brightness == Brightness.dark;
+
+        SystemChrome.setSystemUIOverlayStyle(
+          SystemUiOverlayStyle(
+            statusBarColor: Colors.transparent,
+            systemNavigationBarColor: Colors.transparent,
+            statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
+            systemNavigationBarIconBrightness:
+                isDark ? Brightness.light : Brightness.dark,
+            systemNavigationBarContrastEnforced: false,
+            statusBarContrastEnforced: false,
+          ),
+        );
+
         return MaterialApp(
           debugShowCheckedModeBanner: false,
           title: AppBrand.fullName,
