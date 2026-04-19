@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../localization/app_strings.dart';
@@ -383,20 +384,53 @@ class _ManagedFeedTile extends StatelessWidget {
                   ),
                 ],
               ),
-              ReorderableDelayedDragStartListener(
+              _FeedDragHandle(
                 index: index,
-                child: Padding(
-                  padding: const EdgeInsets.only(left: 4),
-                  child: Icon(
-                    Icons.drag_indicator_rounded,
-                    color: palette.secondaryText,
-                  ),
-                ),
+                color: palette.secondaryText,
               ),
             ],
           ),
         ),
       ),
+    );
+  }
+}
+
+class _FeedDragHandle extends StatelessWidget {
+  const _FeedDragHandle({
+    required this.index,
+    required this.color,
+  });
+
+  final int index;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget icon = Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Icon(
+        Icons.drag_indicator_rounded,
+        color: color,
+      ),
+    );
+
+    final bool useImmediateDrag =
+        kIsWeb ||
+        defaultTargetPlatform == TargetPlatform.windows ||
+        defaultTargetPlatform == TargetPlatform.linux ||
+        defaultTargetPlatform == TargetPlatform.macOS;
+
+    if (useImmediateDrag) {
+      return ReorderableDragStartListener(
+        index: index,
+        child: icon,
+      );
+    }
+
+    return ReorderableDelayedDragStartListener(
+      index: index,
+      child: icon,
     );
   }
 }
