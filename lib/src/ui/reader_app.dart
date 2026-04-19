@@ -19,8 +19,8 @@ import 'widgets/source_panel.dart';
 
 final bool _useWindowsWindowChrome =
     !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
-const Duration _shellMotionDuration = Duration(milliseconds: 260);
-const Curve _shellMotionCurve = Curves.easeOutCubic;
+const Duration _shellMotionDuration = Duration(milliseconds: 280);
+const Curve _shellMotionCurve = Cubic(0.18, 0.92, 0.28, 1.0);
 
 class ReaderApp extends StatelessWidget {
   const ReaderApp({

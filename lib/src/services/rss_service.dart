@@ -11,7 +11,9 @@ class ParsedArticleDraft {
     required this.publishedAt,
     this.author,
     this.summary,
+    this.summaryHtml,
     this.content,
+    this.contentHtml,
   });
 
   final String title;
@@ -19,7 +21,9 @@ class ParsedArticleDraft {
   final DateTime publishedAt;
   final String? author;
   final String? summary;
+  final String? summaryHtml;
   final String? content;
+  final String? contentHtml;
 }
 
 class ParsedFeedResult {
@@ -132,17 +136,27 @@ class RssService {
     );
   }
 
-  ParsedArticleDraft? _rssItemToDraft(XmlElement item,
-      {required String sourceUrl}) {
+  ParsedArticleDraft? _rssItemToDraft(
+    XmlElement item, {
+    required String sourceUrl,
+  }) {
     final String? link = _textOf(item, <String>{'link'}) ?? _guidLink(item);
     if (link == null || link.trim().isEmpty) {
       return null;
     }
+
+    final String resolvedUrl = _resolveUrl(sourceUrl, link);
     final String title = (_textOf(item, <String>{'title'}) ?? '未命名文章').trim();
-    final String? summary =
-        _sanitizeHtml(_textOf(item, <String>{'description'}));
-    final String? content =
-        _sanitizeHtml(_textOf(item, <String>{'encoded', 'content'}));
+    final String? summaryHtml = _sanitizeHtmlFragment(
+      _textOf(item, <String>{'description'}),
+      baseUrl: resolvedUrl,
+    );
+    final String? contentHtml = _sanitizeHtmlFragment(
+      _textOf(item, <String>{'encoded', 'content'}),
+      baseUrl: resolvedUrl,
+    );
+    final String? summary = _extractReadableText(summaryHtml);
+    final String? content = _extractReadableText(contentHtml);
     final String? author = _textOf(item, <String>{'author', 'creator'});
     final DateTime publishedAt = _parseDate(
           _textOf(item, <String>{'pubDate', 'published', 'updated'}),
@@ -151,23 +165,37 @@ class RssService {
 
     return ParsedArticleDraft(
       title: title.isEmpty ? '未命名文章' : title,
-      url: _resolveUrl(sourceUrl, link),
+      url: resolvedUrl,
       publishedAt: publishedAt,
       author: author?.trim().isEmpty ?? true ? null : author?.trim(),
       summary: summary,
+      summaryHtml: summaryHtml,
       content: content,
+      contentHtml: contentHtml,
     );
   }
 
-  ParsedArticleDraft? _atomEntryToDraft(XmlElement entry,
-      {required String sourceUrl}) {
+  ParsedArticleDraft? _atomEntryToDraft(
+    XmlElement entry, {
+    required String sourceUrl,
+  }) {
     final String? link = _atomEntryUrl(entry);
     if (link == null || link.trim().isEmpty) {
       return null;
     }
+
+    final String resolvedUrl = _resolveUrl(sourceUrl, link);
     final String title = (_textOf(entry, <String>{'title'}) ?? '未命名文章').trim();
-    final String? summary = _sanitizeHtml(_textOf(entry, <String>{'summary'}));
-    final String? content = _sanitizeHtml(_textOf(entry, <String>{'content'}));
+    final String? summaryHtml = _sanitizeHtmlFragment(
+      _textOf(entry, <String>{'summary'}),
+      baseUrl: resolvedUrl,
+    );
+    final String? contentHtml = _sanitizeHtmlFragment(
+      _textOf(entry, <String>{'content'}),
+      baseUrl: resolvedUrl,
+    );
+    final String? summary = _extractReadableText(summaryHtml);
+    final String? content = _extractReadableText(contentHtml);
     final XmlElement? authorElement = _firstChild(entry, <String>{'author'});
     final String? author =
         authorElement == null ? null : _textOf(authorElement, <String>{'name'});
@@ -178,11 +206,13 @@ class RssService {
 
     return ParsedArticleDraft(
       title: title.isEmpty ? '未命名文章' : title,
-      url: _resolveUrl(sourceUrl, link),
+      url: resolvedUrl,
       publishedAt: publishedAt,
       author: author?.trim().isEmpty ?? true ? null : author?.trim(),
       summary: summary,
+      summaryHtml: summaryHtml,
       content: content,
+      contentHtml: contentHtml,
     );
   }
 
@@ -202,7 +232,8 @@ class RssService {
     return uri;
   }
 
-  // 设计意图：优先从 BOM、HTTP 头和 XML 声明恢复真实编码，避免服务器漏写 charset 时直接乱码。
+  // 设计意图：优先从 BOM、HTTP 头和 XML 声明恢复真实编码，
+  // 避免订阅源没显式声明 charset 时被错误解码。
   String _decodeFeedPayload(List<int> bytes, {String? contentTypeHeader}) {
     if (bytes.isEmpty) {
       return '';
@@ -232,7 +263,9 @@ class RssService {
       }
     }
 
-    throw FormatException('无法识别订阅源编码${lastError == null ? '' : '：$lastError'}');
+    throw FormatException(
+      '无法识别订阅源编码${lastError == null ? '' : '：$lastError'}',
+    );
   }
 
   String? _detectBomEncoding(List<int> bytes) {
@@ -381,8 +414,11 @@ class RssService {
     return null;
   }
 
-  String? _rssIcon(XmlElement channel,
-      {required String sourceUrl, String? siteUrl}) {
+  String? _rssIcon(
+    XmlElement channel, {
+    required String sourceUrl,
+    String? siteUrl,
+  }) {
     final XmlElement? image = _firstChild(channel, <String>{'image'});
     final String? directUrl =
         image == null ? null : _textOf(image, <String>{'url'});
@@ -421,25 +457,126 @@ class RssService {
     }
   }
 
-  String? _sanitizeHtml(String? raw) {
+  String? _sanitizeHtmlFragment(String? raw, {required String baseUrl}) {
     if (raw == null || raw.trim().isEmpty) {
       return null;
     }
-    final String withoutTags = raw
+
+    String html = raw.trim();
+    html = html
+        .replaceAll(RegExp(r'<!--[\s\S]*?-->'), '')
         .replaceAll(
-            RegExp(r'<script[\s\S]*?</script>', caseSensitive: false), ' ')
+          RegExp(r'<script[\s\S]*?</script>', caseSensitive: false),
+          '',
+        )
         .replaceAll(
-            RegExp(r'<style[\s\S]*?</style>', caseSensitive: false), ' ')
-        .replaceAll(RegExp(r'<[^>]+>'), ' ')
+          RegExp(r'<style[\s\S]*?</style>', caseSensitive: false),
+          '',
+        );
+
+    html = _replaceMediaEmbedWithLink(html, tagName: 'iframe');
+    html = _replaceMediaEmbedWithLink(html, tagName: 'video');
+    html = _resolveHtmlAssetUrls(html, baseUrl: baseUrl);
+    html = html.trim();
+    return html.isEmpty ? null : html;
+  }
+
+  String? _extractReadableText(String? rawHtml) {
+    if (rawHtml == null || rawHtml.trim().isEmpty) {
+      return null;
+    }
+
+    final String normalized = rawHtml
+        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'</p\s*>', caseSensitive: false), '\n\n')
+        .replaceAll(RegExp(r'</div\s*>', caseSensitive: false), '\n\n')
+        .replaceAll(RegExp(r'</h[1-6]\s*>', caseSensitive: false), '\n\n')
+        .replaceAll(RegExp(r'</blockquote\s*>', caseSensitive: false), '\n\n')
+        .replaceAll(RegExp(r'</li\s*>', caseSensitive: false), '\n')
+        .replaceAll(RegExp(r'<li[^>]*>', caseSensitive: false), '• ')
+        .replaceAll(RegExp(r'<[^>]+>'), ' ');
+
+    final String withoutEntities = _decodeBasicHtmlEntities(normalized)
+        .replaceAll(RegExp(r'[ \t]+\n'), '\n')
+        .replaceAll(RegExp(r'\n[ \t]+'), '\n')
+        .replaceAll(RegExp(r'[ \t]{2,}'), ' ')
+        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+        .trim();
+
+    return withoutEntities.isEmpty ? null : withoutEntities;
+  }
+
+  String _replaceMediaEmbedWithLink(String html, {required String tagName}) {
+    final RegExp pair = RegExp(
+      '<$tagName\\b([^>]*)>([\\s\\S]*?)</$tagName>',
+      caseSensitive: false,
+    );
+    final RegExp selfClosing = RegExp(
+      '<$tagName\\b([^>]*)/?>',
+      caseSensitive: false,
+    );
+
+    String replaceMatch(Match match) {
+      final String attrs = match.group(1) ?? '';
+      final String? src = _attributeValue(attrs, 'src');
+      if (src == null || src.isEmpty) {
+        return '';
+      }
+      final String label =
+          tagName.toLowerCase() == 'video' ? '打开视频内容' : '打开内嵌内容';
+      return '''
+<div class="resonance-media-placeholder">
+  <p><a href="$src" target="_blank" rel="noopener noreferrer">$label</a></p>
+</div>
+''';
+    }
+
+    return html.replaceAllMapped(pair, replaceMatch).replaceAllMapped(
+          selfClosing,
+          replaceMatch,
+        );
+  }
+
+  String _resolveHtmlAssetUrls(String html, {required String baseUrl}) {
+    final Uri base = Uri.parse(baseUrl);
+    return html.replaceAllMapped(
+      RegExp(
+        r'''(src|href|poster)\s*=\s*["']([^"']+)["']''',
+        caseSensitive: false,
+      ),
+      (Match match) {
+        final String attribute = match.group(1)!;
+        final String rawValue = match.group(2)!;
+        if (rawValue.startsWith('data:') ||
+            rawValue.startsWith('javascript:') ||
+            rawValue.startsWith('mailto:') ||
+            rawValue.startsWith('#')) {
+          return match.group(0)!;
+        }
+        final String resolved = base.resolve(rawValue).toString();
+        return '$attribute="$resolved"';
+      },
+    );
+  }
+
+  String? _attributeValue(String attributes, String name) {
+    final RegExpMatch? match = RegExp(
+      '$name\\s*=\\s*["\']([^"\']+)["\']',
+      caseSensitive: false,
+    ).firstMatch(attributes);
+    return match?.group(1);
+  }
+
+  String _decodeBasicHtmlEntities(String value) {
+    return value
         .replaceAll('&nbsp;', ' ')
         .replaceAll('&amp;', '&')
         .replaceAll('&lt;', '<')
         .replaceAll('&gt;', '>')
         .replaceAll('&quot;', '"')
         .replaceAll('&#39;', "'")
-        .replaceAll(RegExp(r'\s+'), ' ')
-        .trim();
-    return withoutTags.isEmpty ? null : withoutTags;
+        .replaceAll('&#x27;', "'")
+        .replaceAll('&#x2F;', '/');
   }
 
   String _hostLabel(String sourceUrl) {

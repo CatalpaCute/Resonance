@@ -5,8 +5,8 @@ import '../../models/app_route.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
 
-const Duration _sidebarAnimationDuration = Duration(milliseconds: 260);
-const Curve _sidebarAnimationCurve = Curves.easeOutCubic;
+const Duration _sidebarAnimationDuration = Duration(milliseconds: 280);
+const Curve _sidebarAnimationCurve = Cubic(0.18, 0.92, 0.28, 1.0);
 const double _expandedSidebarWidth = 176;
 const double _collapsedSidebarWidth = 62;
 

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../localization/app_strings.dart';
@@ -128,28 +129,16 @@ class ArticleReaderPanel extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppTheme.paletteOf(context).panelMutedBackground,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppTheme.paletteOf(context).border),
+                      border: Border.all(
+                        color: AppTheme.paletteOf(context).border,
+                      ),
                     ),
-                    child: article.readerText.trim().isEmpty
-                        ? Center(
-                            child: Text(
-                              strings.noReadableBody,
-                              textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: AppTheme.paletteOf(context).secondaryText,
-                                  ),
-                            ),
-                          )
-                        : Scrollbar(
-                            child: SingleChildScrollView(
-                              child: SelectableText(
-                                article.readerText,
-                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                                      height: compact ? 1.75 : 1.9,
-                                    ),
-                              ),
-                            ),
-                          ),
+                    child: _ReaderBody(
+                      article: article,
+                      compact: compact,
+                      strings: strings,
+                      onOpenUrl: _openOriginal,
+                    ),
                   ),
                 ),
               ],
@@ -180,6 +169,87 @@ class ArticleReaderPanel extends StatelessWidget {
     final String hour = local.hour.toString().padLeft(2, '0');
     final String minute = local.minute.toString().padLeft(2, '0');
     return '$year-$month-$day $hour:$minute';
+  }
+}
+
+class _ReaderBody extends StatelessWidget {
+  const _ReaderBody({
+    required this.article,
+    required this.compact,
+    required this.strings,
+    required this.onOpenUrl,
+  });
+
+  final Article article;
+  final bool compact;
+  final AppStrings strings;
+  final Future<void> Function(String url) onOpenUrl;
+
+  @override
+  Widget build(BuildContext context) {
+    final String readerHtml = article.readerHtml.trim();
+    final String readerText = article.readerText.trim();
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final TextStyle? readerStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
+          height: compact ? 1.75 : 1.9,
+        );
+
+    if (readerHtml.isEmpty && readerText.isEmpty) {
+      return Center(
+        child: Text(
+          strings.noReadableBody,
+          textAlign: TextAlign.center,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: palette.secondaryText,
+              ),
+        ),
+      );
+    }
+
+    return Scrollbar(
+      child: SingleChildScrollView(
+        child: readerHtml.isNotEmpty
+            ? HtmlWidget(
+                readerHtml,
+                textStyle: readerStyle,
+                onTapUrl: (String url) async {
+                  await onOpenUrl(url);
+                  return true;
+                },
+                customStylesBuilder: (element) {
+                  final String tagName = element.localName ?? '';
+                  if (tagName == 'img') {
+                    return <String, String>{
+                      'display': 'block',
+                      'margin': '10px 0',
+                      'border-radius': '14px',
+                    };
+                  }
+                  if (tagName == 'figure' || tagName == 'blockquote') {
+                    return <String, String>{
+                      'margin': '14px 0',
+                    };
+                  }
+                  if (tagName == 'p') {
+                    return <String, String>{
+                      'margin': '0 0 14px 0',
+                    };
+                  }
+                  if (tagName == 'a' &&
+                      (element.attributes['href']?.isNotEmpty ?? false)) {
+                    return <String, String>{
+                      'color': '#8f7658',
+                    };
+                  }
+                  return null;
+                },
+              )
+            : SelectableText(
+                readerText,
+                style: readerStyle,
+              ),
+      ),
+    );
   }
 }
 
@@ -289,9 +359,10 @@ class _EmptyReader extends StatelessWidget {
           children: <Widget>[
             Text(
               strings.appName,
-              style:
-                  (compact ? theme.textTheme.headlineMedium : theme.textTheme.displaySmall)
-                      ?.copyWith(
+              style: (compact
+                      ? theme.textTheme.headlineMedium
+                      : theme.textTheme.displaySmall)
+                  ?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: theme.colorScheme.primary.withValues(alpha: 0.78),
               ),

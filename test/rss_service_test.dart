@@ -5,7 +5,7 @@ import 'package:rsstool/src/services/rss_service.dart';
 
 void main() {
   group('RssService.parseFeedXml', () {
-    test('parses rss feed items', () {
+    test('parses rss feed items and preserves html body', () {
       const String xml = '''
       <rss version="2.0">
         <channel>
@@ -14,7 +14,7 @@ void main() {
           <item>
             <title>First Post</title>
             <link>https://example.com/1</link>
-            <description><![CDATA[<p>Hello world</p>]]></description>
+            <description><![CDATA[<p>Hello world</p><p><img src="/a.jpg" /></p>]]></description>
             <pubDate>Wed, 02 Oct 2002 13:00:00 GMT</pubDate>
           </item>
         </channel>
@@ -30,7 +30,12 @@ void main() {
       expect(parsed.siteUrl, 'https://example.com');
       expect(parsed.articles, hasLength(1));
       expect(parsed.articles.first.title, 'First Post');
-      expect(parsed.articles.first.summary, 'Hello world');
+      expect(parsed.articles.first.summary, contains('Hello world'));
+      expect(parsed.articles.first.summaryHtml, contains('<p>Hello world</p>'));
+      expect(
+        parsed.articles.first.summaryHtml,
+        contains('src="https://example.com/a.jpg"'),
+      );
       expect(parsed.articles.first.url, 'https://example.com/1');
     });
 
@@ -69,7 +74,7 @@ void main() {
       const String xml = '''
       <?xml version="1.0" encoding="utf-8"?>
       <feed xmlns="http://www.w3.org/2005/Atom">
-        <title>Cz`s Blog</title>
+        <title>Cz's Blog</title>
         <link href="https://me.czzzz.work" rel="alternate" />
         <entry>
           <title>中文标题</title>
@@ -86,10 +91,41 @@ void main() {
         contentTypeHeader: 'application/xml',
       );
 
-      expect(parsed.title, 'Cz`s Blog');
+      expect(parsed.title, "Cz's Blog");
       expect(parsed.articles, hasLength(1));
       expect(parsed.articles.first.title, '中文标题');
       expect(parsed.articles.first.summary, '这是一段中文摘要。');
+    });
+
+    test('converts iframe blocks into clickable placeholder html', () {
+      const String xml = '''
+      <rss version="2.0">
+        <channel>
+          <title>Media Feed</title>
+          <link>https://example.com</link>
+          <item>
+            <title>Media Post</title>
+            <link>https://example.com/media</link>
+            <description><![CDATA[
+              <p>Intro</p>
+              <iframe src="https://player.example.com/demo"></iframe>
+            ]]></description>
+            <pubDate>Wed, 02 Oct 2002 13:00:00 GMT</pubDate>
+          </item>
+        </channel>
+      </rss>
+      ''';
+
+      final ParsedFeedResult parsed = RssService().parseFeedXml(
+        xml,
+        sourceUrl: 'https://example.com/feed.xml',
+      );
+
+      expect(parsed.articles.first.summaryHtml, contains('打开内嵌内容'));
+      expect(
+        parsed.articles.first.summaryHtml,
+        contains('https://player.example.com/demo'),
+      );
     });
   });
 }
