@@ -64,7 +64,8 @@ void main() {
       expect(parsed.articles.first.url, 'https://atom.example.com/entry');
     });
 
-    test('decodes utf8 bytes when charset is omitted but xml declares encoding', () {
+    test('decodes utf8 bytes when charset is omitted but xml declares encoding',
+        () {
       const String xml = '''
       <?xml version="1.0" encoding="utf-8"?>
       <feed xmlns="http://www.w3.org/2005/Atom">

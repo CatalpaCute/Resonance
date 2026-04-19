@@ -35,7 +35,8 @@ class JsonStore {
       File(_path(root, _articlesFileName)),
       (Map<String, dynamic> json) => Article.fromJson(json),
     );
-    final ReaderSettings settings = await _readSettings(File(_path(root, _settingsFileName)));
+    final ReaderSettings settings =
+        await _readSettings(File(_path(root, _settingsFileName)));
     return PersistedReaderState(
       feeds: feeds,
       articles: articles,
@@ -46,14 +47,16 @@ class JsonStore {
   Future<void> saveFeeds(List<FeedSource> feeds) async {
     final Directory root = await _ensureRoot();
     final File file = File(_path(root, _feedsFileName));
-    final List<Map<String, dynamic>> payload = feeds.map((FeedSource item) => item.toJson()).toList();
+    final List<Map<String, dynamic>> payload =
+        feeds.map((FeedSource item) => item.toJson()).toList();
     await file.writeAsString(_prettyJson(payload), flush: true);
   }
 
   Future<void> saveArticles(List<Article> articles) async {
     final Directory root = await _ensureRoot();
     final File file = File(_path(root, _articlesFileName));
-    final List<Map<String, dynamic>> payload = articles.map((Article item) => item.toJson()).toList();
+    final List<Map<String, dynamic>> payload =
+        articles.map((Article item) => item.toJson()).toList();
     await file.writeAsString(_prettyJson(payload), flush: true);
   }
 

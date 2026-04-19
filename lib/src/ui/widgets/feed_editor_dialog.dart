@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../localization/app_strings.dart';
+
 class FeedEditorResult {
   const FeedEditorResult({
     required this.url,
@@ -15,8 +17,8 @@ class FeedEditorDialog extends StatefulWidget {
     super.key,
     this.initialTitle,
     this.initialUrl,
-    this.dialogTitle = '添加订阅源',
-    this.confirmText = '保存',
+    this.dialogTitle = '',
+    this.confirmText = '',
   });
 
   final String? initialTitle;
@@ -49,8 +51,12 @@ class _FeedEditorDialogState extends State<FeedEditorDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final AppStrings strings = context.strings;
+
     return AlertDialog(
-      title: Text(widget.dialogTitle),
+      title: Text(widget.dialogTitle.isEmpty
+          ? strings.addSourceTitle
+          : widget.dialogTitle),
       content: SizedBox(
         width: 420,
         child: Form(
@@ -60,21 +66,21 @@ class _FeedEditorDialogState extends State<FeedEditorDialog> {
             children: <Widget>[
               TextFormField(
                 controller: _titleController,
-                decoration: const InputDecoration(
-                  labelText: '显示名称',
-                  hintText: '留空时会自动使用订阅标题',
+                decoration: InputDecoration(
+                  labelText: strings.displayName,
+                  hintText: strings.feedTitleAutoHint,
                 ),
               ),
               const SizedBox(height: 16),
               TextFormField(
                 controller: _urlController,
-                decoration: const InputDecoration(
-                  labelText: 'RSS / Atom 地址',
-                  hintText: '例如 https://example.com/feed.xml',
+                decoration: InputDecoration(
+                  labelText: strings.feedUrlLabel,
+                  hintText: strings.feedUrlExample,
                 ),
                 validator: (String? value) {
                   if (value == null || value.trim().isEmpty) {
-                    return '请输入订阅地址';
+                    return strings.enterFeedAddress;
                   }
                   return null;
                 },
@@ -86,7 +92,7 @@ class _FeedEditorDialogState extends State<FeedEditorDialog> {
       actions: <Widget>[
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('取消'),
+          child: Text(strings.cancel),
         ),
         FilledButton(
           onPressed: () {
@@ -100,7 +106,8 @@ class _FeedEditorDialogState extends State<FeedEditorDialog> {
               ),
             );
           },
-          child: Text(widget.confirmText),
+          child: Text(
+              widget.confirmText.isEmpty ? strings.save : widget.confirmText),
         ),
       ],
     );

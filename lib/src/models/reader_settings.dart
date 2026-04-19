@@ -1,4 +1,5 @@
 import 'app_route.dart';
+import '../localization/app_language.dart';
 
 enum StartupHomeMode {
   allArticles,
@@ -24,6 +25,7 @@ class ReaderSettings {
     required this.mobileSidebarMode,
     required this.desktopSidebarCollapsed,
     required this.articleListDensity,
+    required this.appLanguageMode,
   });
 
   final StartupHomeMode startupHomeMode;
@@ -31,6 +33,7 @@ class ReaderSettings {
   final MobileSidebarMode mobileSidebarMode;
   final bool desktopSidebarCollapsed;
   final ArticleListDensity articleListDensity;
+  final AppLanguageMode appLanguageMode;
 
   static const ReaderSettings defaults = ReaderSettings(
     startupHomeMode: StartupHomeMode.allArticles,
@@ -38,6 +41,7 @@ class ReaderSettings {
     mobileSidebarMode: MobileSidebarMode.adaptive,
     desktopSidebarCollapsed: false,
     articleListDensity: ArticleListDensity.comfortable,
+    appLanguageMode: AppLanguageMode.system,
   );
 
   AppRouteId get startupRoute {
@@ -57,13 +61,16 @@ class ReaderSettings {
     MobileSidebarMode? mobileSidebarMode,
     bool? desktopSidebarCollapsed,
     ArticleListDensity? articleListDensity,
+    AppLanguageMode? appLanguageMode,
   }) {
     return ReaderSettings(
       startupHomeMode: startupHomeMode ?? this.startupHomeMode,
       themeId: themeId ?? this.themeId,
       mobileSidebarMode: mobileSidebarMode ?? this.mobileSidebarMode,
-      desktopSidebarCollapsed: desktopSidebarCollapsed ?? this.desktopSidebarCollapsed,
+      desktopSidebarCollapsed:
+          desktopSidebarCollapsed ?? this.desktopSidebarCollapsed,
       articleListDensity: articleListDensity ?? this.articleListDensity,
+      appLanguageMode: appLanguageMode ?? this.appLanguageMode,
     );
   }
 
@@ -74,6 +81,7 @@ class ReaderSettings {
       'mobileSidebarMode': mobileSidebarMode.name,
       'desktopSidebarCollapsed': desktopSidebarCollapsed,
       'articleListDensity': articleListDensity.name,
+      'appLanguageMode': appLanguageMode.storageValue,
     };
   }
 
@@ -88,11 +96,14 @@ class ReaderSettings {
         (MobileSidebarMode value) => value.name == json['mobileSidebarMode'],
         orElse: () => defaults.mobileSidebarMode,
       ),
-      desktopSidebarCollapsed: json['desktopSidebarCollapsed'] as bool? ?? defaults.desktopSidebarCollapsed,
+      desktopSidebarCollapsed: json['desktopSidebarCollapsed'] as bool? ??
+          defaults.desktopSidebarCollapsed,
       articleListDensity: ArticleListDensity.values.firstWhere(
         (ArticleListDensity value) => value.name == json['articleListDensity'],
         orElse: () => defaults.articleListDensity,
       ),
+      appLanguageMode:
+          AppLanguageModeX.fromStorageValue(json['appLanguageMode'] as String?),
     );
   }
 }

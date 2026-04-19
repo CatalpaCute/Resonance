@@ -41,9 +41,11 @@ class ParsedFeedResult {
 class RssService {
   Future<ParsedFeedResult> fetchFeed(String rawUrl) async {
     final Uri uri = _normalizeUri(rawUrl);
-    final http.Response response = await http.get(uri, headers: <String, String>{
-      HttpHeaders.userAgentHeader: 'RssTool/0.1',
-      HttpHeaders.acceptHeader: 'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8',
+    final http.Response response =
+        await http.get(uri, headers: <String, String>{
+      HttpHeaders.userAgentHeader: 'Resonance/0.3',
+      HttpHeaders.acceptHeader:
+          'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8',
     });
     if (response.statusCode >= 400) {
       throw HttpException('拉取订阅失败，状态码 ${response.statusCode}', uri: uri);
@@ -73,7 +75,8 @@ class RssService {
     required String sourceUrl,
     String? contentTypeHeader,
   }) {
-    final String xmlText = _decodeFeedPayload(bytes, contentTypeHeader: contentTypeHeader);
+    final String xmlText =
+        _decodeFeedPayload(bytes, contentTypeHeader: contentTypeHeader);
     return parseFeedXml(xmlText, sourceUrl: sourceUrl);
   }
 
@@ -83,9 +86,11 @@ class RssService {
       throw const FormatException('RSS 缺少 channel 节点');
     }
 
-    final String title = _textOf(channel, <String>{'title'}) ?? _hostLabel(sourceUrl);
+    final String title =
+        _textOf(channel, <String>{'title'}) ?? _hostLabel(sourceUrl);
     final String? siteUrl = _textOf(channel, <String>{'link'});
-    final String? iconUrl = _rssIcon(channel, sourceUrl: sourceUrl, siteUrl: siteUrl);
+    final String? iconUrl =
+        _rssIcon(channel, sourceUrl: sourceUrl, siteUrl: siteUrl);
 
     final List<ParsedArticleDraft> articles = channel.children
         .whereType<XmlElement>()
@@ -104,14 +109,17 @@ class RssService {
   }
 
   ParsedFeedResult _parseAtom(XmlElement root, {required String sourceUrl}) {
-    final String title = _textOf(root, <String>{'title'}) ?? _hostLabel(sourceUrl);
+    final String title =
+        _textOf(root, <String>{'title'}) ?? _hostLabel(sourceUrl);
     final String siteUrl = _atomSiteUrl(root) ?? sourceUrl;
-    final String? iconUrl = _textOf(root, <String>{'icon', 'logo'}) ?? _faviconFromUrl(siteUrl);
+    final String? iconUrl =
+        _textOf(root, <String>{'icon', 'logo'}) ?? _faviconFromUrl(siteUrl);
 
     final List<ParsedArticleDraft> articles = root.children
         .whereType<XmlElement>()
         .where((XmlElement element) => element.name.local == 'entry')
-        .map((XmlElement entry) => _atomEntryToDraft(entry, sourceUrl: sourceUrl))
+        .map((XmlElement entry) =>
+            _atomEntryToDraft(entry, sourceUrl: sourceUrl))
         .whereType<ParsedArticleDraft>()
         .toList();
 
@@ -124,14 +132,17 @@ class RssService {
     );
   }
 
-  ParsedArticleDraft? _rssItemToDraft(XmlElement item, {required String sourceUrl}) {
+  ParsedArticleDraft? _rssItemToDraft(XmlElement item,
+      {required String sourceUrl}) {
     final String? link = _textOf(item, <String>{'link'}) ?? _guidLink(item);
     if (link == null || link.trim().isEmpty) {
       return null;
     }
     final String title = (_textOf(item, <String>{'title'}) ?? '未命名文章').trim();
-    final String? summary = _sanitizeHtml(_textOf(item, <String>{'description'}));
-    final String? content = _sanitizeHtml(_textOf(item, <String>{'encoded', 'content'}));
+    final String? summary =
+        _sanitizeHtml(_textOf(item, <String>{'description'}));
+    final String? content =
+        _sanitizeHtml(_textOf(item, <String>{'encoded', 'content'}));
     final String? author = _textOf(item, <String>{'author', 'creator'});
     final DateTime publishedAt = _parseDate(
           _textOf(item, <String>{'pubDate', 'published', 'updated'}),
@@ -148,7 +159,8 @@ class RssService {
     );
   }
 
-  ParsedArticleDraft? _atomEntryToDraft(XmlElement entry, {required String sourceUrl}) {
+  ParsedArticleDraft? _atomEntryToDraft(XmlElement entry,
+      {required String sourceUrl}) {
     final String? link = _atomEntryUrl(entry);
     if (link == null || link.trim().isEmpty) {
       return null;
@@ -157,7 +169,8 @@ class RssService {
     final String? summary = _sanitizeHtml(_textOf(entry, <String>{'summary'}));
     final String? content = _sanitizeHtml(_textOf(entry, <String>{'content'}));
     final XmlElement? authorElement = _firstChild(entry, <String>{'author'});
-    final String? author = authorElement == null ? null : _textOf(authorElement, <String>{'name'});
+    final String? author =
+        authorElement == null ? null : _textOf(authorElement, <String>{'name'});
     final DateTime publishedAt = _parseDate(
           _textOf(entry, <String>{'updated', 'published'}),
         ) ??
@@ -178,9 +191,10 @@ class RssService {
     if (trimmed.isEmpty) {
       throw const FormatException('订阅地址不能为空');
     }
-    final String candidate = trimmed.startsWith('http://') || trimmed.startsWith('https://')
-        ? trimmed
-        : 'https://$trimmed';
+    final String candidate =
+        trimmed.startsWith('http://') || trimmed.startsWith('https://')
+            ? trimmed
+            : 'https://$trimmed';
     final Uri? uri = Uri.tryParse(candidate);
     if (uri == null || (!uri.hasScheme || uri.host.isEmpty)) {
       throw const FormatException('请输入有效的订阅地址');
@@ -199,8 +213,12 @@ class RssService {
     final String? xmlEncoding = _xmlDeclaredEncoding(bytes);
     final List<String> candidates = <String>[
       if (bomEncoding != null) bomEncoding,
-      if (headerEncoding != null && headerEncoding != bomEncoding) headerEncoding,
-      if (xmlEncoding != null && xmlEncoding != bomEncoding && xmlEncoding != headerEncoding) xmlEncoding,
+      if (headerEncoding != null && headerEncoding != bomEncoding)
+        headerEncoding,
+      if (xmlEncoding != null &&
+          xmlEncoding != bomEncoding &&
+          xmlEncoding != headerEncoding)
+        xmlEncoding,
       'utf-8',
       'latin1',
     ];
@@ -218,7 +236,10 @@ class RssService {
   }
 
   String? _detectBomEncoding(List<int> bytes) {
-    if (bytes.length >= 3 && bytes[0] == 0xEF && bytes[1] == 0xBB && bytes[2] == 0xBF) {
+    if (bytes.length >= 3 &&
+        bytes[0] == 0xEF &&
+        bytes[1] == 0xBB &&
+        bytes[2] == 0xBF) {
       return 'utf-8';
     }
     if (bytes.length >= 2 && bytes[0] == 0xFF && bytes[1] == 0xFE) {
@@ -235,7 +256,8 @@ class RssService {
       return null;
     }
     final RegExpMatch? match =
-        RegExp(r'''charset\s*=\s*["']?([^;"'\s]+)''', caseSensitive: false).firstMatch(contentTypeHeader);
+        RegExp(r'''charset\s*=\s*["']?([^;"'\s]+)''', caseSensitive: false)
+            .firstMatch(contentTypeHeader);
     return match == null ? null : _normalizeEncodingName(match.group(1)!);
   }
 
@@ -243,7 +265,8 @@ class RssService {
     final int sampleLength = bytes.length > 256 ? 256 : bytes.length;
     final String sample = latin1.decode(bytes.take(sampleLength).toList());
     final RegExpMatch? match =
-        RegExp(r'''encoding\s*=\s*["']([^"']+)["']''', caseSensitive: false).firstMatch(sample);
+        RegExp(r'''encoding\s*=\s*["']([^"']+)["']''', caseSensitive: false)
+            .firstMatch(sample);
     return match == null ? null : _normalizeEncodingName(match.group(1)!);
   }
 
@@ -358,9 +381,11 @@ class RssService {
     return null;
   }
 
-  String? _rssIcon(XmlElement channel, {required String sourceUrl, String? siteUrl}) {
+  String? _rssIcon(XmlElement channel,
+      {required String sourceUrl, String? siteUrl}) {
     final XmlElement? image = _firstChild(channel, <String>{'image'});
-    final String? directUrl = image == null ? null : _textOf(image, <String>{'url'});
+    final String? directUrl =
+        image == null ? null : _textOf(image, <String>{'url'});
     return directUrl ?? _faviconFromUrl(siteUrl ?? sourceUrl);
   }
 
@@ -401,8 +426,10 @@ class RssService {
       return null;
     }
     final String withoutTags = raw
-        .replaceAll(RegExp(r'<script[\s\S]*?</script>', caseSensitive: false), ' ')
-        .replaceAll(RegExp(r'<style[\s\S]*?</style>', caseSensitive: false), ' ')
+        .replaceAll(
+            RegExp(r'<script[\s\S]*?</script>', caseSensitive: false), ' ')
+        .replaceAll(
+            RegExp(r'<style[\s\S]*?</style>', caseSensitive: false), ' ')
         .replaceAll(RegExp(r'<[^>]+>'), ' ')
         .replaceAll('&nbsp;', ' ')
         .replaceAll('&amp;', '&')

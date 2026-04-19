@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../localization/app_strings.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/glass_card.dart';
@@ -39,6 +40,7 @@ class _AddSourceViewState extends State<AddSourceView> {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
+    final AppStrings strings = context.strings;
 
     return ListView(
       padding: const EdgeInsets.all(24),
@@ -52,11 +54,13 @@ class _AddSourceViewState extends State<AddSourceView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text('添加订阅源', style: theme.textTheme.headlineSmall),
+                    Text(strings.addSourceTitle,
+                        style: theme.textTheme.headlineSmall),
                     const SizedBox(height: 8),
                     Text(
-                      '先把本地 RSS 流跑通。首版只做手动添加，不接 OPML，也不做自动发现。',
-                      style: theme.textTheme.bodyMedium?.copyWith(color: palette.secondaryText),
+                      strings.addSourceIntro,
+                      style: theme.textTheme.bodyMedium
+                          ?.copyWith(color: palette.secondaryText),
                     ),
                     const SizedBox(height: 20),
                     Form(
@@ -65,13 +69,13 @@ class _AddSourceViewState extends State<AddSourceView> {
                         children: <Widget>[
                           TextFormField(
                             controller: _urlController,
-                            decoration: const InputDecoration(
-                              labelText: 'RSS / Atom 地址',
-                              hintText: 'https://example.com/feed.xml',
+                            decoration: InputDecoration(
+                              labelText: strings.feedUrlLabel,
+                              hintText: strings.feedUrlHint,
                             ),
                             validator: (String? value) {
                               if (value == null || value.trim().isEmpty) {
-                                return '请输入订阅地址';
+                                return strings.enterFeedAddress;
                               }
                               return null;
                             },
@@ -79,9 +83,9 @@ class _AddSourceViewState extends State<AddSourceView> {
                           const SizedBox(height: 16),
                           TextFormField(
                             controller: _titleController,
-                            decoration: const InputDecoration(
-                              labelText: '显示名称',
-                              hintText: '留空时自动使用订阅标题',
+                            decoration: InputDecoration(
+                              labelText: strings.displayName,
+                              hintText: strings.displayNameHint,
                             ),
                           ),
                           const SizedBox(height: 20),
@@ -98,13 +102,15 @@ class _AddSourceViewState extends State<AddSourceView> {
                                         url: _urlController.text,
                                         title: _titleController.text,
                                       );
-                                      if (mounted && widget.controller.errorMessage == null) {
+                                      if (mounted &&
+                                          widget.controller.errorMessage ==
+                                              null) {
                                         _urlController.clear();
                                         _titleController.clear();
                                       }
                                     },
                               icon: const Icon(Icons.add_link_rounded),
-                              label: const Text('立即添加'),
+                              label: Text(strings.addNow),
                             ),
                           ),
                         ],
@@ -126,12 +132,14 @@ class _AddSourceViewState extends State<AddSourceView> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
-                      Text('当前已有订阅', style: theme.textTheme.titleMedium),
+                      Text(strings.currentSubscriptions,
+                          style: theme.textTheme.titleMedium),
                       const SizedBox(height: 12),
                       if (widget.controller.feeds.isEmpty)
                         Text(
-                          '还没有订阅源，先从最常看的站点开始。',
-                          style: theme.textTheme.bodyMedium?.copyWith(color: palette.secondaryText),
+                          strings.noSubscriptionsYet,
+                          style: theme.textTheme.bodyMedium
+                              ?.copyWith(color: palette.secondaryText),
                         )
                       else
                         ...widget.controller.feeds.take(8).map((feed) {
@@ -139,7 +147,8 @@ class _AddSourceViewState extends State<AddSourceView> {
                             padding: const EdgeInsets.only(bottom: 10),
                             child: Text(
                               '· ${feed.title}',
-                              style: theme.textTheme.bodyMedium?.copyWith(color: palette.secondaryText),
+                              style: theme.textTheme.bodyMedium
+                                  ?.copyWith(color: palette.secondaryText),
                             ),
                           );
                         }),

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../localization/app_language.dart';
+import '../../localization/app_strings.dart';
 import '../../models/reader_settings.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
@@ -17,6 +19,7 @@ class SettingsView extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
+    final AppStrings strings = context.strings;
 
     return ListView(
       padding: const EdgeInsets.all(24),
@@ -25,11 +28,12 @@ class SettingsView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text('设置', style: theme.textTheme.headlineSmall),
+              Text(strings.settings, style: theme.textTheme.headlineSmall),
               const SizedBox(height: 8),
               Text(
-                '这里先收好启动页、主题和侧栏行为，后面再接同步层。',
-                style: theme.textTheme.bodyMedium?.copyWith(color: palette.secondaryText),
+                strings.settingsIntro,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: palette.secondaryText),
               ),
             ],
           ),
@@ -39,7 +43,7 @@ class SettingsView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text('启动页', style: theme.textTheme.titleLarge),
+              Text(strings.startupPage, style: theme.textTheme.titleLarge),
               const SizedBox(height: 12),
               RadioGroup<StartupHomeMode>(
                 groupValue: controller.settings.startupHomeMode,
@@ -53,8 +57,8 @@ class SettingsView extends StatelessWidget {
                     return RadioListTile<StartupHomeMode>(
                       contentPadding: EdgeInsets.zero,
                       value: mode,
-                      title: Text(_startupLabel(mode)),
-                      subtitle: Text(_startupDesc(mode)),
+                      title: Text(strings.startupLabel(mode)),
+                      subtitle: Text(strings.startupDesc(mode)),
                     );
                   }).toList(),
                 ),
@@ -67,7 +71,7 @@ class SettingsView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text('视觉主题', style: theme.textTheme.titleLarge),
+              Text(strings.visualTheme, style: theme.textTheme.titleLarge),
               const SizedBox(height: 12),
               Wrap(
                 spacing: 12,
@@ -91,7 +95,7 @@ class SettingsView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text('移动端左侧栏', style: theme.textTheme.titleLarge),
+              Text(strings.mobileSidebar, style: theme.textTheme.titleLarge),
               const SizedBox(height: 12),
               RadioGroup<MobileSidebarMode>(
                 groupValue: controller.settings.mobileSidebarMode,
@@ -101,12 +105,13 @@ class SettingsView extends StatelessWidget {
                   }
                 },
                 child: Column(
-                  children: MobileSidebarMode.values.map((MobileSidebarMode mode) {
+                  children:
+                      MobileSidebarMode.values.map((MobileSidebarMode mode) {
                     return RadioListTile<MobileSidebarMode>(
                       contentPadding: EdgeInsets.zero,
                       value: mode,
-                      title: Text(_mobileSidebarLabel(mode)),
-                      subtitle: Text(_mobileSidebarDesc(mode)),
+                      title: Text(strings.mobileSidebarLabel(mode)),
+                      subtitle: Text(strings.mobileSidebarDesc(mode)),
                     );
                   }).toList(),
                 ),
@@ -119,20 +124,58 @@ class SettingsView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text('阅读密度', style: theme.textTheme.titleLarge),
+              Text(strings.interfaceLanguage,
+                  style: theme.textTheme.titleLarge),
+              const SizedBox(height: 8),
+              Text(
+                strings.interfaceLanguageHint,
+                style: theme.textTheme.bodyMedium
+                    ?.copyWith(color: palette.secondaryText),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<AppLanguageMode>(
+                initialValue: controller.settings.appLanguageMode,
+                decoration: const InputDecoration(
+                  border: OutlineInputBorder(),
+                ),
+                items: AppLanguageMode.values.map((AppLanguageMode mode) {
+                  return DropdownMenuItem<AppLanguageMode>(
+                    value: mode,
+                    child: Text(strings.languageModeLabel(mode)),
+                  );
+                }).toList(),
+                onChanged: (AppLanguageMode? value) {
+                  if (value != null) {
+                    controller.setAppLanguageMode(value);
+                  }
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
+        GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(strings.readingDensity, style: theme.textTheme.titleLarge),
               const SizedBox(height: 12),
               SegmentedButton<ArticleListDensity>(
-                segments: const <ButtonSegment<ArticleListDensity>>[
+                segments: <ButtonSegment<ArticleListDensity>>[
                   ButtonSegment<ArticleListDensity>(
                     value: ArticleListDensity.comfortable,
-                    label: Text('舒展'),
+                    label: Text(strings
+                        .articleDensityLabel(ArticleListDensity.comfortable)),
                   ),
                   ButtonSegment<ArticleListDensity>(
                     value: ArticleListDensity.compact,
-                    label: Text('紧凑'),
+                    label: Text(strings
+                        .articleDensityLabel(ArticleListDensity.compact)),
                   ),
                 ],
-                selected: <ArticleListDensity>{controller.settings.articleListDensity},
+                selected: <ArticleListDensity>{
+                  controller.settings.articleListDensity
+                },
                 onSelectionChanged: (Set<ArticleListDensity> values) {
                   controller.setArticleListDensity(values.first);
                 },
@@ -144,57 +187,13 @@ class SettingsView extends StatelessWidget {
                 onChanged: (bool value) {
                   controller.setDesktopSidebarCollapsed(value);
                 },
-                title: const Text('桌面端默认折叠侧栏'),
-                subtitle: const Text('给文章列表和阅读区让出更多空间。'),
+                title: Text(strings.desktopSidebarCollapsedTitle),
+                subtitle: Text(strings.desktopSidebarCollapsedHint),
               ),
             ],
           ),
         ),
       ],
     );
-  }
-
-  String _startupLabel(StartupHomeMode mode) {
-    switch (mode) {
-      case StartupHomeMode.allArticles:
-        return '全部文章';
-      case StartupHomeMode.sources:
-        return '订阅源';
-      case StartupHomeMode.bookmarks:
-        return '收藏与稍后读';
-    }
-  }
-
-  String _startupDesc(StartupHomeMode mode) {
-    switch (mode) {
-      case StartupHomeMode.allArticles:
-        return '适合快速扫一遍时间流。';
-      case StartupHomeMode.sources:
-        return '适合先按站点管理，再进入文章。';
-      case StartupHomeMode.bookmarks:
-        return '适合把阅读器当成长期收藏箱。';
-    }
-  }
-
-  String _mobileSidebarLabel(MobileSidebarMode mode) {
-    switch (mode) {
-      case MobileSidebarMode.adaptive:
-        return '自适应';
-      case MobileSidebarMode.drawer:
-        return '抽屉侧栏';
-      case MobileSidebarMode.rail:
-        return '窄轨常驻';
-    }
-  }
-
-  String _mobileSidebarDesc(MobileSidebarMode mode) {
-    switch (mode) {
-      case MobileSidebarMode.adaptive:
-        return '小屏抽屉，大屏窄轨，默认最稳。';
-      case MobileSidebarMode.drawer:
-        return '始终通过抽屉打开左侧栏。';
-      case MobileSidebarMode.rail:
-        return '始终使用窄轨常驻，风格更统一。';
-    }
   }
 }

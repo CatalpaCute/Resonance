@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 
+import '../localization/app_language.dart';
+import '../localization/app_strings.dart';
 import '../models/app_route.dart';
 import '../models/reader_settings.dart';
 import '../state/reader_controller.dart';
@@ -26,7 +29,11 @@ class ReaderApp extends StatelessWidget {
       builder: (BuildContext context, _) {
         return MaterialApp(
           debugShowCheckedModeBanner: false,
-          title: 'RssTool',
+          title: AppBrand.fullName,
+          locale: controller.appLocale,
+          supportedLocales: supportedAppLocales,
+          localeListResolutionCallback: AppStrings.resolveLocaleList,
+          localizationsDelegates: GlobalMaterialLocalizations.delegates,
           theme: AppTheme.themeFor(controller.settings.themeId),
           home: ReaderHome(controller: controller),
         );
@@ -92,7 +99,8 @@ class _ReaderHomeState extends State<ReaderHome> {
                           if (!compact)
                             NavigationSidebar(
                               controller: controller,
-                              collapsed: controller.settings.desktopSidebarCollapsed,
+                              collapsed:
+                                  controller.settings.desktopSidebarCollapsed,
                               showCollapseToggle: true,
                               onToggleCollapse: () {
                                 controller.setDesktopSidebarCollapsed(
@@ -122,7 +130,9 @@ class _ReaderHomeState extends State<ReaderHome> {
                                       controller: controller,
                                       compact: compact,
                                       showMenuButton: useDrawer,
-                                      onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                                      onMenuPressed: () => _scaffoldKey
+                                          .currentState
+                                          ?.openDrawer(),
                                     ),
                                     if (controller.errorMessage != null)
                                       _InlineBanner(
@@ -263,6 +273,7 @@ class _WindowChrome extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
+    final AppStrings strings = context.strings;
 
     return Container(
       height: compact ? 46 : 42,
@@ -291,7 +302,7 @@ class _WindowChrome extends StatelessWidget {
             ),
             alignment: Alignment.center,
             child: Text(
-              'R',
+              AppBrand.mark,
               style: theme.textTheme.labelSmall?.copyWith(
                 color: theme.colorScheme.onPrimary,
                 fontWeight: FontWeight.w700,
@@ -300,7 +311,7 @@ class _WindowChrome extends StatelessWidget {
           ),
           const SizedBox(width: 10),
           Text(
-            'RssTool',
+            strings.appName,
             style: theme.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w600,
             ),
@@ -384,6 +395,7 @@ class _ContextBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
+    final AppStrings strings = context.strings;
 
     return Container(
       height: compact ? 60 : 58,
@@ -418,7 +430,7 @@ class _ContextBar extends StatelessWidget {
                 ),
                 const SizedBox(height: 3),
                 Text(
-                  _subtitleForRoute(controller.currentRoute, compact),
+                  _subtitleForRoute(context, controller.currentRoute, compact),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.bodySmall?.copyWith(
@@ -436,11 +448,11 @@ class _ContextBar extends StatelessWidget {
             children: <Widget>[
               _StatTag(
                 icon: Icons.rss_feed_rounded,
-                label: '${controller.feeds.length} 个订阅',
+                label: strings.feedCountStat(controller.feeds.length),
               ),
               _StatTag(
                 icon: Icons.mark_email_unread_outlined,
-                label: '${controller.totalUnreadCount} 未读',
+                label: strings.unreadCountStat(controller.totalUnreadCount),
               ),
             ],
           ),
@@ -449,22 +461,9 @@ class _ContextBar extends StatelessWidget {
     );
   }
 
-  String _subtitleForRoute(AppRouteId route, bool compact) {
-    switch (route) {
-      case AppRouteId.allArticles:
-        return compact ? '先扫一遍时间流，再点进文章阅读。' : '三栏工作区：来源、文章列表、阅读详情。';
-      case AppRouteId.sources:
-      case AppRouteId.sourceDetail:
-        return compact ? '按订阅源逐个管理，再进入文章。' : '左侧按站点筛选，中间快速浏览，右侧进入正文。';
-      case AppRouteId.bookmarks:
-        return '把收藏和稍后读收拢成一个长期阅读箱。';
-      case AppRouteId.discoverAddSource:
-        return '先把订阅源补齐，本地阅读流就能跑起来。';
-      case AppRouteId.settings:
-        return '这里管理启动页、主题和移动端导航方式。';
-      case AppRouteId.readerDetail:
-        return '正文阅读会优先保留干净的版面和操作路径。';
-    }
+  String _subtitleForRoute(
+      BuildContext context, AppRouteId route, bool compact) {
+    return AppStrings.of(context).routeSubtitle(route, compact: compact);
   }
 }
 
@@ -523,8 +522,10 @@ class _InlineBanner extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final bool isError = kind == _BannerKind.error;
-    final Color foreground = isError ? theme.colorScheme.error : theme.colorScheme.primary;
-    final Color background = foreground.withValues(alpha: isError ? 0.09 : 0.08);
+    final Color foreground =
+        isError ? theme.colorScheme.error : theme.colorScheme.primary;
+    final Color background =
+        foreground.withValues(alpha: isError ? 0.09 : 0.08);
 
     return Container(
       margin: const EdgeInsets.fromLTRB(14, 10, 14, 0),
@@ -547,7 +548,8 @@ class _InlineBanner extends StatelessWidget {
           IconButton(
             visualDensity: VisualDensity.compact,
             onPressed: onClose,
-            icon: Icon(Icons.close_rounded, size: 16, color: palette.secondaryText),
+            icon: Icon(Icons.close_rounded,
+                size: 16, color: palette.secondaryText),
           ),
         ],
       ),

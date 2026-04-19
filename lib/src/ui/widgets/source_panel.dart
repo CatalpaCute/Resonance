@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../localization/app_strings.dart';
 import '../../models/app_route.dart';
 import '../../models/article.dart';
 import '../../models/feed_source.dart';
@@ -20,15 +21,22 @@ class SourcePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final AppStrings strings = context.strings;
+
     final Widget content = Padding(
-      padding: EdgeInsets.fromLTRB(compact ? 16 : 18, 18, compact ? 16 : 18, 18),
+      padding:
+          EdgeInsets.fromLTRB(compact ? 16 : 18, 18, compact ? 16 : 18, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           _PanelHeader(
-            title: controller.currentRoute == AppRouteId.bookmarks ? '收藏与筛选' : '来源与筛选',
-            actionIcon: controller.currentRoute == AppRouteId.bookmarks ? null : Icons.add_rounded,
-            actionTooltip: '添加订阅源',
+            title: controller.currentRoute == AppRouteId.bookmarks
+                ? strings.bookmarksAndFilters
+                : strings.sourcesAndFilters,
+            actionIcon: controller.currentRoute == AppRouteId.bookmarks
+                ? null
+                : Icons.add_rounded,
+            actionTooltip: strings.addSourceTitle,
             onAction: controller.currentRoute == AppRouteId.bookmarks
                 ? null
                 : () {
@@ -38,15 +46,15 @@ class SourcePanel extends StatelessWidget {
           const SizedBox(height: 12),
           if (controller.currentRoute == AppRouteId.bookmarks) ...<Widget>[
             SegmentedButton<BookmarkFilter>(
-              segments: const <ButtonSegment<BookmarkFilter>>[
+              segments: <ButtonSegment<BookmarkFilter>>[
                 ButtonSegment<BookmarkFilter>(
                   value: BookmarkFilter.starred,
-                  label: Text('收藏'),
+                  label: Text(strings.starred),
                   icon: Icon(Icons.star_rounded),
                 ),
                 ButtonSegment<BookmarkFilter>(
                   value: BookmarkFilter.savedForLater,
-                  label: Text('稍后读'),
+                  label: Text(strings.savedForLater),
                   icon: Icon(Icons.schedule_rounded),
                 ),
               ],
@@ -59,12 +67,12 @@ class SourcePanel extends StatelessWidget {
             _HintBlock(
               title: controller.currentRoute == AppRouteId.sources ||
                       controller.currentRoute == AppRouteId.sourceDetail
-                  ? '把订阅源收成一列，管理起来会更稳。'
-                  : '先按来源筛一层，再进文章会更清楚。',
+                  ? strings.sourceManagementHintTitle
+                  : strings.sourceFilterHintTitle,
               subtitle: controller.currentRoute == AppRouteId.sources ||
                       controller.currentRoute == AppRouteId.sourceDetail
-                  ? '这里负责站点管理、刷新和编辑。'
-                  : '默认是全部文章，也可以随时切到单个站点。',
+                  ? strings.sourceManagementHintBody
+                  : strings.sourceFilterHintBody,
             ),
           const SizedBox(height: 14),
           Row(
@@ -73,14 +81,14 @@ class SourcePanel extends StatelessWidget {
                 child: OutlinedButton.icon(
                   onPressed: controller.refreshAllFeeds,
                   icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('刷新全部'),
+                  label: Text(strings.refreshAll),
                 ),
               ),
               const SizedBox(width: 10),
               if (controller.currentRoute == AppRouteId.allArticles ||
                   controller.currentRoute == AppRouteId.bookmarks)
                 FilterChip(
-                  label: const Text('仅未读'),
+                  label: Text(strings.unreadOnly),
                   selected: controller.showOnlyUnread,
                   onSelected: (bool value) {
                     controller.setShowOnlyUnread(value);
@@ -96,7 +104,7 @@ class SourcePanel extends StatelessWidget {
                     controller.currentRoute == AppRouteId.bookmarks)
                   _SourceTile(
                     source: null,
-                    title: '全部来源',
+                    title: strings.allSources,
                     count: controller.articleCountForSource(null),
                     unread: controller.unreadCountForSource(null),
                     active: controller.activeSourceId == null,
@@ -112,9 +120,11 @@ class SourcePanel extends StatelessWidget {
                     onTap: () {
                       if (controller.currentRoute == AppRouteId.sources ||
                           controller.currentRoute == AppRouteId.sourceDetail) {
-                        controller.selectSource(source, enterSourceDetail: true);
+                        controller.selectSource(source,
+                            enterSourceDetail: true);
                       } else {
-                        controller.selectSource(source, enterSourceDetail: false);
+                        controller.selectSource(source,
+                            enterSourceDetail: false);
                       }
                     },
                     trailing: controller.currentRoute == AppRouteId.sources ||
@@ -124,12 +134,13 @@ class SourcePanel extends StatelessWidget {
                               if (value == 'refresh') {
                                 await controller.refreshSource(source.id);
                               } else if (value == 'edit') {
-                                final FeedEditorResult? result = await showDialog<FeedEditorResult>(
+                                final FeedEditorResult? result =
+                                    await showDialog<FeedEditorResult>(
                                   context: context,
                                   builder: (BuildContext dialogContext) {
                                     return FeedEditorDialog(
-                                      dialogTitle: '编辑订阅源',
-                                      confirmText: '更新',
+                                      dialogTitle: strings.editSource,
+                                      confirmText: strings.update,
                                       initialTitle: source.title,
                                       initialUrl: source.url,
                                     );
@@ -147,18 +158,23 @@ class SourcePanel extends StatelessWidget {
                                   context: context,
                                   builder: (BuildContext dialogContext) {
                                     return AlertDialog(
-                                      title: const Text('删除订阅源'),
+                                      title: Text(strings.deleteSource),
                                       content: Text(
-                                        '确认删除 ${source.title} 吗？对应文章缓存也会一起移除。',
+                                        strings
+                                            .deleteSourceConfirm(source.title),
                                       ),
                                       actions: <Widget>[
                                         TextButton(
-                                          onPressed: () => Navigator.of(dialogContext).pop(false),
-                                          child: const Text('取消'),
+                                          onPressed: () =>
+                                              Navigator.of(dialogContext)
+                                                  .pop(false),
+                                          child: Text(strings.cancel),
                                         ),
                                         FilledButton(
-                                          onPressed: () => Navigator.of(dialogContext).pop(true),
-                                          child: const Text('删除'),
+                                          onPressed: () =>
+                                              Navigator.of(dialogContext)
+                                                  .pop(true),
+                                          child: Text(strings.delete),
                                         ),
                                       ],
                                     );
@@ -169,18 +185,19 @@ class SourcePanel extends StatelessWidget {
                                 }
                               }
                             },
-                            itemBuilder: (BuildContext popupContext) => const <PopupMenuEntry<String>>[
+                            itemBuilder: (BuildContext popupContext) =>
+                                <PopupMenuEntry<String>>[
                               PopupMenuItem<String>(
                                 value: 'refresh',
-                                child: Text('刷新'),
+                                child: Text(strings.refresh),
                               ),
                               PopupMenuItem<String>(
                                 value: 'edit',
-                                child: Text('编辑'),
+                                child: Text(strings.edit),
                               ),
                               PopupMenuItem<String>(
                                 value: 'delete',
-                                child: Text('删除'),
+                                child: Text(strings.delete),
                               ),
                             ],
                           )
@@ -191,7 +208,7 @@ class SourcePanel extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(top: 18),
                     child: Text(
-                      '先添加一个订阅源，文章列表才会开始生长。',
+                      strings.emptySourcePanel,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppTheme.paletteOf(context).secondaryText,
                           ),
@@ -279,7 +296,8 @@ class _HintBlock extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             subtitle,
-            style: theme.textTheme.bodySmall?.copyWith(color: palette.secondaryText),
+            style: theme.textTheme.bodySmall
+                ?.copyWith(color: palette.secondaryText),
           ),
         ],
       ),
@@ -311,6 +329,7 @@ class _SourceTile extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final String? iconUrl = source?.iconUrl;
+    final AppStrings strings = context.strings;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -338,7 +357,9 @@ class _SourceTile extends StatelessWidget {
                 clipBehavior: Clip.antiAlias,
                 child: iconUrl == null
                     ? Icon(
-                        source == null ? Icons.layers_rounded : Icons.public_rounded,
+                        source == null
+                            ? Icons.layers_rounded
+                            : Icons.public_rounded,
                         size: 18,
                         color: Theme.of(context).colorScheme.primary,
                       )
@@ -369,7 +390,7 @@ class _SourceTile extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      unread > 0 ? '$count 篇文章 · $unread 未读' : '$count 篇文章',
+                      strings.sourceStats(count, unread),
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: palette.secondaryText,
                       ),

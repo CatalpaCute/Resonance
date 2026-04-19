@@ -1,11 +1,11 @@
 {
-    "name": "rsstool",
-    "short_name": "rsstool",
+    "name": "回声 Resonance",
+    "short_name": "回声",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
     "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "description": "Resonance is a local-first RSS reader.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

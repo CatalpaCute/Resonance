@@ -1,5 +1,9 @@
+import 'dart:ui';
+
 import 'package:flutter/foundation.dart';
 
+import '../localization/app_language.dart';
+import '../localization/app_strings.dart';
 import '../models/app_route.dart';
 import '../models/article.dart';
 import '../models/feed_source.dart';
@@ -47,6 +51,10 @@ class ReaderController extends ChangeNotifier {
   double get articleListPaneWidth => _articleListPaneWidth;
   String? get errorMessage => _errorMessage;
   String? get statusMessage => _statusMessage;
+  Locale? get appLocale => _settings.appLanguageMode.explicitLocale;
+  AppStrings get _strings =>
+      AppStrings.fromLanguageMode(_settings.appLanguageMode,
+          systemLocale: PlatformDispatcher.instance.locale);
 
   FeedSource? get activeSource => _feedById(_activeSourceId);
   Article? get selectedArticle => _articleById(_selectedArticleId);
@@ -59,37 +67,18 @@ class ReaderController extends ChangeNotifier {
         _currentRoute == AppRouteId.readerDetail;
   }
 
-  int get totalUnreadCount => _articles.where((Article item) => !item.isRead).length;
+  int get totalUnreadCount =>
+      _articles.where((Article item) => !item.isRead).length;
 
-  String get currentRouteTitle {
-    switch (_currentRoute) {
-      case AppRouteId.allArticles:
-        return '全部文章';
-      case AppRouteId.sources:
-        return '订阅源';
-      case AppRouteId.sourceDetail:
-        return activeSource?.title ?? '来源文章';
-      case AppRouteId.bookmarks:
-        return _bookmarkFilter == BookmarkFilter.starred ? '收藏' : '稍后读';
-      case AppRouteId.discoverAddSource:
-        return '添加订阅';
-      case AppRouteId.settings:
-        return '设置';
-      case AppRouteId.readerDetail:
-        return selectedArticle?.title ?? '阅读详情';
-    }
-  }
+  String get currentRouteTitle => _strings.routeTitle(
+        _currentRoute,
+        activeSourceTitle: activeSource?.title,
+        selectedArticleTitle: selectedArticle?.title,
+        bookmarkFilter: _bookmarkFilter,
+      );
 
-  String get startupSummary {
-    switch (_settings.startupHomeMode) {
-      case StartupHomeMode.allArticles:
-        return '启动后优先进入全部文章';
-      case StartupHomeMode.sources:
-        return '启动后优先进入订阅源';
-      case StartupHomeMode.bookmarks:
-        return '启动后优先进入收藏与稍后读';
-    }
-  }
+  String get startupSummary =>
+      _strings.startupSummary(_settings.startupHomeMode);
 
   List<Article> get visibleArticles {
     Iterable<Article> items = _articles;
@@ -108,7 +97,8 @@ class ReaderController extends ChangeNotifier {
         break;
       case AppRouteId.sources:
       case AppRouteId.sourceDetail:
-        items = items.where((Article article) => article.sourceId == _activeSourceId);
+        items = items
+            .where((Article article) => article.sourceId == _activeSourceId);
         break;
       case AppRouteId.bookmarks:
         items = items.where((Article article) {
@@ -118,13 +108,15 @@ class ReaderController extends ChangeNotifier {
           return article.savedForLater;
         });
         if (_activeSourceId != null) {
-          items = items.where((Article article) => article.sourceId == _activeSourceId);
+          items = items
+              .where((Article article) => article.sourceId == _activeSourceId);
         }
         break;
       case AppRouteId.readerDetail:
         items = _selectedArticleId == null
             ? const <Article>[]
-            : items.where((Article article) => article.id == _selectedArticleId);
+            : items
+                .where((Article article) => article.id == _selectedArticleId);
         break;
       case AppRouteId.discoverAddSource:
       case AppRouteId.settings:
@@ -149,13 +141,14 @@ class ReaderController extends ChangeNotifier {
       _settings = persisted.settings;
       _currentRoute = _settings.startupRoute;
       if (_feeds.isNotEmpty &&
-          (_currentRoute == AppRouteId.sources || _currentRoute == AppRouteId.sourceDetail)) {
+          (_currentRoute == AppRouteId.sources ||
+              _currentRoute == AppRouteId.sourceDetail)) {
         _activeSourceId = _feeds.first.id;
       } else {
         _activeSourceId = null;
       }
     } catch (error) {
-      _errorMessage = '初始化本地数据失败：$error';
+      _errorMessage = _strings.initializationFailed(error);
     } finally {
       _isReady = true;
       notifyListeners();
@@ -182,7 +175,8 @@ class ReaderController extends ChangeNotifier {
   void selectSource(FeedSource? source, {bool enterSourceDetail = false}) {
     _activeSourceId = source?.id;
     if (enterSourceDetail) {
-      _currentRoute = source == null ? AppRouteId.sources : AppRouteId.sourceDetail;
+      _currentRoute =
+          source == null ? AppRouteId.sources : AppRouteId.sourceDetail;
     }
     _compactReaderOpen = false;
     _selectedArticleId = null;
@@ -200,7 +194,8 @@ class ReaderController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> selectArticle(Article article, {required bool compactMode}) async {
+  Future<void> selectArticle(Article article,
+      {required bool compactMode}) async {
     _selectedArticleId = article.id;
     _currentRoute = compactMode ? AppRouteId.readerDetail : _currentRoute;
     _compactReaderOpen = compactMode;
@@ -226,7 +221,8 @@ class ReaderController extends ChangeNotifier {
   Future<void> toggleReadState(Article article) async {
     await _replaceArticle(
       article.copyWith(
-        readState: article.isRead ? ArticleReadState.unread : ArticleReadState.read,
+        readState:
+            article.isRead ? ArticleReadState.unread : ArticleReadState.read,
       ),
     );
   }
@@ -236,7 +232,8 @@ class ReaderController extends ChangeNotifier {
   }
 
   Future<void> toggleSavedForLater(Article article) async {
-    await _replaceArticle(article.copyWith(savedForLater: !article.savedForLater));
+    await _replaceArticle(
+        article.copyWith(savedForLater: !article.savedForLater));
   }
 
   Future<void> setShowOnlyUnread(bool value) async {
@@ -269,6 +266,11 @@ class ReaderController extends ChangeNotifier {
     await _persistSettings();
   }
 
+  Future<void> setAppLanguageMode(AppLanguageMode mode) async {
+    _settings = _settings.copyWith(appLanguageMode: mode);
+    await _persistSettings();
+  }
+
   void setArticleListPaneWidth(double width) {
     _articleListPaneWidth = width.clamp(280, 520);
     notifyListeners();
@@ -279,20 +281,24 @@ class ReaderController extends ChangeNotifier {
     String? title,
   }) async {
     final String normalizedUrl = _normalizeInputUrl(url);
-    final bool exists = _feeds.any((FeedSource source) => source.url == normalizedUrl);
+    final bool exists =
+        _feeds.any((FeedSource source) => source.url == normalizedUrl);
     if (exists) {
-      _errorMessage = '这个订阅地址已经存在了';
+      _errorMessage = _strings.duplicateFeedAddress;
       notifyListeners();
       return;
     }
 
     await _runBusy(
-      '正在添加订阅源...',
+      _strings.addingSubscription,
       () async {
-        final ParsedFeedResult parsed = await _rssService.fetchFeed(normalizedUrl);
+        final ParsedFeedResult parsed =
+            await _rssService.fetchFeed(normalizedUrl);
         final FeedSource source = FeedSource(
           id: _makeId('feed'),
-          title: (title?.trim().isNotEmpty ?? false) ? title!.trim() : parsed.title,
+          title: (title?.trim().isNotEmpty ?? false)
+              ? title!.trim()
+              : parsed.title,
           url: normalizedUrl,
           siteUrl: parsed.siteUrl,
           iconUrl: parsed.iconUrl,
@@ -304,7 +310,7 @@ class ReaderController extends ChangeNotifier {
         _activeSourceId = source.id;
         _currentRoute = AppRouteId.sourceDetail;
         await _persistAll();
-        _statusMessage = '已添加订阅：${source.title}';
+        _statusMessage = _strings.addedFeed(source.title);
       },
     );
   }
@@ -316,18 +322,20 @@ class ReaderController extends ChangeNotifier {
   }) async {
     final String normalizedUrl = _normalizeInputUrl(url);
     final bool exists = _feeds.any(
-      (FeedSource source) => source.id != original.id && source.url == normalizedUrl,
+      (FeedSource source) =>
+          source.id != original.id && source.url == normalizedUrl,
     );
     if (exists) {
-      _errorMessage = '另一个订阅源已经在使用这个地址';
+      _errorMessage = _strings.updatingFeedAddressInUse;
       notifyListeners();
       return;
     }
 
     await _runBusy(
-      '正在更新订阅源...',
+      _strings.updatingSubscription,
       () async {
-        final ParsedFeedResult parsed = await _rssService.fetchFeed(normalizedUrl);
+        final ParsedFeedResult parsed =
+            await _rssService.fetchFeed(normalizedUrl);
         final FeedSource nextSource = original.copyWith(
           title: title.trim().isEmpty ? parsed.title : title.trim(),
           url: normalizedUrl,
@@ -341,7 +349,7 @@ class ReaderController extends ChangeNotifier {
           ..sort(_sortFeed);
         _mergeArticlesForSource(nextSource, parsed.articles);
         await _persistAll();
-        _statusMessage = '已更新订阅：${nextSource.title}';
+        _statusMessage = _strings.updatedFeed(nextSource.title);
       },
     );
   }
@@ -352,33 +360,37 @@ class ReaderController extends ChangeNotifier {
       return;
     }
     _feeds = _feeds.where((FeedSource item) => item.id != sourceId).toList();
-    _articles = _articles.where((Article article) => article.sourceId != sourceId).toList();
+    _articles = _articles
+        .where((Article article) => article.sourceId != sourceId)
+        .toList();
     if (_activeSourceId == sourceId) {
       _activeSourceId = _feeds.isNotEmpty ? _feeds.first.id : null;
     }
-    if (_selectedArticleId != null && _articleById(_selectedArticleId) == null) {
+    if (_selectedArticleId != null &&
+        _articleById(_selectedArticleId) == null) {
       _selectedArticleId = null;
     }
     await _persistAll();
-    _statusMessage = '已删除订阅：${source.title}';
+    _statusMessage = _strings.removedFeed(source.title);
     notifyListeners();
   }
 
   Future<void> refreshAllFeeds() async {
-    final List<FeedSource> candidates = _feeds.where((FeedSource source) => source.enabled).toList();
+    final List<FeedSource> candidates =
+        _feeds.where((FeedSource source) => source.enabled).toList();
     if (candidates.isEmpty) {
-      _errorMessage = '还没有可刷新的订阅源';
+      _errorMessage = _strings.noRefreshableFeeds;
       notifyListeners();
       return;
     }
     await _runBusy(
-      '正在刷新全部订阅...',
+      _strings.refreshingAllFeeds,
       () async {
         for (final FeedSource source in candidates) {
           await _refreshFeed(source);
         }
         await _persistAll();
-        _statusMessage = '刷新完成，共处理 ${candidates.length} 个订阅源';
+        _statusMessage = _strings.refreshedAllFeeds(candidates.length);
       },
     );
   }
@@ -389,20 +401,22 @@ class ReaderController extends ChangeNotifier {
       return;
     }
     await _runBusy(
-      '正在刷新 ${source.title}...',
+      _strings.refreshingFeed(source.title),
       () async {
         await _refreshFeed(source);
         await _persistAll();
-        _statusMessage = '已刷新 ${source.title}';
+        _statusMessage = _strings.refreshedFeed(source.title);
       },
     );
   }
 
-  bool isFeedRefreshing(String sourceId) => _refreshingFeedIds.contains(sourceId);
+  bool isFeedRefreshing(String sourceId) =>
+      _refreshingFeedIds.contains(sourceId);
 
   int unreadCountForSource(String? sourceId) {
     return _articles.where((Article article) {
-      final bool matchesSource = sourceId == null ? true : article.sourceId == sourceId;
+      final bool matchesSource =
+          sourceId == null ? true : article.sourceId == sourceId;
       return matchesSource && !article.isRead;
     }).length;
   }
@@ -414,7 +428,7 @@ class ReaderController extends ChangeNotifier {
   }
 
   String sourceTitleForArticle(Article article) {
-    return _feedById(article.sourceId)?.title ?? '未知来源';
+    return _feedById(article.sourceId)?.title ?? _strings.unknownSource;
   }
 
   String? sourceIconForArticle(Article article) {
@@ -512,13 +526,15 @@ class ReaderController extends ChangeNotifier {
     };
     final Map<String, Article> currentByUrl = <String, Article>{
       for (final Article article in _articles)
-        if (article.sourceId == source.id && article.url.trim().isNotEmpty) article.url: article,
+        if (article.sourceId == source.id && article.url.trim().isNotEmpty)
+          article.url: article,
     };
 
     for (final ParsedArticleDraft draft in drafts) {
       final String draftUrl = draft.url.trim();
       final String candidateId = _rssService.stableArticleId(source.id, draft);
-      final Article? existing = currentById[candidateId] ?? currentByUrl[draftUrl];
+      final Article? existing =
+          currentById[candidateId] ?? currentByUrl[draftUrl];
       final String articleId = existing?.id ?? candidateId;
 
       if (existing != null && existing.id != articleId) {
@@ -581,7 +597,7 @@ class ReaderController extends ChangeNotifier {
   String _normalizeInputUrl(String rawUrl) {
     final String trimmed = rawUrl.trim();
     if (trimmed.isEmpty) {
-      throw const FormatException('订阅地址不能为空');
+      throw FormatException(_strings.subscriptionAddressRequired);
     }
     if (trimmed.startsWith('http://') || trimmed.startsWith('https://')) {
       return trimmed;
@@ -595,8 +611,10 @@ class ReaderController extends ChangeNotifier {
   }
 
   int _sortFeed(FeedSource a, FeedSource b) {
-    final DateTime aTime = a.lastFetchedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
-    final DateTime bTime = b.lastFetchedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final DateTime aTime =
+        a.lastFetchedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
+    final DateTime bTime =
+        b.lastFetchedAt ?? DateTime.fromMillisecondsSinceEpoch(0);
     final int byTime = bTime.compareTo(aTime);
     if (byTime != 0) {
       return byTime;

@@ -66,23 +66,36 @@ class ReaderPalette extends ThemeExtension<ReaderPalette> {
   }
 
   @override
-  ThemeExtension<ReaderPalette> lerp(covariant ThemeExtension<ReaderPalette>? other, double t) {
+  ThemeExtension<ReaderPalette> lerp(
+      covariant ThemeExtension<ReaderPalette>? other, double t) {
     if (other is! ReaderPalette) {
       return this;
     }
     return ReaderPalette(
-      shellBackground: Color.lerp(shellBackground, other.shellBackground, t) ?? shellBackground,
-      chromeBackground: Color.lerp(chromeBackground, other.chromeBackground, t) ?? chromeBackground,
-      sidebarBackground: Color.lerp(sidebarBackground, other.sidebarBackground, t) ?? sidebarBackground,
-      canvasBackground: Color.lerp(canvasBackground, other.canvasBackground, t) ?? canvasBackground,
-      panelBackground: Color.lerp(panelBackground, other.panelBackground, t) ?? panelBackground,
-      panelMutedBackground: Color.lerp(panelMutedBackground, other.panelMutedBackground, t) ?? panelMutedBackground,
+      shellBackground: Color.lerp(shellBackground, other.shellBackground, t) ??
+          shellBackground,
+      chromeBackground:
+          Color.lerp(chromeBackground, other.chromeBackground, t) ??
+              chromeBackground,
+      sidebarBackground:
+          Color.lerp(sidebarBackground, other.sidebarBackground, t) ??
+              sidebarBackground,
+      canvasBackground:
+          Color.lerp(canvasBackground, other.canvasBackground, t) ??
+              canvasBackground,
+      panelBackground: Color.lerp(panelBackground, other.panelBackground, t) ??
+          panelBackground,
+      panelMutedBackground:
+          Color.lerp(panelMutedBackground, other.panelMutedBackground, t) ??
+              panelMutedBackground,
       border: Color.lerp(border, other.border, t) ?? border,
       divider: Color.lerp(divider, other.divider, t) ?? divider,
       hover: Color.lerp(hover, other.hover, t) ?? hover,
       primarySoft: Color.lerp(primarySoft, other.primarySoft, t) ?? primarySoft,
-      secondaryText: Color.lerp(secondaryText, other.secondaryText, t) ?? secondaryText,
-      tertiaryText: Color.lerp(tertiaryText, other.tertiaryText, t) ?? tertiaryText,
+      secondaryText:
+          Color.lerp(secondaryText, other.secondaryText, t) ?? secondaryText,
+      tertiaryText:
+          Color.lerp(tertiaryText, other.tertiaryText, t) ?? tertiaryText,
       shadow: Color.lerp(shadow, other.shadow, t) ?? shadow,
     );
   }
@@ -254,7 +267,8 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: palette.panelBackground,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(16),
           borderSide: BorderSide(color: palette.border),
@@ -275,7 +289,8 @@ class AppTheme {
           backgroundColor: scheme.primary,
           foregroundColor: scheme.onPrimary,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
@@ -284,7 +299,8 @@ class AppTheme {
           foregroundColor: bodyColor,
           side: BorderSide(color: palette.border),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
       chipTheme: ChipThemeData(
@@ -308,16 +324,23 @@ class AppTheme {
       displaySmall: _decorateText(base.displaySmall, bodyColor),
       headlineLarge: _decorateText(base.headlineLarge, bodyColor),
       headlineMedium: _decorateText(base.headlineMedium, bodyColor),
-      headlineSmall: _decorateText(base.headlineSmall, bodyColor, fontWeight: FontWeight.w700, height: 1.2),
-      titleLarge: _decorateText(base.titleLarge, bodyColor, fontWeight: FontWeight.w700, height: 1.28),
-      titleMedium: _decorateText(base.titleMedium, bodyColor, fontWeight: FontWeight.w600, height: 1.32),
-      titleSmall: _decorateText(base.titleSmall, bodyColor, fontWeight: FontWeight.w600, height: 1.35),
+      headlineSmall: _decorateText(base.headlineSmall, bodyColor,
+          fontWeight: FontWeight.w700, height: 1.2),
+      titleLarge: _decorateText(base.titleLarge, bodyColor,
+          fontWeight: FontWeight.w700, height: 1.28),
+      titleMedium: _decorateText(base.titleMedium, bodyColor,
+          fontWeight: FontWeight.w600, height: 1.32),
+      titleSmall: _decorateText(base.titleSmall, bodyColor,
+          fontWeight: FontWeight.w600, height: 1.35),
       bodyLarge: _decorateText(base.bodyLarge, bodyColor, height: 1.6),
       bodyMedium: _decorateText(base.bodyMedium, bodyColor, height: 1.55),
       bodySmall: _decorateText(base.bodySmall, bodyColor, height: 1.45),
-      labelLarge: _decorateText(base.labelLarge, bodyColor, fontWeight: FontWeight.w600),
-      labelMedium: _decorateText(base.labelMedium, bodyColor, fontWeight: FontWeight.w500),
-      labelSmall: _decorateText(base.labelSmall, bodyColor, fontWeight: FontWeight.w500),
+      labelLarge: _decorateText(base.labelLarge, bodyColor,
+          fontWeight: FontWeight.w600),
+      labelMedium: _decorateText(base.labelMedium, bodyColor,
+          fontWeight: FontWeight.w500),
+      labelSmall: _decorateText(base.labelSmall, bodyColor,
+          fontWeight: FontWeight.w500),
     );
   }
 

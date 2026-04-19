@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../localization/app_strings.dart';
 import '../../models/app_route.dart';
 import '../../models/article.dart';
 import '../../models/reader_settings.dart';
@@ -20,9 +21,11 @@ class ArticleListPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<Article> articles = controller.visibleArticles;
+    final AppStrings strings = context.strings;
 
     final Widget content = Padding(
-      padding: EdgeInsets.fromLTRB(compact ? 16 : 18, 18, compact ? 16 : 18, 18),
+      padding:
+          EdgeInsets.fromLTRB(compact ? 16 : 18, 18, compact ? 16 : 18, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -32,10 +35,11 @@ class ArticleListPanel extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(controller.currentRouteTitle, style: Theme.of(context).textTheme.titleLarge),
+                    Text(controller.currentRouteTitle,
+                        style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 4),
                     Text(
-                      '${articles.length} 篇可见文章',
+                      strings.visibleArticleCount(articles.length),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppTheme.paletteOf(context).secondaryText,
                           ),
@@ -54,10 +58,11 @@ class ArticleListPanel extends StatelessWidget {
                       controller.refreshSource(controller.activeSourceId!);
                     }
                   },
-                  tooltip: '刷新当前视图',
+                  tooltip: strings.refreshCurrentView,
                   icon: Icon(
                     controller.activeSourceId != null &&
-                            controller.isFeedRefreshing(controller.activeSourceId!)
+                            controller
+                                .isFeedRefreshing(controller.activeSourceId!)
                         ? Icons.sync_rounded
                         : Icons.refresh_rounded,
                   ),
@@ -79,7 +84,8 @@ class ArticleListPanel extends StatelessWidget {
                 ),
                 itemBuilder: (BuildContext context, int index) {
                   final Article article = articles[index];
-                  final bool active = controller.selectedArticleId == article.id;
+                  final bool active =
+                      controller.selectedArticleId == article.id;
                   return _ArticleTile(
                     article: article,
                     active: active,
@@ -141,6 +147,7 @@ class _ArticleTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
+    final AppStrings strings = context.strings;
     final double vertical = density == ArticleListDensity.compact ? 10 : 14;
     final int summaryLines = density == ArticleListDensity.compact ? 2 : 3;
 
@@ -161,10 +168,11 @@ class _ArticleTile extends StatelessWidget {
               margin: const EdgeInsets.only(top: 8, right: 10, left: 8),
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: article.isRead ? Colors.transparent : theme.colorScheme.primary,
-                border: article.isRead
-                    ? Border.all(color: palette.border)
-                    : null,
+                color: article.isRead
+                    ? Colors.transparent
+                    : theme.colorScheme.primary,
+                border:
+                    article.isRead ? Border.all(color: palette.border) : null,
               ),
             ),
             Expanded(
@@ -205,7 +213,7 @@ class _ArticleTile extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       article.readerText.isEmpty
-                          ? '这篇文章暂时没有可读摘要，可以直接打开原文。'
+                          ? strings.noReadableSummary
                           : article.readerText,
                       maxLines: summaryLines,
                       overflow: TextOverflow.ellipsis,
@@ -216,7 +224,8 @@ class _ArticleTile extends StatelessWidget {
                     const SizedBox(height: 10),
                     Row(
                       children: <Widget>[
-                        if (article.author != null && article.author!.isNotEmpty)
+                        if (article.author != null &&
+                            article.author!.isNotEmpty)
                           Expanded(
                             child: Text(
                               article.author!,
@@ -230,18 +239,29 @@ class _ArticleTile extends StatelessWidget {
                         else
                           const Spacer(),
                         _TinyAction(
-                          icon: article.starred ? Icons.star_rounded : Icons.star_border_rounded,
+                          icon: article.starred
+                              ? Icons.star_rounded
+                              : Icons.star_border_rounded,
                           active: article.starred,
+                          tooltip: context.strings.starAction(article.starred),
                           onTap: onStarToggle,
                         ),
                         _TinyAction(
-                          icon: article.savedForLater ? Icons.schedule_rounded : Icons.schedule_outlined,
+                          icon: article.savedForLater
+                              ? Icons.schedule_rounded
+                              : Icons.schedule_outlined,
                           active: article.savedForLater,
+                          tooltip: context.strings
+                              .readLaterAction(article.savedForLater),
                           onTap: onSaveToggle,
                         ),
                         _TinyAction(
-                          icon: article.isRead ? Icons.mark_email_unread_outlined : Icons.done_rounded,
+                          icon: article.isRead
+                              ? Icons.mark_email_unread_outlined
+                              : Icons.done_rounded,
                           active: article.isRead,
+                          tooltip:
+                              context.strings.readStateAction(article.isRead),
                           onTap: onReadToggle,
                         ),
                       ],
@@ -270,11 +290,13 @@ class _TinyAction extends StatelessWidget {
   const _TinyAction({
     required this.icon,
     required this.active,
+    required this.tooltip,
     required this.onTap,
   });
 
   final IconData icon;
   final bool active;
+  final String tooltip;
   final VoidCallback onTap;
 
   @override
@@ -286,8 +308,10 @@ class _TinyAction extends StatelessWidget {
       splashRadius: 16,
       onPressed: onTap,
       icon: Icon(icon, size: 18),
-      color: active ? Theme.of(context).colorScheme.primary : palette.secondaryText,
-      tooltip: '',
+      color: active
+          ? Theme.of(context).colorScheme.primary
+          : palette.secondaryText,
+      tooltip: tooltip,
     );
   }
 }
@@ -303,6 +327,7 @@ class _EmptyListState extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
+    final AppStrings strings = context.strings;
 
     return Center(
       child: Padding(
@@ -317,12 +342,12 @@ class _EmptyListState extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              '这里还没有文章',
+              strings.emptyArticleListTitle,
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: 6),
             Text(
-              '先添加订阅源，或者放宽当前筛选条件。',
+              strings.emptyArticleListBody,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: palette.secondaryText,

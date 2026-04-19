@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../localization/app_strings.dart';
 import '../../models/article.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
@@ -21,9 +22,11 @@ class ArticleReaderPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Article? article = controller.selectedArticle;
+    final AppStrings strings = context.strings;
 
     final Widget content = Padding(
-      padding: EdgeInsets.fromLTRB(compact ? 16 : 20, 18, compact ? 16 : 20, 18),
+      padding:
+          EdgeInsets.fromLTRB(compact ? 16 : 20, 18, compact ? 16 : 20, 18),
       child: article == null
           ? _EmptyReader(compact: compact)
           : Column(
@@ -43,8 +46,12 @@ class ArticleReaderPanel extends StatelessWidget {
                         children: <Widget>[
                           Text(
                             controller.sourceTitleForArticle(article),
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppTheme.paletteOf(context).secondaryText,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color:
+                                      AppTheme.paletteOf(context).secondaryText,
                                 ),
                           ),
                           const SizedBox(height: 8),
@@ -62,27 +69,37 @@ class ArticleReaderPanel extends StatelessWidget {
                   spacing: 8,
                   runSpacing: 8,
                   children: <Widget>[
-                    _MetaChip(icon: Icons.event_rounded, label: _formatTime(article.publishedAt)),
+                    _MetaChip(
+                        icon: Icons.event_rounded,
+                        label: _formatTime(article.publishedAt)),
                     if (article.author != null && article.author!.isNotEmpty)
-                      _MetaChip(icon: Icons.edit_note_rounded, label: article.author!),
+                      _MetaChip(
+                          icon: Icons.edit_note_rounded,
+                          label: article.author!),
                     _ActionChip(
-                      icon: article.isRead ? Icons.mark_email_unread_outlined : Icons.done_rounded,
-                      label: article.isRead ? '标为未读' : '标为已读',
+                      icon: article.isRead
+                          ? Icons.mark_email_unread_outlined
+                          : Icons.done_rounded,
+                      label: strings.readStateAction(article.isRead),
                       onTap: () => controller.toggleReadState(article),
                     ),
                     _ActionChip(
-                      icon: article.starred ? Icons.star_rounded : Icons.star_border_rounded,
-                      label: article.starred ? '取消收藏' : '收藏',
+                      icon: article.starred
+                          ? Icons.star_rounded
+                          : Icons.star_border_rounded,
+                      label: strings.starAction(article.starred),
                       onTap: () => controller.toggleStarred(article),
                     ),
                     _ActionChip(
-                      icon: article.savedForLater ? Icons.schedule_rounded : Icons.schedule_outlined,
-                      label: article.savedForLater ? '取消稍后读' : '稍后读',
+                      icon: article.savedForLater
+                          ? Icons.schedule_rounded
+                          : Icons.schedule_outlined,
+                      label: strings.readLaterAction(article.savedForLater),
                       onTap: () => controller.toggleSavedForLater(article),
                     ),
                     _ActionChip(
                       icon: Icons.open_in_new_rounded,
-                      label: '打开原文',
+                      label: strings.openOriginal,
                       onTap: () => _openOriginal(article.url),
                     ),
                   ],
@@ -95,15 +112,20 @@ class ArticleReaderPanel extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: AppTheme.paletteOf(context).panelMutedBackground,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: AppTheme.paletteOf(context).border),
+                      border:
+                          Border.all(color: AppTheme.paletteOf(context).border),
                     ),
                     child: article.readerText.trim().isEmpty
                         ? Center(
                             child: Text(
-                              '这篇文章没有可直接显示的正文或摘要，可以打开原文继续阅读。',
+                              strings.noReadableBody,
                               textAlign: TextAlign.center,
-                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                    color: AppTheme.paletteOf(context).secondaryText,
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodyMedium
+                                  ?.copyWith(
+                                    color: AppTheme.paletteOf(context)
+                                        .secondaryText,
                                   ),
                             ),
                           )
@@ -111,7 +133,10 @@ class ArticleReaderPanel extends StatelessWidget {
                             child: SingleChildScrollView(
                               child: SelectableText(
                                 article.readerText,
-                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.9),
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodyLarge
+                                    ?.copyWith(height: 1.9),
                               ),
                             ),
                           ),
@@ -211,6 +236,7 @@ class _EmptyReader extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
+    final AppStrings strings = context.strings;
 
     return Center(
       child: Padding(
@@ -219,7 +245,7 @@ class _EmptyReader extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
             Text(
-              'RssTool',
+              strings.appName,
               style: theme.textTheme.displaySmall?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: theme.colorScheme.primary.withValues(alpha: 0.78),
@@ -227,13 +253,13 @@ class _EmptyReader extends StatelessWidget {
             ),
             const SizedBox(height: 10),
             Text(
-              '点开一篇文章，阅读区会在这里安静展开。',
+              strings.emptyReaderTitle,
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium,
             ),
             const SizedBox(height: 6),
             Text(
-              '正文、来源、阅读动作和原文跳转都会收在同一块版面里。',
+              strings.emptyReaderBody,
               textAlign: TextAlign.center,
               style: theme.textTheme.bodyMedium?.copyWith(
                 color: palette.secondaryText,

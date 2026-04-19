@@ -38,7 +38,9 @@ class Article {
   bool get isRead => readState == ArticleReadState.read;
 
   String get readerText {
-    final String text = (content?.trim().isNotEmpty ?? false) ? content!.trim() : (summary?.trim() ?? '');
+    final String text = (content?.trim().isNotEmpty ?? false)
+        ? content!.trim()
+        : (summary?.trim() ?? '');
     return text;
   }
 
@@ -95,7 +97,8 @@ class Article {
       sourceId: json['sourceId'] as String,
       title: json['title'] as String? ?? '未命名文章',
       author: json['author'] as String?,
-      publishedAt: DateTime.tryParse(json['publishedAt'] as String? ?? '') ?? DateTime.now(),
+      publishedAt: DateTime.tryParse(json['publishedAt'] as String? ?? '') ??
+          DateTime.now(),
       summary: json['summary'] as String?,
       content: json['content'] as String?,
       url: json['url'] as String? ?? '',
