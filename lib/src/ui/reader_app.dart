@@ -19,6 +19,8 @@ import 'widgets/source_panel.dart';
 
 final bool _useWindowsWindowChrome =
     !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+const Duration _shellMotionDuration = Duration(milliseconds: 260);
+const Curve _shellMotionCurve = Curves.easeOutCubic;
 
 class ReaderApp extends StatelessWidget {
   const ReaderApp({
@@ -154,42 +156,72 @@ class _ReaderHomeState extends State<ReaderHome> {
                               showCollapseToggle: false,
                             ),
                           Expanded(
-                            child: Container(
+                            child: AnimatedContainer(
+                              duration: _shellMotionDuration,
+                              curve: _shellMotionCurve,
                               color: palette.chromeBackground,
                               padding: EdgeInsets.fromLTRB(
                                 compact ? 6 : 10,
                                 compact ? 6 : 6,
-                                compact ? 6 : 10,
+                                compact
+                                    ? 6
+                                    : controller.settings.desktopSidebarCollapsed
+                                        ? 12
+                                        : 10,
                                 compact ? 6 : 10,
                               ),
-                              child: _MainCanvas(
-                                compact: compact,
-                                child: Column(
-                                  children: <Widget>[
-                                    if (controller.errorMessage != null)
-                                      _InlineBanner(
-                                        icon: Icons.warning_amber_rounded,
-                                        text: controller.errorMessage!,
-                                        kind: _BannerKind.error,
-                                        compact: compact,
-                                        onClose: controller.clearError,
-                                      ),
-                                    if (controller.statusMessage != null)
-                                      _InlineBanner(
-                                        icon: Icons.sync_rounded,
-                                        text: controller.statusMessage!,
-                                        kind: _BannerKind.info,
-                                        compact: compact,
-                                        onClose: controller.clearStatus,
-                                      ),
-                                    Expanded(
-                                      child: _buildBody(
-                                        context,
-                                        compact: compact,
-                                      ),
-                                    ),
-                                  ],
+                              child: TweenAnimationBuilder<double>(
+                                tween: Tween<double>(
+                                  end: compact
+                                      ? 0
+                                      : controller.settings.desktopSidebarCollapsed
+                                          ? 1
+                                          : 0,
                                 ),
+                                duration: _shellMotionDuration,
+                                curve: _shellMotionCurve,
+                                child: _MainCanvas(
+                                  compact: compact,
+                                  child: Column(
+                                    children: <Widget>[
+                                      if (controller.errorMessage != null)
+                                        _InlineBanner(
+                                          icon: Icons.warning_amber_rounded,
+                                          text: controller.errorMessage!,
+                                          kind: _BannerKind.error,
+                                          compact: compact,
+                                          onClose: controller.clearError,
+                                        ),
+                                      if (controller.statusMessage != null)
+                                        _InlineBanner(
+                                          icon: Icons.sync_rounded,
+                                          text: controller.statusMessage!,
+                                          kind: _BannerKind.info,
+                                          compact: compact,
+                                          onClose: controller.clearStatus,
+                                        ),
+                                      Expanded(
+                                        child: _buildBody(
+                                          context,
+                                          compact: compact,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                builder: (
+                                  BuildContext context,
+                                  double value,
+                                  Widget? child,
+                                ) {
+                                  return Transform.translate(
+                                    offset: Offset(
+                                      compact ? 0 : value * 4,
+                                      0,
+                                    ),
+                                    child: child,
+                                  );
+                                },
                               ),
                             ),
                           ),
@@ -525,7 +557,9 @@ class _HeaderSidebarToggle extends StatelessWidget {
         child: InkWell(
           onTap: onTap,
           borderRadius: BorderRadius.circular(10),
-          child: Container(
+          child: AnimatedContainer(
+            duration: _shellMotionDuration,
+            curve: _shellMotionCurve,
             width: 26,
             height: 26,
             decoration: BoxDecoration(
@@ -534,9 +568,19 @@ class _HeaderSidebarToggle extends StatelessWidget {
               border: Border.all(color: palette.border),
             ),
             alignment: Alignment.center,
-            child: _PanelToggleGlyph(
-              collapsed: collapsed,
-              color: palette.secondaryText,
+            child: TweenAnimationBuilder<double>(
+              tween: Tween<double>(end: collapsed ? 1 : 0),
+              duration: _shellMotionDuration,
+              curve: _shellMotionCurve,
+              builder: (BuildContext context, double value, Widget? child) {
+                return Transform.scale(
+                  scale: 0.96 + (value * 0.04),
+                  child: _PanelToggleGlyph(
+                    collapsed: value >= 0.5,
+                    color: palette.secondaryText,
+                  ),
+                );
+              },
             ),
           ),
         ),

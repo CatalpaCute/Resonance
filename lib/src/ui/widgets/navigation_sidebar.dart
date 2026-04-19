@@ -5,6 +5,11 @@ import '../../models/app_route.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
 
+const Duration _sidebarAnimationDuration = Duration(milliseconds: 260);
+const Curve _sidebarAnimationCurve = Curves.easeOutCubic;
+const double _expandedSidebarWidth = 176;
+const double _collapsedSidebarWidth = 62;
+
 class NavigationSidebar extends StatelessWidget {
   const NavigationSidebar({
     super.key,
@@ -25,8 +30,10 @@ class NavigationSidebar extends StatelessWidget {
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
 
-    return Container(
-      width: collapsed ? 62 : 176,
+    return AnimatedContainer(
+      duration: _sidebarAnimationDuration,
+      curve: _sidebarAnimationCurve,
+      width: collapsed ? _collapsedSidebarWidth : _expandedSidebarWidth,
       decoration: BoxDecoration(
         color: palette.sidebarBackground,
         border: Border(
@@ -54,16 +61,20 @@ class NavigationSidebar extends StatelessWidget {
                           icon: Icons.home_outlined,
                           activeIcon: Icons.home_rounded,
                           label: context.strings.home,
-                          active: controller.currentRoute == AppRouteId.allArticles,
+                          active:
+                              controller.currentRoute == AppRouteId.allArticles,
                           collapsed: collapsed,
-                          badge: controller.totalUnreadCount > 0 ? '${controller.totalUnreadCount}' : null,
+                          badge: controller.totalUnreadCount > 0
+                              ? '${controller.totalUnreadCount}'
+                              : null,
                           onTap: () => _navigate(AppRouteId.allArticles),
                         ),
                         _NavItem(
                           icon: Icons.bookmark_outline_rounded,
                           activeIcon: Icons.bookmark_rounded,
                           label: context.strings.bookmarksAndLater,
-                          active: controller.currentRoute == AppRouteId.bookmarks,
+                          active:
+                              controller.currentRoute == AppRouteId.bookmarks,
                           collapsed: collapsed,
                           onTap: () => _navigate(AppRouteId.bookmarks),
                         ),
@@ -71,7 +82,8 @@ class NavigationSidebar extends StatelessWidget {
                           icon: Icons.add_circle_outline_rounded,
                           activeIcon: Icons.add_circle_rounded,
                           label: context.strings.subscriptionManagement,
-                          active: controller.currentRoute == AppRouteId.discoverAddSource,
+                          active: controller.currentRoute ==
+                              AppRouteId.discoverAddSource,
                           collapsed: collapsed,
                           onTap: () => _navigate(AppRouteId.discoverAddSource),
                         ),
@@ -151,54 +163,81 @@ class _NavItem extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
+          duration: _sidebarAnimationDuration,
+          curve: _sidebarAnimationCurve,
           height: 40,
-          padding: EdgeInsets.symmetric(horizontal: collapsed ? 0 : 10),
+          padding: EdgeInsets.symmetric(horizontal: collapsed ? 6 : 10),
           decoration: BoxDecoration(
             color: active ? palette.hover : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Row(
-            mainAxisAlignment: collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
-            children: <Widget>[
-              if (!collapsed)
-                Container(
-                  width: 2,
-                  height: 16,
-                  margin: const EdgeInsets.only(right: 8),
-                  decoration: BoxDecoration(
-                    color: active ? theme.colorScheme.primary : Colors.transparent,
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-              Icon(
-                active ? activeIcon : icon,
-                size: 18,
-                color: active ? theme.colorScheme.primary : palette.secondaryText,
-              ),
-              if (!collapsed) ...<Widget>[
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: textColor,
-                      fontWeight: active ? FontWeight.w600 : FontWeight.w500,
+          child: AnimatedAlign(
+            duration: _sidebarAnimationDuration,
+            curve: _sidebarAnimationCurve,
+            alignment: collapsed ? Alignment.center : Alignment.centerLeft,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                AnimatedContainer(
+                  duration: _sidebarAnimationDuration,
+                  curve: _sidebarAnimationCurve,
+                  width: collapsed ? 0 : 10,
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Container(
+                      width: 2,
+                      height: 16,
+                      decoration: BoxDecoration(
+                        color: active
+                            ? theme.colorScheme.primary
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(999),
+                      ),
                     ),
                   ),
                 ),
-                if (badge != null)
-                  Text(
-                    badge!,
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: theme.colorScheme.primary,
-                      fontWeight: FontWeight.w700,
+                Icon(
+                  active ? activeIcon : icon,
+                  size: 18,
+                  color:
+                      active ? theme.colorScheme.primary : palette.secondaryText,
+                ),
+                _SidebarReveal(
+                  visible: !collapsed,
+                  maxWidth: 112,
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 10),
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: textColor,
+                              fontWeight:
+                                  active ? FontWeight.w600 : FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        if (badge != null)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 8),
+                            child: Text(
+                              badge!,
+                              style: theme.textTheme.labelSmall?.copyWith(
+                                color: theme.colorScheme.primary,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
+                ),
               ],
-            ],
+            ),
           ),
         ),
       ),
@@ -222,30 +261,41 @@ class _LockEntry extends StatelessWidget {
     return InkWell(
       borderRadius: BorderRadius.circular(12),
       onTap: () {},
-      child: Container(
+      child: AnimatedContainer(
+        duration: _sidebarAnimationDuration,
+        curve: _sidebarAnimationCurve,
         height: 38,
-        padding: EdgeInsets.symmetric(horizontal: collapsed ? 0 : 10),
+        padding: EdgeInsets.symmetric(horizontal: collapsed ? 6 : 10),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Row(
-          mainAxisAlignment: collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
-          children: <Widget>[
-            Icon(
-              Icons.lock_outline_rounded,
-              size: 17,
-              color: palette.secondaryText,
-            ),
-            if (!collapsed) ...<Widget>[
-              const SizedBox(width: 10),
-              Text(
-                strings.unlocked,
-                style: theme.textTheme.bodyMedium?.copyWith(
-                  color: palette.secondaryText,
+        child: AnimatedAlign(
+          duration: _sidebarAnimationDuration,
+          curve: _sidebarAnimationCurve,
+          alignment: collapsed ? Alignment.center : Alignment.centerLeft,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                Icons.lock_outline_rounded,
+                size: 17,
+                color: palette.secondaryText,
+              ),
+              _SidebarReveal(
+                visible: !collapsed,
+                maxWidth: 74,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 10),
+                  child: Text(
+                    strings.unlocked,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: palette.secondaryText,
+                    ),
+                  ),
                 ),
               ),
             ],
-          ],
+          ),
         ),
       ),
     );
@@ -274,9 +324,11 @@ class _ProfileCard extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
         onTap: onTap,
-        child: Container(
+        child: AnimatedContainer(
+          duration: _sidebarAnimationDuration,
+          curve: _sidebarAnimationCurve,
           padding: EdgeInsets.symmetric(
-            horizontal: collapsed ? 0 : 10,
+            horizontal: collapsed ? 6 : 10,
             vertical: 10,
           ),
           decoration: BoxDecoration(
@@ -284,75 +336,108 @@ class _ProfileCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: palette.border),
           ),
-          child: collapsed
-              ? SizedBox(
-                  width: double.infinity,
-                  child: Center(
-                    child: Container(
-                      width: 28,
-                      height: 28,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            width: double.infinity,
+            child: AnimatedAlign(
+              duration: _sidebarAnimationDuration,
+              curve: _sidebarAnimationCurve,
+              alignment: collapsed ? Alignment.center : Alignment.centerLeft,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  Container(
+                    width: 28,
+                    height: 28,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    alignment: Alignment.center,
+                    child: Text(
+                      AppBrand.mark,
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        color: theme.colorScheme.primary,
+                        fontWeight: FontWeight.w700,
                       ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        AppBrand.mark,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  _SidebarReveal(
+                    visible: !collapsed,
+                    maxWidth: 110,
+                    child: Padding(
+                      padding: const EdgeInsets.only(left: 10),
+                      child: SizedBox(
+                        width: 110,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Text(
+                              strings.localReader,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              controller.startupSummary,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: palette.secondaryText,
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
-                )
-              : Row(
-                  children: <Widget>[
-                    Container(
-                      width: 32,
-                      height: 32,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary.withValues(alpha: 0.18),
-                        borderRadius: BorderRadius.circular(9),
-                      ),
-                      alignment: Alignment.center,
-                      child: Text(
-                        AppBrand.mark,
-                        style: theme.textTheme.labelMedium?.copyWith(
-                          color: theme.colorScheme.primary,
-                          fontWeight: FontWeight.w700,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            strings.localReader,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
-                          Text(
-                            controller.startupSummary,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: theme.textTheme.bodySmall?.copyWith(
-                              color: palette.secondaryText,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
+    );
+  }
+}
+
+class _SidebarReveal extends StatelessWidget {
+  const _SidebarReveal({
+    required this.visible,
+    required this.maxWidth,
+    required this.child,
+  });
+
+  final bool visible;
+  final double maxWidth;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(end: visible ? 1 : 0),
+      duration: _sidebarAnimationDuration,
+      curve: _sidebarAnimationCurve,
+      child: child,
+      builder: (BuildContext context, double value, Widget? child) {
+        final double easedValue = value.clamp(0, 1);
+        return ClipRect(
+          child: Align(
+            alignment: Alignment.centerLeft,
+            widthFactor: easedValue,
+            child: SizedBox(
+              width: maxWidth,
+              child: Opacity(
+                opacity: easedValue,
+                child: child,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }
