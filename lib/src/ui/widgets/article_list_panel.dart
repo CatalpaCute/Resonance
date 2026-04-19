@@ -19,13 +19,10 @@ class ArticleListPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final ReaderPalette palette = AppTheme.paletteOf(context);
     final List<Article> articles = controller.visibleArticles;
 
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      radius: 28,
+    final Widget content = Padding(
+      padding: EdgeInsets.fromLTRB(compact ? 16 : 18, 18, compact ? 16 : 18, 18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
@@ -35,11 +32,13 @@ class ArticleListPanel extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(controller.currentRouteTitle, style: theme.textTheme.titleLarge),
+                    Text(controller.currentRouteTitle, style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 4),
                     Text(
                       '${articles.length} 篇可见文章',
-                      style: theme.textTheme.bodySmall?.copyWith(color: palette.secondaryText),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppTheme.paletteOf(context).secondaryText,
+                          ),
                     ),
                   ],
                 ),
@@ -55,40 +54,29 @@ class ArticleListPanel extends StatelessWidget {
                       controller.refreshSource(controller.activeSourceId!);
                     }
                   },
+                  tooltip: '刷新当前视图',
                   icon: Icon(
                     controller.activeSourceId != null &&
                             controller.isFeedRefreshing(controller.activeSourceId!)
                         ? Icons.sync_rounded
                         : Icons.refresh_rounded,
                   ),
-                  tooltip: '刷新当前视图',
                 ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 14),
           if (articles.isEmpty)
             Expanded(
-              child: Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Icon(Icons.menu_book_rounded, size: 44, color: palette.tertiaryText),
-                    const SizedBox(height: 12),
-                    Text('这里还没有文章', style: theme.textTheme.titleMedium),
-                    const SizedBox(height: 6),
-                    Text(
-                      '先添加订阅源，或者放宽筛选条件。',
-                      style: theme.textTheme.bodyMedium?.copyWith(color: palette.secondaryText),
-                    ),
-                  ],
-                ),
-              ),
+              child: _EmptyListState(compact: compact),
             )
           else
             Expanded(
               child: ListView.separated(
                 itemCount: articles.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
+                separatorBuilder: (_, __) => Divider(
+                  height: 1,
+                  color: AppTheme.paletteOf(context).divider,
+                ),
                 itemBuilder: (BuildContext context, int index) {
                   final Article article = articles[index];
                   final bool active = controller.selectedArticleId == article.id;
@@ -115,6 +103,15 @@ class ArticleListPanel extends StatelessWidget {
             ),
         ],
       ),
+    );
+
+    if (!compact) {
+      return content;
+    }
+
+    return GlassCard(
+      padding: EdgeInsets.zero,
+      child: content,
     );
   }
 }
@@ -148,125 +145,114 @@ class _ArticleTile extends StatelessWidget {
     final int summaryLines = density == ArticleListDensity.compact ? 2 : 3;
 
     return InkWell(
-      borderRadius: BorderRadius.circular(22),
       onTap: onOpen,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 180),
-        padding: EdgeInsets.all(vertical),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: 2, vertical: vertical),
         decoration: BoxDecoration(
-          color: active ? palette.primarySoft : palette.softSurface,
-          borderRadius: BorderRadius.circular(22),
-          border: Border.all(
-            color: active ? theme.colorScheme.primary.withValues(alpha: 0.18) : palette.border,
-          ),
+          color: active ? palette.hover : Colors.transparent,
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: Column(
+        child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                Expanded(
-                  child: Text(
-                    sourceTitle,
-                    style: theme.textTheme.bodySmall?.copyWith(color: palette.secondaryText),
-                  ),
-                ),
-                Text(
-                  _formatTime(article.publishedAt),
-                  style: theme.textTheme.bodySmall?.copyWith(color: palette.tertiaryText),
-                ),
-              ],
+            Container(
+              width: 6,
+              height: 6,
+              margin: const EdgeInsets.only(top: 8, right: 10, left: 8),
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: article.isRead ? Colors.transparent : theme.colorScheme.primary,
+                border: article.isRead
+                    ? Border.all(color: palette.border)
+                    : null,
+              ),
             ),
-            const SizedBox(height: 6),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                if (!article.isRead)
-                  Container(
-                    width: 10,
-                    height: 10,
-                    margin: const EdgeInsets.only(top: 6, right: 8),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        article.title,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.titleSmall?.copyWith(
-                          fontWeight: FontWeight.w700,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(
+                            sourceTitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: palette.secondaryText,
+                            ),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        article.readerText.isEmpty ? '这篇文章还没有可读摘要，打开原文查看更多。' : article.readerText,
-                        maxLines: summaryLines,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodyMedium?.copyWith(color: palette.secondaryText),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              children: <Widget>[
-                if (article.author != null && article.author!.isNotEmpty)
-                  Expanded(
-                    child: Text(
-                      article.author!,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(color: palette.tertiaryText),
+                        Text(
+                          _formatTime(article.publishedAt),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: palette.tertiaryText,
+                          ),
+                        ),
+                      ],
                     ),
-                  )
-                else
-                  const Spacer(),
-                _tinyAction(
-                  context,
-                  icon: article.starred ? Icons.star_rounded : Icons.star_border_rounded,
-                  active: article.starred,
-                  onTap: onStarToggle,
+                    const SizedBox(height: 6),
+                    Text(
+                      article.title,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      article.readerText.isEmpty
+                          ? '这篇文章暂时没有可读摘要，可以直接打开原文。'
+                          : article.readerText,
+                      maxLines: summaryLines,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: palette.secondaryText,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: <Widget>[
+                        if (article.author != null && article.author!.isNotEmpty)
+                          Expanded(
+                            child: Text(
+                              article.author!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: palette.tertiaryText,
+                              ),
+                            ),
+                          )
+                        else
+                          const Spacer(),
+                        _TinyAction(
+                          icon: article.starred ? Icons.star_rounded : Icons.star_border_rounded,
+                          active: article.starred,
+                          onTap: onStarToggle,
+                        ),
+                        _TinyAction(
+                          icon: article.savedForLater ? Icons.schedule_rounded : Icons.schedule_outlined,
+                          active: article.savedForLater,
+                          onTap: onSaveToggle,
+                        ),
+                        _TinyAction(
+                          icon: article.isRead ? Icons.mark_email_unread_outlined : Icons.done_rounded,
+                          active: article.isRead,
+                          onTap: onReadToggle,
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-                _tinyAction(
-                  context,
-                  icon: article.savedForLater ? Icons.schedule_rounded : Icons.schedule_outlined,
-                  active: article.savedForLater,
-                  onTap: onSaveToggle,
-                ),
-                _tinyAction(
-                  context,
-                  icon: article.isRead ? Icons.mark_email_unread_outlined : Icons.done_rounded,
-                  active: article.isRead,
-                  onTap: onReadToggle,
-                ),
-              ],
+              ),
             ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _tinyAction(
-    BuildContext context, {
-    required IconData icon,
-    required bool active,
-    required VoidCallback onTap,
-  }) {
-    return IconButton(
-      visualDensity: VisualDensity.compact,
-      onPressed: onTap,
-      icon: Icon(icon, size: 18),
-      color: active ? Theme.of(context).colorScheme.primary : AppTheme.paletteOf(context).secondaryText,
-      tooltip: '',
     );
   }
 
@@ -277,5 +263,74 @@ class _ArticleTile extends StatelessWidget {
     final String hour = local.hour.toString().padLeft(2, '0');
     final String minute = local.minute.toString().padLeft(2, '0');
     return '$month-$day $hour:$minute';
+  }
+}
+
+class _TinyAction extends StatelessWidget {
+  const _TinyAction({
+    required this.icon,
+    required this.active,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool active;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return IconButton(
+      visualDensity: VisualDensity.compact,
+      splashRadius: 16,
+      onPressed: onTap,
+      icon: Icon(icon, size: 18),
+      color: active ? Theme.of(context).colorScheme.primary : palette.secondaryText,
+      tooltip: '',
+    );
+  }
+}
+
+class _EmptyListState extends StatelessWidget {
+  const _EmptyListState({
+    required this.compact,
+  });
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(
+              Icons.menu_book_outlined,
+              size: compact ? 40 : 48,
+              color: palette.tertiaryText,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              '这里还没有文章',
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '先添加订阅源，或者放宽当前筛选条件。',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: palette.secondaryText,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }

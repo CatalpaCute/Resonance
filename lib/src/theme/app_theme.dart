@@ -4,59 +4,63 @@ import 'package:flutter/material.dart';
 class ReaderPalette extends ThemeExtension<ReaderPalette> {
   const ReaderPalette({
     required this.shellBackground,
-    required this.surface,
-    required this.softSurface,
+    required this.chromeBackground,
+    required this.sidebarBackground,
+    required this.canvasBackground,
+    required this.panelBackground,
+    required this.panelMutedBackground,
     required this.border,
+    required this.divider,
     required this.hover,
     required this.primarySoft,
     required this.secondaryText,
     required this.tertiaryText,
-    required this.glowA,
-    required this.glowB,
-    required this.glowC,
     required this.shadow,
   });
 
   final Color shellBackground;
-  final Color surface;
-  final Color softSurface;
+  final Color chromeBackground;
+  final Color sidebarBackground;
+  final Color canvasBackground;
+  final Color panelBackground;
+  final Color panelMutedBackground;
   final Color border;
+  final Color divider;
   final Color hover;
   final Color primarySoft;
   final Color secondaryText;
   final Color tertiaryText;
-  final Color glowA;
-  final Color glowB;
-  final Color glowC;
   final Color shadow;
 
   @override
   ReaderPalette copyWith({
     Color? shellBackground,
-    Color? surface,
-    Color? softSurface,
+    Color? chromeBackground,
+    Color? sidebarBackground,
+    Color? canvasBackground,
+    Color? panelBackground,
+    Color? panelMutedBackground,
     Color? border,
+    Color? divider,
     Color? hover,
     Color? primarySoft,
     Color? secondaryText,
     Color? tertiaryText,
-    Color? glowA,
-    Color? glowB,
-    Color? glowC,
     Color? shadow,
   }) {
     return ReaderPalette(
       shellBackground: shellBackground ?? this.shellBackground,
-      surface: surface ?? this.surface,
-      softSurface: softSurface ?? this.softSurface,
+      chromeBackground: chromeBackground ?? this.chromeBackground,
+      sidebarBackground: sidebarBackground ?? this.sidebarBackground,
+      canvasBackground: canvasBackground ?? this.canvasBackground,
+      panelBackground: panelBackground ?? this.panelBackground,
+      panelMutedBackground: panelMutedBackground ?? this.panelMutedBackground,
       border: border ?? this.border,
+      divider: divider ?? this.divider,
       hover: hover ?? this.hover,
       primarySoft: primarySoft ?? this.primarySoft,
       secondaryText: secondaryText ?? this.secondaryText,
       tertiaryText: tertiaryText ?? this.tertiaryText,
-      glowA: glowA ?? this.glowA,
-      glowB: glowB ?? this.glowB,
-      glowC: glowC ?? this.glowC,
       shadow: shadow ?? this.shadow,
     );
   }
@@ -68,16 +72,17 @@ class ReaderPalette extends ThemeExtension<ReaderPalette> {
     }
     return ReaderPalette(
       shellBackground: Color.lerp(shellBackground, other.shellBackground, t) ?? shellBackground,
-      surface: Color.lerp(surface, other.surface, t) ?? surface,
-      softSurface: Color.lerp(softSurface, other.softSurface, t) ?? softSurface,
+      chromeBackground: Color.lerp(chromeBackground, other.chromeBackground, t) ?? chromeBackground,
+      sidebarBackground: Color.lerp(sidebarBackground, other.sidebarBackground, t) ?? sidebarBackground,
+      canvasBackground: Color.lerp(canvasBackground, other.canvasBackground, t) ?? canvasBackground,
+      panelBackground: Color.lerp(panelBackground, other.panelBackground, t) ?? panelBackground,
+      panelMutedBackground: Color.lerp(panelMutedBackground, other.panelMutedBackground, t) ?? panelMutedBackground,
       border: Color.lerp(border, other.border, t) ?? border,
+      divider: Color.lerp(divider, other.divider, t) ?? divider,
       hover: Color.lerp(hover, other.hover, t) ?? hover,
       primarySoft: Color.lerp(primarySoft, other.primarySoft, t) ?? primarySoft,
       secondaryText: Color.lerp(secondaryText, other.secondaryText, t) ?? secondaryText,
       tertiaryText: Color.lerp(tertiaryText, other.tertiaryText, t) ?? tertiaryText,
-      glowA: Color.lerp(glowA, other.glowA, t) ?? glowA,
-      glowB: Color.lerp(glowB, other.glowB, t) ?? glowB,
-      glowC: Color.lerp(glowC, other.glowC, t) ?? glowC,
       shadow: Color.lerp(shadow, other.shadow, t) ?? shadow,
     );
   }
@@ -132,124 +137,171 @@ class AppTheme {
   }
 
   static ThemeData _buildWarmTheme() {
-    const Color primary = Color(0xFF8B7355);
-    const Color onPrimary = Colors.white;
-    final ColorScheme scheme = ColorScheme.fromSeed(
-      seedColor: primary,
-      brightness: Brightness.light,
-      primary: primary,
-      onPrimary: onPrimary,
-      surface: const Color(0xFFF9F6F0),
-    );
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: scheme,
-      scaffoldBackgroundColor: const Color(0xFFF0EEE9),
-      textTheme: _baseTextTheme(const Color(0xFF2F2C27)),
-      extensions: const <ThemeExtension<dynamic>>[
-        ReaderPalette(
-          shellBackground: Color(0xFFF0EEE9),
-          surface: Color.fromRGBO(255, 255, 255, 0.72),
-          softSurface: Color.fromRGBO(255, 255, 255, 0.90),
-          border: Color.fromRGBO(70, 54, 30, 0.10),
-          hover: Color.fromRGBO(70, 54, 30, 0.06),
-          primarySoft: Color.fromRGBO(139, 115, 85, 0.12),
-          secondaryText: Color(0xFF69655E),
-          tertiaryText: Color(0xFF9B958D),
-          glowA: Color.fromRGBO(139, 115, 85, 0.26),
-          glowB: Color.fromRGBO(215, 197, 160, 0.28),
-          glowC: Color.fromRGBO(255, 255, 255, 0.40),
-          shadow: Color.fromRGBO(38, 31, 21, 0.10),
-        ),
-      ],
-      cardTheme: const CardThemeData(
-        color: Color.fromRGBO(255, 255, 255, 0.72),
-        elevation: 0,
-        margin: EdgeInsets.zero,
-      ),
-    );
-  }
-
-  static ThemeData _buildDeepTheme() {
-    const Color primary = Color(0xFFC9A86C);
-    final ColorScheme scheme = ColorScheme.fromSeed(
-      seedColor: primary,
-      brightness: Brightness.dark,
-      primary: primary,
-      onPrimary: const Color(0xFF111111),
-      surface: const Color(0xFF211D19),
-    );
-    return ThemeData(
-      useMaterial3: true,
-      colorScheme: scheme,
-      scaffoldBackgroundColor: const Color(0xFF171412),
-      textTheme: _baseTextTheme(const Color(0xFFF3EEDF)),
-      extensions: const <ThemeExtension<dynamic>>[
-        ReaderPalette(
-          shellBackground: Color(0xFF171412),
-          surface: Color.fromRGBO(40, 34, 28, 0.92),
-          softSurface: Color.fromRGBO(49, 42, 34, 0.98),
-          border: Color.fromRGBO(255, 255, 255, 0.08),
-          hover: Color.fromRGBO(255, 255, 255, 0.05),
-          primarySoft: Color.fromRGBO(201, 168, 108, 0.14),
-          secondaryText: Color(0xFFC3B7A6),
-          tertiaryText: Color(0xFF8B8378),
-          glowA: Color.fromRGBO(201, 168, 108, 0.16),
-          glowB: Color.fromRGBO(84, 69, 48, 0.40),
-          glowC: Color.fromRGBO(255, 255, 255, 0.04),
-          shadow: Color.fromRGBO(0, 0, 0, 0.36),
-        ),
-      ],
-      cardTheme: const CardThemeData(
-        color: Color.fromRGBO(40, 34, 28, 0.92),
-        elevation: 0,
-        margin: EdgeInsets.zero,
-      ),
-    );
-  }
-
-  static ThemeData _buildNeutralTheme() {
-    const Color primary = Color(0xFF3F434A);
+    const Color primary = Color(0xFFA58D71);
     final ColorScheme scheme = ColorScheme.fromSeed(
       seedColor: primary,
       brightness: Brightness.light,
       primary: primary,
       onPrimary: Colors.white,
-      surface: const Color(0xFFF7F7F7),
+      surface: const Color(0xFFFBF8F2),
     );
+    return _buildTheme(
+      scheme: scheme,
+      scaffoldBackground: const Color(0xFFF7F4EE),
+      bodyColor: const Color(0xFF40372E),
+      palette: const ReaderPalette(
+        shellBackground: Color(0xFFF7F4EE),
+        chromeBackground: Color(0xFFFDFBF8),
+        sidebarBackground: Color(0xFFFDFBF8),
+        canvasBackground: Color(0xFFF7F3EB),
+        panelBackground: Color(0xFFFFFDFC),
+        panelMutedBackground: Color(0xFFF6F1E8),
+        border: Color(0xFFE6DED2),
+        divider: Color(0xFFEEE7DB),
+        hover: Color(0xFFF2ECE2),
+        primarySoft: Color(0xFFF1E8DB),
+        secondaryText: Color(0xFF8A8074),
+        tertiaryText: Color(0xFFB0A597),
+        shadow: Color.fromRGBO(93, 74, 48, 0.06),
+      ),
+    );
+  }
+
+  static ThemeData _buildDeepTheme() {
+    const Color primary = Color(0xFFD0B18A);
+    final ColorScheme scheme = ColorScheme.fromSeed(
+      seedColor: primary,
+      brightness: Brightness.dark,
+      primary: primary,
+      onPrimary: const Color(0xFF201A14),
+      surface: const Color(0xFF211C17),
+    );
+    return _buildTheme(
+      scheme: scheme,
+      scaffoldBackground: const Color(0xFF181411),
+      bodyColor: const Color(0xFFF1E8D9),
+      palette: const ReaderPalette(
+        shellBackground: Color(0xFF181411),
+        chromeBackground: Color(0xFF1E1915),
+        sidebarBackground: Color(0xFF1D1814),
+        canvasBackground: Color(0xFF201A16),
+        panelBackground: Color(0xFF26201B),
+        panelMutedBackground: Color(0xFF2B241E),
+        border: Color(0xFF393026),
+        divider: Color(0xFF312921),
+        hover: Color(0xFF2D261F),
+        primarySoft: Color.fromRGBO(208, 177, 138, 0.14),
+        secondaryText: Color(0xFFC0B19D),
+        tertiaryText: Color(0xFF8E8376),
+        shadow: Color.fromRGBO(0, 0, 0, 0.18),
+      ),
+    );
+  }
+
+  static ThemeData _buildNeutralTheme() {
+    const Color primary = Color(0xFF4A5056);
+    final ColorScheme scheme = ColorScheme.fromSeed(
+      seedColor: primary,
+      brightness: Brightness.light,
+      primary: primary,
+      onPrimary: Colors.white,
+      surface: const Color(0xFFF9F9F8),
+    );
+    return _buildTheme(
+      scheme: scheme,
+      scaffoldBackground: const Color(0xFFF3F3F1),
+      bodyColor: const Color(0xFF1C2126),
+      palette: const ReaderPalette(
+        shellBackground: Color(0xFFF3F3F1),
+        chromeBackground: Color(0xFFFFFFFF),
+        sidebarBackground: Color(0xFFFFFFFF),
+        canvasBackground: Color(0xFFF7F7F5),
+        panelBackground: Color(0xFFFFFFFF),
+        panelMutedBackground: Color(0xFFF2F2F0),
+        border: Color(0xFFE2E5E7),
+        divider: Color(0xFFECEEED),
+        hover: Color(0xFFF2F4F5),
+        primarySoft: Color.fromRGBO(74, 80, 86, 0.10),
+        secondaryText: Color(0xFF69717A),
+        tertiaryText: Color(0xFF9AA2AB),
+        shadow: Color.fromRGBO(25, 32, 40, 0.05),
+      ),
+    );
+  }
+
+  static ThemeData _buildTheme({
+    required ColorScheme scheme,
+    required Color scaffoldBackground,
+    required Color bodyColor,
+    required ReaderPalette palette,
+  }) {
     return ThemeData(
       useMaterial3: true,
       colorScheme: scheme,
-      scaffoldBackgroundColor: const Color(0xFFF5F5F5),
-      textTheme: _baseTextTheme(const Color(0xFF111317)),
-      extensions: const <ThemeExtension<dynamic>>[
-        ReaderPalette(
-          shellBackground: Color(0xFFF5F5F5),
-          surface: Color.fromRGBO(255, 255, 255, 0.90),
-          softSurface: Color(0xFFFFFFFF),
-          border: Color.fromRGBO(25, 32, 45, 0.08),
-          hover: Color.fromRGBO(25, 32, 45, 0.04),
-          primarySoft: Color.fromRGBO(63, 67, 74, 0.10),
-          secondaryText: Color(0xFF5E646E),
-          tertiaryText: Color(0xFF959DAA),
-          glowA: Color.fromRGBO(214, 216, 220, 0.50),
-          glowB: Color.fromRGBO(255, 255, 255, 0.40),
-          glowC: Color.fromRGBO(221, 229, 238, 0.45),
-          shadow: Color.fromRGBO(17, 19, 23, 0.08),
-        ),
-      ],
-      cardTheme: const CardThemeData(
-        color: Color.fromRGBO(255, 255, 255, 0.90),
+      scaffoldBackgroundColor: scaffoldBackground,
+      textTheme: _baseTextTheme(bodyColor),
+      extensions: <ThemeExtension<dynamic>>[palette],
+      dividerColor: palette.divider,
+      cardTheme: CardThemeData(
+        color: palette.panelBackground,
         elevation: 0,
         margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: palette.border),
+        ),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: palette.panelBackground,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: palette.border),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: palette.border),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(16),
+          borderSide: BorderSide(color: scheme.primary.withValues(alpha: 0.45)),
+        ),
+        labelStyle: TextStyle(color: palette.secondaryText),
+        hintStyle: TextStyle(color: palette.tertiaryText),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: scheme.primary,
+          foregroundColor: scheme.onPrimary,
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: bodyColor,
+          side: BorderSide(color: palette.border),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: palette.panelBackground,
+        selectedColor: palette.primarySoft,
+        disabledColor: palette.panelMutedBackground,
+        side: BorderSide(color: palette.border),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        labelStyle: TextStyle(color: bodyColor),
+        secondaryLabelStyle: TextStyle(color: scheme.primary),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       ),
     );
   }
 
   static TextTheme _baseTextTheme(Color bodyColor) {
     final TextTheme base = Typography.blackMountainView;
-
-    // 设计意图：为中文准备稳定的系统回退链，避免标题和正文命中不同字体导致粗细不一致。
     return base.copyWith(
       displayLarge: _decorateText(base.displayLarge, bodyColor),
       displayMedium: _decorateText(base.displayMedium, bodyColor),
@@ -257,8 +309,8 @@ class AppTheme {
       headlineLarge: _decorateText(base.headlineLarge, bodyColor),
       headlineMedium: _decorateText(base.headlineMedium, bodyColor),
       headlineSmall: _decorateText(base.headlineSmall, bodyColor, fontWeight: FontWeight.w700, height: 1.2),
-      titleLarge: _decorateText(base.titleLarge, bodyColor, fontWeight: FontWeight.w700, height: 1.3),
-      titleMedium: _decorateText(base.titleMedium, bodyColor, fontWeight: FontWeight.w600, height: 1.3),
+      titleLarge: _decorateText(base.titleLarge, bodyColor, fontWeight: FontWeight.w700, height: 1.28),
+      titleMedium: _decorateText(base.titleMedium, bodyColor, fontWeight: FontWeight.w600, height: 1.32),
       titleSmall: _decorateText(base.titleSmall, bodyColor, fontWeight: FontWeight.w600, height: 1.35),
       bodyLarge: _decorateText(base.bodyLarge, bodyColor, height: 1.6),
       bodyMedium: _decorateText(base.bodyMedium, bodyColor, height: 1.55),

@@ -28,13 +28,13 @@ class SettingsView extends StatelessWidget {
               Text('设置', style: theme.textTheme.headlineSmall),
               const SizedBox(height: 8),
               Text(
-                '先把本地阅读流、主题和跨端导航稳定下来，后面再接同步层。',
+                '这里先收好启动页、主题和侧栏行为，后面再接同步层。',
                 style: theme.textTheme.bodyMedium?.copyWith(color: palette.secondaryText),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
         GlassCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -51,6 +51,7 @@ class SettingsView extends StatelessWidget {
                 child: Column(
                   children: StartupHomeMode.values.map((StartupHomeMode mode) {
                     return RadioListTile<StartupHomeMode>(
+                      contentPadding: EdgeInsets.zero,
                       value: mode,
                       title: Text(_startupLabel(mode)),
                       subtitle: Text(_startupDesc(mode)),
@@ -61,7 +62,7 @@ class SettingsView extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
         GlassCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -85,7 +86,7 @@ class SettingsView extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
         GlassCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -102,6 +103,7 @@ class SettingsView extends StatelessWidget {
                 child: Column(
                   children: MobileSidebarMode.values.map((MobileSidebarMode mode) {
                     return RadioListTile<MobileSidebarMode>(
+                      contentPadding: EdgeInsets.zero,
                       value: mode,
                       title: Text(_mobileSidebarLabel(mode)),
                       subtitle: Text(_mobileSidebarDesc(mode)),
@@ -112,7 +114,7 @@ class SettingsView extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 18),
         GlassCard(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,12 +139,13 @@ class SettingsView extends StatelessWidget {
               ),
               const SizedBox(height: 16),
               SwitchListTile(
+                contentPadding: EdgeInsets.zero,
                 value: controller.settings.desktopSidebarCollapsed,
                 onChanged: (bool value) {
                   controller.setDesktopSidebarCollapsed(value);
                 },
                 title: const Text('桌面端默认折叠侧栏'),
-                subtitle: const Text('给中间列表和右侧阅读区让出更多空间。'),
+                subtitle: const Text('给文章列表和阅读区让出更多空间。'),
               ),
             ],
           ),
@@ -165,11 +168,11 @@ class SettingsView extends StatelessWidget {
   String _startupDesc(StartupHomeMode mode) {
     switch (mode) {
       case StartupHomeMode.allArticles:
-        return '适合快速扫读时间流。';
+        return '适合快速扫一遍时间流。';
       case StartupHomeMode.sources:
         return '适合先按站点管理，再进入文章。';
       case StartupHomeMode.bookmarks:
-        return '适合把阅读器当长期收藏箱。';
+        return '适合把阅读器当成长期收藏箱。';
     }
   }
 

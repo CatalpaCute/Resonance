@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../../theme/app_theme.dart';
@@ -8,8 +6,8 @@ class GlassCard extends StatelessWidget {
   const GlassCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(18),
-    this.radius = 24,
+    this.padding = const EdgeInsets.all(20),
+    this.radius = 18,
     this.margin,
   });
 
@@ -24,29 +22,20 @@ class GlassCard extends StatelessWidget {
     return Container(
       margin: margin,
       decoration: BoxDecoration(
+        color: palette.panelBackground,
         borderRadius: BorderRadius.circular(radius),
+        border: Border.all(color: palette.border),
         boxShadow: <BoxShadow>[
           BoxShadow(
             color: palette.shadow,
-            blurRadius: 22,
-            offset: const Offset(0, 12),
+            blurRadius: 14,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(radius),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Container(
-            padding: padding,
-            decoration: BoxDecoration(
-              color: palette.surface,
-              borderRadius: BorderRadius.circular(radius),
-              border: Border.all(color: palette.border),
-            ),
-            child: child,
-          ),
-        ),
+      child: Padding(
+        padding: padding,
+        child: child,
       ),
     );
   }

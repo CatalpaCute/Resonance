@@ -1,5 +1,3 @@
-import 'dart:ui';
-
 import 'package:flutter/material.dart';
 
 import '../../models/app_route.dart';
@@ -24,229 +22,425 @@ class NavigationSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
 
     return Container(
-      width: collapsed ? 86 : 248,
-      margin: const EdgeInsets.all(16),
+      width: collapsed ? 60 : 184,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: <BoxShadow>[
-          BoxShadow(
-            color: palette.shadow,
-            blurRadius: 28,
-            offset: const Offset(0, 18),
+        color: palette.sidebarBackground,
+        border: Border(
+          right: BorderSide(color: palette.divider),
+        ),
+      ),
+      child: Column(
+        children: <Widget>[
+          _BrandHeader(collapsed: collapsed),
+          Expanded(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                collapsed ? 8 : 10,
+                10,
+                collapsed ? 8 : 10,
+                8,
+              ),
+              child: Column(
+                children: <Widget>[
+                  Expanded(
+                    child: ListView(
+                      padding: EdgeInsets.zero,
+                      children: <Widget>[
+                        _NavItem(
+                          icon: Icons.home_outlined,
+                          activeIcon: Icons.home_rounded,
+                          label: '首页',
+                          active: controller.currentRoute == AppRouteId.allArticles,
+                          collapsed: collapsed,
+                          badge: controller.totalUnreadCount > 0 ? '${controller.totalUnreadCount}' : null,
+                          onTap: () => _navigate(AppRouteId.allArticles),
+                        ),
+                        _NavItem(
+                          icon: Icons.rss_feed_outlined,
+                          activeIcon: Icons.rss_feed_rounded,
+                          label: '订阅源',
+                          active: controller.currentRoute == AppRouteId.sources ||
+                              controller.currentRoute == AppRouteId.sourceDetail,
+                          collapsed: collapsed,
+                          onTap: () => _navigate(AppRouteId.sources),
+                        ),
+                        _NavItem(
+                          icon: Icons.bookmark_outline_rounded,
+                          activeIcon: Icons.bookmark_rounded,
+                          label: '收藏与稍后读',
+                          active: controller.currentRoute == AppRouteId.bookmarks,
+                          collapsed: collapsed,
+                          onTap: () => _navigate(AppRouteId.bookmarks),
+                        ),
+                        _NavItem(
+                          icon: Icons.add_circle_outline_rounded,
+                          activeIcon: Icons.add_circle_rounded,
+                          label: '添加订阅',
+                          active: controller.currentRoute == AppRouteId.discoverAddSource,
+                          collapsed: collapsed,
+                          onTap: () => _navigate(AppRouteId.discoverAddSource),
+                        ),
+                        _NavItem(
+                          icon: Icons.tune_rounded,
+                          activeIcon: Icons.tune_rounded,
+                          label: '设置',
+                          active: controller.currentRoute == AppRouteId.settings,
+                          collapsed: collapsed,
+                          onTap: () => _navigate(AppRouteId.settings),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(color: palette.divider),
+                      ),
+                    ),
+                    padding: const EdgeInsets.only(top: 10),
+                    child: Column(
+                      children: <Widget>[
+                        _LockEntry(collapsed: collapsed),
+                        const SizedBox(height: 10),
+                        _ProfileCard(
+                          controller: controller,
+                          collapsed: collapsed,
+                          showCollapseToggle: showCollapseToggle,
+                          onToggleCollapse: onToggleCollapse,
+                          onTap: () => _navigate(AppRouteId.settings),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            decoration: BoxDecoration(
-              color: palette.surface,
-              border: Border.all(color: palette.border),
-            ),
-            child: Column(
-              children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(18, 18, 18, 8),
-                  child: Row(
-                    children: <Widget>[
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(16),
-                          gradient: LinearGradient(
-                            colors: <Color>[
-                              theme.colorScheme.primary,
-                              theme.colorScheme.primary.withValues(alpha: 0.72),
-                            ],
-                          ),
-                        ),
-                        child: Icon(
-                          Icons.rss_feed_rounded,
-                          color: theme.colorScheme.onPrimary,
-                        ),
-                      ),
-                      if (!collapsed) ...<Widget>[
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: <Widget>[
-                              Text('RssTool', style: theme.textTheme.titleLarge),
-                              Text(
-                                '本地优先阅读器',
-                                style: theme.textTheme.bodySmall?.copyWith(color: palette.secondaryText),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
-                    children: <Widget>[
-                      _buildNavItem(
-                        context,
-                        route: AppRouteId.allArticles,
-                        icon: Icons.dashboard_rounded,
-                        label: '全部文章',
-                        badge: controller.totalUnreadCount > 0 ? '${controller.totalUnreadCount}' : null,
-                      ),
-                      _buildNavItem(
-                        context,
-                        route: AppRouteId.sources,
-                        icon: Icons.grid_view_rounded,
-                        label: '订阅源',
-                      ),
-                      _buildNavItem(
-                        context,
-                        route: AppRouteId.bookmarks,
-                        icon: Icons.bookmark_added_rounded,
-                        label: '收藏/稍后读',
-                      ),
-                      _buildNavItem(
-                        context,
-                        route: AppRouteId.discoverAddSource,
-                        icon: Icons.add_circle_outline_rounded,
-                        label: '添加订阅',
-                      ),
-                      _buildNavItem(
-                        context,
-                        route: AppRouteId.settings,
-                        icon: Icons.tune_rounded,
-                        label: '设置',
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(14, 8, 14, 14),
-                  child: Column(
-                    children: <Widget>[
-                      Container(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: collapsed ? 10 : 14,
-                          vertical: 12,
-                        ),
-                        decoration: BoxDecoration(
-                          color: palette.softSurface,
-                          borderRadius: BorderRadius.circular(20),
-                          border: Border.all(color: palette.border),
-                        ),
-                        child: collapsed
-                            ? Icon(
-                                Icons.history_rounded,
-                                color: palette.secondaryText,
-                              )
-                            : Row(
-                                children: <Widget>[
-                                  Icon(Icons.history_rounded, color: palette.secondaryText, size: 18),
-                                  const SizedBox(width: 10),
-                                  Expanded(
-                                    child: Text(
-                                      controller.startupSummary,
-                                      style: theme.textTheme.bodySmall?.copyWith(color: palette.secondaryText),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                      ),
-                      if (showCollapseToggle) ...<Widget>[
-                        const SizedBox(height: 10),
-                        IconButton.filledTonal(
-                          onPressed: onToggleCollapse,
-                          icon: Icon(collapsed ? Icons.chevron_right_rounded : Icons.chevron_left_rounded),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
       ),
     );
   }
 
-  Widget _buildNavItem(
-    BuildContext context, {
-    required AppRouteId route,
-    required IconData icon,
-    required String label,
-    String? badge,
-  }) {
+  void _navigate(AppRouteId route) {
+    controller.setCurrentRoute(route);
+    onNavigate?.call();
+  }
+}
+
+class _BrandHeader extends StatelessWidget {
+  const _BrandHeader({
+    required this.collapsed,
+  });
+
+  final bool collapsed;
+
+  @override
+  Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
-    final bool active = controller.currentRoute == route ||
-        (route == AppRouteId.sources && controller.currentRoute == AppRouteId.sourceDetail);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: () {
-          controller.setCurrentRoute(route);
-          onNavigate?.call();
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
-          padding: EdgeInsets.symmetric(
-            horizontal: collapsed ? 14 : 16,
-            vertical: 13,
-          ),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(999),
-            color: active ? theme.colorScheme.primary : Colors.transparent,
-          ),
-          child: Row(
-            children: <Widget>[
-              Icon(
-                icon,
-                size: 20,
-                color: active ? theme.colorScheme.onPrimary : palette.secondaryText,
-              ),
-              if (!collapsed) ...<Widget>[
-                const SizedBox(width: 12),
+    return Container(
+      height: 58,
+      padding: EdgeInsets.symmetric(horizontal: collapsed ? 0 : 14),
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(color: palette.divider),
+        ),
+      ),
+      alignment: collapsed ? Alignment.center : Alignment.centerLeft,
+      child: collapsed
+          ? _brandMark(context)
+          : Row(
+              children: <Widget>[
+                _brandMark(context),
+                const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    label,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: active ? theme.colorScheme.onPrimary : theme.colorScheme.onSurface,
+                    'RssTool',
+                    style: theme.textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                   ),
                 ),
-                if (badge != null)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: active
-                          ? theme.colorScheme.onPrimary.withValues(alpha: 0.18)
-                          : palette.primarySoft,
-                      borderRadius: BorderRadius.circular(999),
+              ],
+            ),
+    );
+  }
+
+  Widget _brandMark(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return Container(
+      width: 22,
+      height: 22,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(5),
+        gradient: LinearGradient(
+          colors: <Color>[
+            theme.colorScheme.primary.withValues(alpha: 0.86),
+            theme.colorScheme.primary.withValues(alpha: 0.24),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+      ),
+      alignment: Alignment.center,
+      child: Text(
+        'R',
+        style: theme.textTheme.labelSmall?.copyWith(
+          color: theme.colorScheme.onPrimary,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.icon,
+    required this.activeIcon,
+    required this.label,
+    required this.active,
+    required this.collapsed,
+    required this.onTap,
+    this.badge,
+  });
+
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
+  final bool active;
+  final bool collapsed;
+  final VoidCallback onTap;
+  final String? badge;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final Color textColor = active ? theme.colorScheme.onSurface : palette.secondaryText;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          height: 42,
+          padding: EdgeInsets.symmetric(horizontal: collapsed ? 0 : 10),
+          decoration: BoxDecoration(
+            color: active ? palette.hover : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Row(
+            mainAxisAlignment: collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                width: 2,
+                height: 18,
+                decoration: BoxDecoration(
+                  color: active ? theme.colorScheme.primary : Colors.transparent,
+                  borderRadius: BorderRadius.circular(999),
+                ),
+              ),
+              SizedBox(width: collapsed ? 0 : 8),
+              Icon(
+                active ? activeIcon : icon,
+                size: 19,
+                color: active ? theme.colorScheme.primary : palette.secondaryText,
+              ),
+              if (!collapsed) ...<Widget>[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: textColor,
+                      fontWeight: active ? FontWeight.w600 : FontWeight.w500,
                     ),
-                    child: Text(
-                      badge,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: active ? theme.colorScheme.onPrimary : theme.colorScheme.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
+                  ),
+                ),
+                if (badge != null)
+                  Text(
+                    badge!,
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      color: theme.colorScheme.primary,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
               ],
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LockEntry extends StatelessWidget {
+  const _LockEntry({
+    required this.collapsed,
+  });
+
+  final bool collapsed;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () {},
+      child: Container(
+        height: 40,
+        padding: EdgeInsets.symmetric(horizontal: collapsed ? 0 : 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisAlignment: collapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
+          children: <Widget>[
+            Icon(
+              Icons.lock_outline_rounded,
+              size: 18,
+              color: palette.secondaryText,
+            ),
+            if (!collapsed) ...<Widget>[
+              const SizedBox(width: 10),
+              Text(
+                '未锁定',
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: palette.secondaryText,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileCard extends StatelessWidget {
+  const _ProfileCard({
+    required this.controller,
+    required this.collapsed,
+    required this.showCollapseToggle,
+    required this.onTap,
+    this.onToggleCollapse,
+  });
+
+  final ReaderController controller;
+  final bool collapsed;
+  final bool showCollapseToggle;
+  final VoidCallback onTap;
+  final VoidCallback? onToggleCollapse;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: collapsed ? 0 : 10,
+            vertical: 10,
+          ),
+          decoration: BoxDecoration(
+            color: palette.panelBackground,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: palette.border),
+          ),
+          child: collapsed
+              ? SizedBox(
+                  width: double.infinity,
+                  child: Center(
+                    child: Container(
+                      width: 28,
+                      height: 28,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'R',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                )
+              : Row(
+                  children: <Widget>[
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(9),
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'R',
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            '本地阅读器',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            controller.startupSummary,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: palette.secondaryText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (showCollapseToggle)
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        onPressed: onToggleCollapse,
+                        icon: Icon(
+                          collapsed ? Icons.chevron_right_rounded : Icons.expand_more_rounded,
+                          color: palette.secondaryText,
+                          size: 18,
+                        ),
+                      ),
+                  ],
+                ),
         ),
       ),
     );

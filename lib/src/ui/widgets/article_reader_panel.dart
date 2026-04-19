@@ -21,22 +21,16 @@ class ArticleReaderPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Article? article = controller.selectedArticle;
-    final ThemeData theme = Theme.of(context);
-    final ReaderPalette palette = AppTheme.paletteOf(context);
 
-    return GlassCard(
-      padding: const EdgeInsets.all(22),
-      radius: 30,
+    final Widget content = Padding(
+      padding: EdgeInsets.fromLTRB(compact ? 16 : 20, 18, compact ? 16 : 20, 18),
       child: article == null
-          ? _EmptyReader(
-              title: '点开一篇文章，阅读区才会亮起来。',
-              subtitle: '这里会显示正文、来源、阅读动作和原文跳转。',
-              compact: compact,
-            )
+          ? _EmptyReader(compact: compact)
           : Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     if (compact && onBack != null)
                       IconButton(
@@ -49,49 +43,44 @@ class ArticleReaderPanel extends StatelessWidget {
                         children: <Widget>[
                           Text(
                             controller.sourceTitleForArticle(article),
-                            style: theme.textTheme.bodySmall?.copyWith(color: palette.secondaryText),
+                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color: AppTheme.paletteOf(context).secondaryText,
+                                ),
                           ),
                           const SizedBox(height: 8),
-                          Text(article.title, style: theme.textTheme.headlineSmall),
+                          Text(
+                            article.title,
+                            style: Theme.of(context).textTheme.headlineSmall,
+                          ),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 14),
                 Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: <Widget>[
-                    _metaPill(context, Icons.event_rounded, _formatTime(article.publishedAt)),
+                    _MetaChip(icon: Icons.event_rounded, label: _formatTime(article.publishedAt)),
                     if (article.author != null && article.author!.isNotEmpty)
-                      _metaPill(context, Icons.edit_note_rounded, article.author!),
-                    _actionPill(
-                      context,
+                      _MetaChip(icon: Icons.edit_note_rounded, label: article.author!),
+                    _ActionChip(
                       icon: article.isRead ? Icons.mark_email_unread_outlined : Icons.done_rounded,
-                      label: article.isRead ? '标未读' : '标已读',
-                      onTap: () {
-                        controller.toggleReadState(article);
-                      },
+                      label: article.isRead ? '标为未读' : '标为已读',
+                      onTap: () => controller.toggleReadState(article),
                     ),
-                    _actionPill(
-                      context,
+                    _ActionChip(
                       icon: article.starred ? Icons.star_rounded : Icons.star_border_rounded,
-                      label: article.starred ? '已收藏' : '收藏',
-                      onTap: () {
-                        controller.toggleStarred(article);
-                      },
+                      label: article.starred ? '取消收藏' : '收藏',
+                      onTap: () => controller.toggleStarred(article),
                     ),
-                    _actionPill(
-                      context,
+                    _ActionChip(
                       icon: article.savedForLater ? Icons.schedule_rounded : Icons.schedule_outlined,
-                      label: article.savedForLater ? '已稍后读' : '稍后读',
-                      onTap: () {
-                        controller.toggleSavedForLater(article);
-                      },
+                      label: article.savedForLater ? '取消稍后读' : '稍后读',
+                      onTap: () => controller.toggleSavedForLater(article),
                     ),
-                    _actionPill(
-                      context,
+                    _ActionChip(
                       icon: Icons.open_in_new_rounded,
                       label: '打开原文',
                       onTap: () => _openOriginal(article.url),
@@ -102,23 +91,28 @@ class ArticleReaderPanel extends StatelessWidget {
                 Expanded(
                   child: Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(18),
+                    padding: const EdgeInsets.fromLTRB(18, 16, 18, 16),
                     decoration: BoxDecoration(
-                      color: palette.softSurface,
-                      borderRadius: BorderRadius.circular(26),
-                      border: Border.all(color: palette.border),
+                      color: AppTheme.paletteOf(context).panelMutedBackground,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: AppTheme.paletteOf(context).border),
                     ),
                     child: article.readerText.trim().isEmpty
                         ? Center(
                             child: Text(
-                              '这篇文章没有可读取的正文或摘要。你可以直接打开原文。',
-                              style: theme.textTheme.bodyMedium?.copyWith(color: palette.secondaryText),
+                              '这篇文章没有可直接显示的正文或摘要，可以打开原文继续阅读。',
+                              textAlign: TextAlign.center,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: AppTheme.paletteOf(context).secondaryText,
+                                  ),
                             ),
                           )
-                        : SingleChildScrollView(
-                            child: SelectableText(
-                              article.readerText,
-                              style: theme.textTheme.bodyLarge?.copyWith(height: 1.8),
+                        : Scrollbar(
+                            child: SingleChildScrollView(
+                              child: SelectableText(
+                                article.readerText,
+                                style: Theme.of(context).textTheme.bodyLarge?.copyWith(height: 1.9),
+                              ),
                             ),
                           ),
                   ),
@@ -126,38 +120,14 @@ class ArticleReaderPanel extends StatelessWidget {
               ],
             ),
     );
-  }
 
-  Widget _metaPill(BuildContext context, IconData icon, String label) {
-    final ReaderPalette palette = AppTheme.paletteOf(context);
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: palette.softSurface,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: palette.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: 16, color: palette.secondaryText),
-          const SizedBox(width: 8),
-          Text(label),
-        ],
-      ),
-    );
-  }
+    if (!compact) {
+      return content;
+    }
 
-  Widget _actionPill(
-    BuildContext context, {
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: _metaPill(context, icon, label),
+    return GlassCard(
+      padding: EdgeInsets.zero,
+      child: content,
     );
   }
 
@@ -177,15 +147,64 @@ class ArticleReaderPanel extends StatelessWidget {
   }
 }
 
+class _MetaChip extends StatelessWidget {
+  const _MetaChip({
+    required this.icon,
+    required this.label,
+  });
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: palette.panelBackground,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: palette.border),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Icon(icon, size: 15, color: palette.secondaryText),
+          const SizedBox(width: 6),
+          Text(label),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActionChip extends StatelessWidget {
+  const _ActionChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: _MetaChip(icon: icon, label: label),
+    );
+  }
+}
+
 class _EmptyReader extends StatelessWidget {
   const _EmptyReader({
-    required this.title,
-    required this.subtitle,
     required this.compact,
   });
 
-  final String title;
-  final String subtitle;
   final bool compact;
 
   @override
@@ -193,65 +212,35 @@ class _EmptyReader extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
 
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(26),
-        gradient: LinearGradient(
-          colors: <Color>[
-            Theme.of(context).colorScheme.primary.withValues(alpha: 0.14),
-            palette.softSurface,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-      ),
-      child: Stack(
-        children: <Widget>[
-          Positioned(
-            left: -40,
-            top: -30,
-            child: _glow(palette.glowA, 180),
-          ),
-          Positioned(
-            right: -30,
-            bottom: -20,
-            child: _glow(palette.glowB, 170),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(28),
-            child: Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 420),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Icon(Icons.auto_stories_rounded, size: compact ? 40 : 54, color: theme.colorScheme.primary),
-                    const SizedBox(height: 18),
-                    Text(title, style: theme.textTheme.headlineSmall, textAlign: TextAlign.center),
-                    const SizedBox(height: 10),
-                    Text(
-                      subtitle,
-                      style: theme.textTheme.bodyLarge?.copyWith(color: palette.secondaryText),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
+    return Center(
+      child: Padding(
+        padding: EdgeInsets.symmetric(horizontal: compact ? 12 : 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(
+              'RssTool',
+              style: theme.textTheme.displaySmall?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: theme.colorScheme.primary.withValues(alpha: 0.78),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _glow(Color color, double size) {
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: color,
+            const SizedBox(height: 10),
+            Text(
+              '点开一篇文章，阅读区会在这里安静展开。',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.titleMedium,
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '正文、来源、阅读动作和原文跳转都会收在同一块版面里。',
+              textAlign: TextAlign.center,
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: palette.secondaryText,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

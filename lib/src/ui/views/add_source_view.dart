@@ -113,30 +113,38 @@ class _AddSourceViewState extends State<AddSourceView> {
                   ],
                 ),
               ),
-              const SizedBox(width: 20),
+              const SizedBox(width: 24),
               Expanded(
                 flex: 2,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text('当前已有订阅', style: theme.textTheme.titleLarge),
-                    const SizedBox(height: 12),
-                    if (widget.controller.feeds.isEmpty)
-                      Text(
-                        '还没有订阅源，先从常看的站点开始。',
-                        style: theme.textTheme.bodyMedium?.copyWith(color: palette.secondaryText),
-                      )
-                    else
-                      ...widget.controller.feeds.take(8).map((feed) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 10),
-                          child: Text(
-                            '· ${feed.title}',
-                            style: theme.textTheme.bodyMedium?.copyWith(color: palette.secondaryText),
-                          ),
-                        );
-                      }),
-                  ],
+                child: Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: palette.panelMutedBackground,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: palette.border),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text('当前已有订阅', style: theme.textTheme.titleMedium),
+                      const SizedBox(height: 12),
+                      if (widget.controller.feeds.isEmpty)
+                        Text(
+                          '还没有订阅源，先从最常看的站点开始。',
+                          style: theme.textTheme.bodyMedium?.copyWith(color: palette.secondaryText),
+                        )
+                      else
+                        ...widget.controller.feeds.take(8).map((feed) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 10),
+                            child: Text(
+                              '· ${feed.title}',
+                              style: theme.textTheme.bodyMedium?.copyWith(color: palette.secondaryText),
+                            ),
+                          );
+                        }),
+                    ],
+                  ),
                 ),
               ),
             ],

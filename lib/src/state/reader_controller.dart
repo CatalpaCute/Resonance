@@ -83,7 +83,7 @@ class ReaderController extends ChangeNotifier {
   String get startupSummary {
     switch (_settings.startupHomeMode) {
       case StartupHomeMode.allArticles:
-        return '启动后优先进入全部文章流';
+        return '启动后优先进入全部文章';
       case StartupHomeMode.sources:
         return '启动后优先进入订阅源';
       case StartupHomeMode.bookmarks:
