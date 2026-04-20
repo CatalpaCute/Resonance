@@ -266,6 +266,22 @@ class _ReaderBody extends StatelessWidget {
 
 class _ReaderHtmlWidgetFactory extends WidgetFactory {
   @override
+  Widget? buildImage(BuildTree tree, ImageMetadata data) {
+    final ImageSource? src = data.sources.isNotEmpty ? data.sources.first : null;
+    if (src == null) {
+      return null;
+    }
+
+    Widget? built = buildImageWidget(tree, src);
+    final String? title = data.title;
+    if (built != null && title != null) {
+      built = buildTooltip(tree, built, title);
+    }
+
+    return built;
+  }
+
+  @override
   Widget? buildImageWidget(BuildTree tree, ImageSource src) {
     final String url = src.url;
 
@@ -282,39 +298,53 @@ class _ReaderHtmlWidgetFactory extends WidgetFactory {
     if (provider == null) {
       return null;
     }
+    final ImageProvider<Object> resolvedProvider = provider;
 
     final ImageMetadata? image = src.image;
     final String? semanticLabel = image?.alt ?? image?.title;
 
-    // Design intent: the upstream HTML renderer defaults to BoxFit.fill for
-    // images, which can visibly squash media on desktop. Use contain so the
-    // decoded image keeps its intrinsic aspect ratio while still respecting the
-    // HTML layout constraints applied by the renderer.
-    return Image(
-      errorBuilder: (BuildContext context, Object error, StackTrace? _) =>
-          onErrorBuilder(context, tree, error, src) ?? widget0,
-      loadingBuilder: (
-        BuildContext context,
-        Widget child,
-        ImageChunkEvent? loadingProgress,
-      ) {
-        if (loadingProgress == null) {
-          return child;
-        }
+    // Design intent: desktop feeds often carry width/height attributes that the
+    // HTML renderer treats too literally. Render the image as a full-width
+    // block inside the reader and let Flutter derive the height from the real
+    // image aspect ratio, which keeps size and rounded corners consistent.
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double maxWidth =
+            constraints.maxWidth.isFinite ? constraints.maxWidth : 680;
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: SizedBox(
+            width: maxWidth,
+            child: Image(
+              width: maxWidth,
+              errorBuilder: (BuildContext context, Object error, StackTrace? _) =>
+                  onErrorBuilder(context, tree, error, src) ?? widget0,
+              loadingBuilder: (
+                BuildContext context,
+                Widget child,
+                ImageChunkEvent? loadingProgress,
+              ) {
+                if (loadingProgress == null) {
+                  return child;
+                }
 
-        final int? totalBytes = loadingProgress.expectedTotalBytes;
-        final int loadedBytes = loadingProgress.cumulativeBytesLoaded;
-        final double? progress = totalBytes != null && totalBytes > 0
-            ? loadedBytes / totalBytes
-            : null;
-        return onLoadingBuilder(context, tree, progress, src) ?? child;
+                final int? totalBytes = loadingProgress.expectedTotalBytes;
+                final int loadedBytes = loadingProgress.cumulativeBytesLoaded;
+                final double? progress = totalBytes != null && totalBytes > 0
+                    ? loadedBytes / totalBytes
+                    : null;
+                return onLoadingBuilder(context, tree, progress, src) ?? child;
+              },
+              excludeFromSemantics: semanticLabel == null,
+              fit: BoxFit.fitWidth,
+              alignment: Alignment.center,
+              filterQuality: FilterQuality.medium,
+              image: resolvedProvider,
+              semanticLabel: semanticLabel,
+            ),
+          ),
+        );
       },
-      excludeFromSemantics: semanticLabel == null,
-      fit: BoxFit.contain,
-      alignment: Alignment.centerLeft,
-      filterQuality: FilterQuality.medium,
-      image: provider,
-      semanticLabel: semanticLabel,
     );
   }
 }
