@@ -474,6 +474,9 @@ class RssService {
           '',
         );
 
+    // Normalize lazy media markup before further HTML rewriting so the reader
+    // can handle common blog-engine patterns consistently.
+    html = _normalizeLazyMediaAttributes(html);
     html = _replaceMediaEmbedWithLink(html, tagName: 'iframe');
     html = _replaceMediaEmbedWithLink(html, tagName: 'video');
     html = _resolveHtmlAssetUrls(html, baseUrl: baseUrl);
@@ -518,7 +521,12 @@ class RssService {
 
     String replaceMatch(Match match) {
       final String attrs = match.group(1) ?? '';
-      final String? src = _attributeValue(attrs, 'src');
+      final String innerHtml = match.groupCount >= 2 ? (match.group(2) ?? '') : '';
+      final String? src = _mediaSourceUrl(
+        tagName: tagName,
+        attributes: attrs,
+        innerHtml: innerHtml,
+      );
       if (src == null || src.isEmpty) {
         return '';
       }
@@ -535,6 +543,72 @@ class RssService {
           selfClosing,
           replaceMatch,
         );
+  }
+
+  String _normalizeLazyMediaAttributes(String html) {
+    return html.replaceAllMapped(
+      RegExp(r'<(img|source)\b([^>]*)>', caseSensitive: false),
+      (Match match) {
+        final String tagName = match.group(1) ?? '';
+        String attributes = match.group(2) ?? '';
+
+        final String? normalizedSrc = _firstAttributeValue(
+          attributes,
+          <String>[
+            'data-src',
+            'data-original',
+            'data-lazy-src',
+            'data-lazyload',
+            'data-url',
+            'src',
+          ],
+        );
+        final String? normalizedSrcSet = _firstAttributeValue(
+          attributes,
+          <String>[
+            'data-srcset',
+            'data-original-srcset',
+            'srcset',
+          ],
+        );
+
+        if (normalizedSrc != null && normalizedSrc.isNotEmpty) {
+          attributes = _upsertAttribute(attributes, 'src', normalizedSrc);
+        }
+        if (normalizedSrcSet != null && normalizedSrcSet.isNotEmpty) {
+          attributes = _upsertAttribute(attributes, 'srcset', normalizedSrcSet);
+        }
+
+        attributes = _removeBooleanAttribute(attributes, 'lazyload');
+        return '<$tagName$attributes>';
+      },
+    );
+  }
+
+  String? _mediaSourceUrl({
+    required String tagName,
+    required String attributes,
+    required String innerHtml,
+  }) {
+    final String? directSrc = _firstAttributeValue(
+      attributes,
+      <String>['src', 'data-src', 'poster'],
+    );
+    if (directSrc != null && directSrc.isNotEmpty) {
+      return directSrc;
+    }
+
+    if (tagName.toLowerCase() == 'video') {
+      final RegExpMatch? nestedSource = RegExp(
+        r"""<source\b[^>]*\bsrc\s*=\s*["']([^"']+)["']""",
+        caseSensitive: false,
+      ).firstMatch(innerHtml);
+      if (nestedSource != null) {
+        return nestedSource.group(1);
+      }
+    }
+
+    return null;
   }
 
   String _resolveHtmlAssetUrls(String html, {required String baseUrl}) {
@@ -565,6 +639,37 @@ class RssService {
       caseSensitive: false,
     ).firstMatch(attributes);
     return match?.group(1);
+  }
+
+  String? _firstAttributeValue(String attributes, List<String> names) {
+    for (final String name in names) {
+      final String? value = _attributeValue(attributes, name);
+      if (value != null && value.trim().isNotEmpty) {
+        return value.trim();
+      }
+    }
+    return null;
+  }
+
+  String _upsertAttribute(String attributes, String name, String value) {
+    final RegExp pattern = RegExp(
+      '$name\\s*=\\s*["\'][^"\']*["\']',
+      caseSensitive: false,
+    );
+    if (pattern.hasMatch(attributes)) {
+      return attributes.replaceFirst(pattern, '$name="$value"');
+    }
+    return '$attributes $name="$value"';
+  }
+
+  String _removeBooleanAttribute(String attributes, String name) {
+    return attributes.replaceAll(
+      RegExp(
+        '(?:^|\\s)${RegExp.escape(name)}(?:\\s|\$)',
+        caseSensitive: false,
+      ),
+      ' ',
+    );
   }
 
   String _decodeBasicHtmlEntities(String value) {

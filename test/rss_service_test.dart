@@ -127,5 +127,70 @@ void main() {
         contains('https://player.example.com/demo'),
       );
     });
+
+    test('normalizes lazyloaded image sources from data attributes', () {
+      const String xml = '''
+      <feed xmlns="http://www.w3.org/2005/Atom">
+        <title>Lazy Media Feed</title>
+        <link href="https://blog.example.com" rel="alternate" />
+        <entry>
+          <title>Lazy Image Entry</title>
+          <link href="https://blog.example.com/posts/lazy-image" />
+          <updated>2026-01-23T14:03:00Z</updated>
+          <content type="html"><![CDATA[
+            <p><figure class="image-caption"><img lazyload src="/images/loading.svg" data-src="https://cdn.example.com/photo.jpg" alt="Test Photo"><figcaption>Test Photo</figcaption></figure></p>
+          ]]></content>
+        </entry>
+      </feed>
+      ''';
+
+      final ParsedFeedResult parsed = RssService().parseFeedXml(
+        xml,
+        sourceUrl: 'https://blog.example.com/atom.xml',
+      );
+
+      expect(parsed.articles, hasLength(1));
+      expect(
+        parsed.articles.first.contentHtml,
+        contains('src="https://cdn.example.com/photo.jpg"'),
+      );
+      expect(
+        parsed.articles.first.contentHtml,
+        isNot(contains('/images/loading.svg')),
+      );
+    });
+
+    test('converts video blocks with nested source tags into clickable placeholder html', () {
+      const String xml = '''
+      <feed xmlns="http://www.w3.org/2005/Atom">
+        <title>Video Feed</title>
+        <link href="https://blog.example.com" rel="alternate" />
+        <entry>
+          <title>Video Entry</title>
+          <link href="https://blog.example.com/posts/video-entry" />
+          <updated>2026-01-23T14:03:00Z</updated>
+          <content type="html"><![CDATA[
+            <p><video width="960" height="540" controls><source src="https://cdn.example.com/movie.mp4" title="movie.mp4"></video></p>
+          ]]></content>
+        </entry>
+      </feed>
+      ''';
+
+      final ParsedFeedResult parsed = RssService().parseFeedXml(
+        xml,
+        sourceUrl: 'https://blog.example.com/atom.xml',
+      );
+
+      expect(parsed.articles, hasLength(1));
+      expect(parsed.articles.first.contentHtml, contains('打开视频内容'));
+      expect(
+        parsed.articles.first.contentHtml,
+        contains('https://cdn.example.com/movie.mp4'),
+      );
+      expect(
+        parsed.articles.first.content,
+        isNot(contains('movie.mp4')),
+      );
+    });
   });
 }
