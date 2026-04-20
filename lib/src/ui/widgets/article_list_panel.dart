@@ -13,22 +13,28 @@ class ArticleListPanel extends StatelessWidget {
     super.key,
     required this.controller,
     required this.compact,
+    this.topContent,
+    this.scrollController,
   });
 
   final ReaderController controller;
   final bool compact;
+  final Widget? topContent;
+  final ScrollController? scrollController;
 
   @override
   Widget build(BuildContext context) {
     final List<Article> articles = controller.visibleArticles;
     final AppStrings strings = context.strings;
+    final bool compactHome =
+        compact && controller.currentRoute == AppRouteId.allArticles;
 
     final Widget content = Padding(
       padding: EdgeInsets.fromLTRB(
-        compact ? 12 : 16,
-        compact ? 12 : 16,
-        compact ? 12 : 16,
-        compact ? 10 : 14,
+        compactHome ? 10 : (compact ? 12 : 16),
+        compactHome ? 10 : (compact ? 12 : 16),
+        compactHome ? 10 : (compact ? 12 : 16),
+        compactHome ? 8 : (compact ? 10 : 14),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -42,10 +48,13 @@ class ArticleListPanel extends StatelessWidget {
                     Text(
                       controller.currentRouteTitle,
                       style: compact
-                          ? Theme.of(context).textTheme.titleMedium
+                          ? Theme.of(context).textTheme.titleMedium?.copyWith(
+                                fontSize: compactHome ? 19 : null,
+                                fontWeight: FontWeight.w700,
+                              )
                           : Theme.of(context).textTheme.titleLarge,
                     ),
-                    const SizedBox(height: 4),
+                    SizedBox(height: compactHome ? 2 : 4),
                     Text(
                       strings.visibleArticleCount(articles.length),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -75,10 +84,14 @@ class ArticleListPanel extends StatelessWidget {
                         ? Icons.sync_rounded
                         : Icons.refresh_rounded,
                   ),
-                ),
+                  ),
             ],
           ),
-          SizedBox(height: compact ? 8 : 10),
+          SizedBox(height: compactHome ? 6 : (compact ? 8 : 10)),
+          if (topContent != null) ...<Widget>[
+            topContent!,
+            SizedBox(height: compactHome ? 8 : 10),
+          ],
           if (articles.isEmpty)
             Expanded(
               child: _EmptyListState(compact: compact),
@@ -86,6 +99,10 @@ class ArticleListPanel extends StatelessWidget {
           else
             Expanded(
               child: ListView.separated(
+                key: PageStorageKey<String>(
+                  'article-list-${controller.currentRoute.storageValue}-${compact ? 'compact' : 'desktop'}',
+                ),
+                controller: scrollController,
                 itemCount: articles.length,
                 separatorBuilder: (_, __) => Divider(
                   height: 1,
@@ -100,6 +117,7 @@ class ArticleListPanel extends StatelessWidget {
                     active: active,
                     sourceTitle: controller.sourceTitleForArticle(article),
                     density: controller.settings.articleListDensity,
+                    mobileEmphasis: compactHome,
                     onOpen: () {
                       controller.selectArticle(article, compactMode: compact);
                     },
@@ -139,6 +157,7 @@ class _ArticleTile extends StatelessWidget {
     required this.active,
     required this.sourceTitle,
     required this.density,
+    required this.mobileEmphasis,
     required this.onOpen,
     required this.onStarToggle,
     required this.onSaveToggle,
@@ -150,6 +169,7 @@ class _ArticleTile extends StatelessWidget {
   final bool active;
   final String sourceTitle;
   final ArticleListDensity density;
+  final bool mobileEmphasis;
   final VoidCallback onOpen;
   final VoidCallback onStarToggle;
   final VoidCallback onSaveToggle;
@@ -160,10 +180,20 @@ class _ArticleTile extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
-    final double vertical =
-        density == ArticleListDensity.compact ? 9 : (compact ? 9 : 12);
+    final double vertical = compact
+        ? (mobileEmphasis ? 7 : 9)
+        : (density == ArticleListDensity.compact ? 9 : 12);
     final int summaryLines =
         density == ArticleListDensity.compact ? 2 : (compact ? 2 : 3);
+    final double? sourceFontSize = mobileEmphasis
+        ? ((theme.textTheme.bodySmall?.fontSize ?? 12) + 0.2)
+        : null;
+    final double? titleFontSize = mobileEmphasis
+        ? ((theme.textTheme.titleSmall?.fontSize ?? 14) + 0.6)
+        : null;
+    final double? summaryFontSize = mobileEmphasis
+        ? ((theme.textTheme.bodyMedium?.fontSize ?? 14) + 0.4)
+        : null;
 
     return InkWell(
       onTap: onOpen,
@@ -209,6 +239,7 @@ class _ArticleTile extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: palette.secondaryText,
+                              fontSize: sourceFontSize,
                             ),
                           ),
                         ),
@@ -216,20 +247,23 @@ class _ArticleTile extends StatelessWidget {
                           _formatTime(article.publishedAt),
                           style: theme.textTheme.bodySmall?.copyWith(
                             color: palette.tertiaryText,
+                            fontSize: sourceFontSize,
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: compact ? 4 : 5),
+                    SizedBox(height: mobileEmphasis ? 3 : (compact ? 4 : 5)),
                     Text(
                       article.title,
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleSmall?.copyWith(
+                        fontSize: titleFontSize,
                         fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                        height: mobileEmphasis ? 1.22 : null,
                       ),
                     ),
-                    SizedBox(height: compact ? 4 : 6),
+                    SizedBox(height: mobileEmphasis ? 3 : (compact ? 4 : 6)),
                     Text(
                       article.readerText.isEmpty
                           ? strings.noReadableSummary
@@ -238,9 +272,11 @@ class _ArticleTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodyMedium?.copyWith(
                         color: palette.secondaryText,
+                        fontSize: summaryFontSize,
+                        height: mobileEmphasis ? 1.38 : null,
                       ),
                     ),
-                    SizedBox(height: compact ? 6 : 8),
+                    SizedBox(height: mobileEmphasis ? 4 : (compact ? 6 : 8)),
                     Row(
                       children: <Widget>[
                         if (article.author != null && article.author!.isNotEmpty)
@@ -251,6 +287,7 @@ class _ArticleTile extends StatelessWidget {
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodySmall?.copyWith(
                                 color: palette.tertiaryText,
+                                fontSize: sourceFontSize,
                               ),
                             ),
                           )

@@ -7,6 +7,7 @@ import 'package:window_manager/window_manager.dart';
 import '../localization/app_language.dart';
 import '../localization/app_strings.dart';
 import '../models/app_route.dart';
+import '../models/article.dart';
 import '../models/reader_settings.dart';
 import '../state/reader_controller.dart';
 import '../theme/app_theme.dart';
@@ -84,8 +85,39 @@ class ReaderHome extends StatefulWidget {
 
 class _ReaderHomeState extends State<ReaderHome> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final ScrollController _compactHomeListController = ScrollController();
+
+  bool _compactFilterExpanded = false;
+  AppRouteId? _lastObservedRoute;
+  String? _lastObservedSourceId;
+  bool? _lastObservedUnreadOnly;
+  BookmarkFilter? _lastObservedBookmarkFilter;
 
   ReaderController get controller => widget.controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller.addListener(_handleControllerChanged);
+    _syncControllerSnapshot();
+  }
+
+  @override
+  void didUpdateWidget(covariant ReaderHome oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller) {
+      oldWidget.controller.removeListener(_handleControllerChanged);
+      widget.controller.addListener(_handleControllerChanged);
+      _syncControllerSnapshot();
+    }
+  }
+
+  @override
+  void dispose() {
+    controller.removeListener(_handleControllerChanged);
+    _compactHomeListController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -115,122 +147,136 @@ class _ReaderHomeState extends State<ReaderHome> {
                 ),
               ),
             );
+            final bool interceptCompactBack =
+                _shouldInterceptCompactAndroidBack(compact);
 
-            return Scaffold(
-              key: _scaffoldKey,
-              backgroundColor: palette.shellBackground,
-              drawer: compact ? mobileDrawer : null,
-              body: Column(
-                children: <Widget>[
-                  _ShellHeader(
-                    controller: controller,
-                    compact: compact,
-                    topInset: topInset,
-                    sidebarCollapsed:
-                        controller.settings.desktopSidebarCollapsed,
-                    showSidebarToggle: !compact && !useRail,
-                    onSidebarToggle: () {
-                      controller.setDesktopSidebarCollapsed(
-                        !controller.settings.desktopSidebarCollapsed,
-                      );
-                    },
-                    showMenuButton: compact,
-                    onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
-                  ),
-                  Expanded(
-                    child: Row(
-                      children: <Widget>[
-                        if (!compact)
-                          NavigationSidebar(
-                            controller: controller,
-                            collapsed: controller.settings.desktopSidebarCollapsed,
-                            showCollapseToggle: true,
-                            onToggleCollapse: () {
-                              controller.setDesktopSidebarCollapsed(
-                                !controller.settings.desktopSidebarCollapsed,
-                              );
-                            },
-                          ),
-                        if (useRail)
-                          NavigationSidebar(
-                            controller: controller,
-                            collapsed: true,
-                            showCollapseToggle: false,
-                          ),
-                        Expanded(
-                          child: AnimatedContainer(
-                            duration: _shellMotionDuration,
-                            curve: _shellMotionCurve,
-                            color: palette.chromeBackground,
-                            padding: EdgeInsets.fromLTRB(
-                              compact ? 6 : 10,
-                              compact ? 6 : 6,
-                              compact
-                                  ? 6
-                                  : controller.settings.desktopSidebarCollapsed
-                                      ? 12
-                                      : 10,
-                              compact ? 6 : 10,
-                            ),
-                            child: TweenAnimationBuilder<double>(
-                              tween: Tween<double>(
-                                end: compact
-                                    ? 0
-                                    : controller.settings.desktopSidebarCollapsed
-                                        ? 1
-                                        : 0,
-                              ),
-                              duration: _shellMotionDuration,
-                              curve: _shellMotionCurve,
-                              child: _MainCanvas(
-                                compact: compact,
-                                child: Column(
-                                  children: <Widget>[
-                                    if (controller.errorMessage != null)
-                                      _InlineBanner(
-                                        icon: Icons.warning_amber_rounded,
-                                        text: controller.errorMessage!,
-                                        kind: _BannerKind.error,
-                                        compact: compact,
-                                        onClose: controller.clearError,
-                                      ),
-                                    if (controller.statusMessage != null)
-                                      _InlineBanner(
-                                        icon: Icons.sync_rounded,
-                                        text: controller.statusMessage!,
-                                        kind: _BannerKind.info,
-                                        compact: compact,
-                                        onClose: controller.clearStatus,
-                                      ),
-                                    Expanded(
-                                      child: _buildBody(
-                                        context,
-                                        compact: compact,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              builder: (
-                                BuildContext context,
-                                double value,
-                                Widget? child,
-                              ) {
-                                return Transform.translate(
-                                  offset: Offset(
-                                    compact ? 0 : value * 4,
-                                    0,
-                                  ),
-                                  child: child,
+            return PopScope(
+              canPop: !interceptCompactBack,
+              onPopInvokedWithResult: (
+                bool didPop,
+                Object? result,
+              ) async {
+                if (!didPop && interceptCompactBack) {
+                  await _handleCompactBack();
+                }
+              },
+              child: Scaffold(
+                key: _scaffoldKey,
+                backgroundColor: palette.shellBackground,
+                drawer: compact ? mobileDrawer : null,
+                body: Column(
+                  children: <Widget>[
+                    _ShellHeader(
+                      controller: controller,
+                      compact: compact,
+                      topInset: topInset,
+                      sidebarCollapsed:
+                          controller.settings.desktopSidebarCollapsed,
+                      showSidebarToggle: !compact && !useRail,
+                      onSidebarToggle: () {
+                        controller.setDesktopSidebarCollapsed(
+                          !controller.settings.desktopSidebarCollapsed,
+                        );
+                      },
+                      showMenuButton: compact,
+                      onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                    ),
+                    Expanded(
+                      child: Row(
+                        children: <Widget>[
+                          if (!compact)
+                            NavigationSidebar(
+                              controller: controller,
+                              collapsed: controller.settings.desktopSidebarCollapsed,
+                              showCollapseToggle: true,
+                              onToggleCollapse: () {
+                                controller.setDesktopSidebarCollapsed(
+                                  !controller.settings.desktopSidebarCollapsed,
                                 );
                               },
                             ),
+                          if (useRail)
+                            NavigationSidebar(
+                              controller: controller,
+                              collapsed: true,
+                              showCollapseToggle: false,
+                            ),
+                          Expanded(
+                            child: AnimatedContainer(
+                              duration: _shellMotionDuration,
+                              curve: _shellMotionCurve,
+                              color: palette.chromeBackground,
+                              padding: EdgeInsets.fromLTRB(
+                                compact ? 6 : 10,
+                                compact ? 6 : 6,
+                                compact
+                                    ? 6
+                                    : controller.settings.desktopSidebarCollapsed
+                                        ? 12
+                                        : 10,
+                                compact ? 6 : 10,
+                              ),
+                              child: TweenAnimationBuilder<double>(
+                                tween: Tween<double>(
+                                  end: compact
+                                      ? 0
+                                      : controller
+                                              .settings.desktopSidebarCollapsed
+                                          ? 1
+                                          : 0,
+                                ),
+                                duration: _shellMotionDuration,
+                                curve: _shellMotionCurve,
+                                child: _MainCanvas(
+                                  compact: compact,
+                                  child: Column(
+                                    children: <Widget>[
+                                      if (controller.errorMessage != null)
+                                        _InlineBanner(
+                                          icon: Icons.warning_amber_rounded,
+                                          text: controller.errorMessage!,
+                                          kind: _BannerKind.error,
+                                          compact: compact,
+                                          onClose: controller.clearError,
+                                        ),
+                                      if (controller.statusMessage != null)
+                                        _InlineBanner(
+                                          icon: Icons.sync_rounded,
+                                          text: controller.statusMessage!,
+                                          kind: _BannerKind.info,
+                                          compact: compact,
+                                          onClose: controller.clearStatus,
+                                        ),
+                                      Expanded(
+                                        child: _buildBody(
+                                          context,
+                                          compact: compact,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                builder: (
+                                  BuildContext context,
+                                  double value,
+                                  Widget? child,
+                                ) {
+                                  return Transform.translate(
+                                    offset: Offset(
+                                      compact ? 0 : value * 4,
+                                      0,
+                                    ),
+                                    child: child,
+                                  );
+                                },
+                              ),
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             );
           },
@@ -260,6 +306,9 @@ class _ReaderHomeState extends State<ReaderHome> {
       case AppRouteId.settings:
         return SettingsView(controller: controller);
       case AppRouteId.readerDetail:
+        if (compact) {
+          return _buildCompactWorkspace();
+        }
         return ArticleReaderPanel(
           controller: controller,
           compact: compact,
@@ -315,14 +364,148 @@ class _ReaderHomeState extends State<ReaderHome> {
   }
 
   Widget _buildCompactWorkspace() {
-    if (controller.compactReaderOpen && controller.selectedArticle != null) {
-      return ArticleReaderPanel(
-        controller: controller,
-        compact: true,
-        onBack: controller.closeCompactReader,
+    if (controller.currentRoute == AppRouteId.allArticles ||
+        controller.currentRoute == AppRouteId.readerDetail) {
+      // Keep the compact home list alive while the reader opens on top of it,
+      // so Android back can return to the exact previous scroll position.
+      return IndexedStack(
+        index: controller.compactReaderOpen && controller.selectedArticle != null
+            ? 1
+            : 0,
+        children: <Widget>[
+          ArticleListPanel(
+            controller: controller,
+            compact: true,
+            scrollController: _compactHomeListController,
+            topContent: CompactSourceFilterHeader(
+              controller: controller,
+              expanded: _compactFilterExpanded,
+              onExpandedChanged: (bool value) {
+                setState(() {
+                  _compactFilterExpanded = value;
+                });
+              },
+            ),
+          ),
+          ArticleReaderPanel(
+            controller: controller,
+            compact: true,
+            onBack: controller.closeCompactReader,
+          ),
+        ],
       );
     }
     return ArticleListPanel(controller: controller, compact: true);
+  }
+
+  bool _shouldInterceptCompactAndroidBack(bool compact) {
+    if (!compact || kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
+      return false;
+    }
+
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      return true;
+    }
+    if (controller.currentRoute == AppRouteId.allArticles &&
+        _compactFilterExpanded) {
+      return true;
+    }
+    if (controller.currentRoute == AppRouteId.readerDetail &&
+        controller.compactReaderOpen) {
+      return true;
+    }
+    if (controller.currentRoute != AppRouteId.allArticles) {
+      return true;
+    }
+    if (controller.activeSourceId != null || controller.showOnlyUnread) {
+      return true;
+    }
+    return false;
+  }
+
+  Future<void> _handleCompactBack() async {
+    if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+      Navigator.of(context).pop();
+      return;
+    }
+
+    if (controller.currentRoute == AppRouteId.allArticles &&
+        _compactFilterExpanded) {
+      setState(() {
+        _compactFilterExpanded = false;
+      });
+      return;
+    }
+
+    if (controller.currentRoute == AppRouteId.readerDetail &&
+        controller.compactReaderOpen) {
+      controller.closeCompactReader();
+      return;
+    }
+
+    if (controller.currentRoute != AppRouteId.allArticles) {
+      controller.setCurrentRoute(AppRouteId.allArticles);
+      return;
+    }
+
+    if (controller.activeSourceId != null) {
+      controller.clearSourceFilter();
+      return;
+    }
+
+    if (controller.showOnlyUnread) {
+      await controller.setShowOnlyUnread(false);
+    }
+  }
+
+  void _handleControllerChanged() {
+    final AppRouteId route = controller.currentRoute;
+    final String? sourceId = controller.activeSourceId;
+    final bool unreadOnly = controller.showOnlyUnread;
+    final BookmarkFilter bookmarkFilter = controller.bookmarkFilter;
+
+    if (_lastObservedRoute != null) {
+      final bool routeChanged = route != _lastObservedRoute;
+      final bool sourceChanged = sourceId != _lastObservedSourceId;
+      final bool unreadChanged = unreadOnly != _lastObservedUnreadOnly;
+      final bool bookmarkChanged = bookmarkFilter != _lastObservedBookmarkFilter;
+      final bool enteredHomeFromAnotherPage = route == AppRouteId.allArticles &&
+          _lastObservedRoute != AppRouteId.allArticles &&
+          _lastObservedRoute != AppRouteId.readerDetail;
+      final bool homeFiltersChanged = route == AppRouteId.allArticles &&
+          (sourceChanged || unreadChanged);
+
+      // Returning from the reader should preserve position, but switching the
+      // article set or re-entering home from another top-level page should
+      // reset the list to the top for a predictable mobile flow.
+      if (enteredHomeFromAnotherPage ||
+          homeFiltersChanged ||
+          (routeChanged && route == AppRouteId.bookmarks) ||
+          bookmarkChanged) {
+        _resetCompactHomeListPosition();
+      }
+    }
+
+    _syncControllerSnapshot();
+  }
+
+  void _syncControllerSnapshot() {
+    _lastObservedRoute = controller.currentRoute;
+    _lastObservedSourceId = controller.activeSourceId;
+    _lastObservedUnreadOnly = controller.showOnlyUnread;
+    _lastObservedBookmarkFilter = controller.bookmarkFilter;
+  }
+
+  void _resetCompactHomeListPosition() {
+    if (!_compactHomeListController.hasClients) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (_compactHomeListController.hasClients) {
+          _compactHomeListController.jumpTo(0);
+        }
+      });
+      return;
+    }
+    _compactHomeListController.jumpTo(0);
   }
 }
 

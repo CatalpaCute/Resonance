@@ -8,6 +8,9 @@ import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
 import 'glass_card.dart';
 
+const Duration _compactFilterMotionDuration = Duration(milliseconds: 220);
+const Curve _compactFilterMotionCurve = Curves.easeOutCubic;
+
 class SourcePanel extends StatelessWidget {
   const SourcePanel({
     super.key,
@@ -163,6 +166,187 @@ class SourcePanel extends StatelessWidget {
       padding: EdgeInsets.zero,
       radius: 14,
       child: content,
+    );
+  }
+}
+
+class CompactSourceFilterHeader extends StatelessWidget {
+  const CompactSourceFilterHeader({
+    super.key,
+    required this.controller,
+    required this.expanded,
+    required this.onExpandedChanged,
+  });
+
+  final ReaderController controller;
+  final bool expanded;
+  final ValueChanged<bool> onExpandedChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final AppStrings strings = context.strings;
+    final String sourceLabel = controller.activeSource?.title ?? strings.allSources;
+    final String summary = controller.showOnlyUnread
+        ? '$sourceLabel · ${strings.unreadOnly}'
+        : sourceLabel;
+
+    return AnimatedContainer(
+      duration: _compactFilterMotionDuration,
+      curve: _compactFilterMotionCurve,
+      decoration: BoxDecoration(
+        color: palette.panelMutedBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: palette.border),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          InkWell(
+            borderRadius: BorderRadius.circular(14),
+            onTap: () => onExpandedChanged(!expanded),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+              child: Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          strings.sourcesAndFilters,
+                          style: theme.textTheme.titleSmall,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          summary,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: palette.secondaryText,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Icon(
+                    expanded
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: palette.secondaryText,
+                  ),
+                ],
+              ),
+            ),
+          ),
+          AnimatedCrossFade(
+            duration: _compactFilterMotionDuration,
+            reverseDuration: _compactFilterMotionDuration,
+            sizeCurve: _compactFilterMotionCurve,
+            firstChild: const SizedBox.shrink(),
+            secondChild: Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Divider(height: 1, color: palette.divider),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: <Widget>[
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                        ),
+                        onPressed: controller.refreshAllFeeds,
+                        icon: const Icon(Icons.refresh_rounded, size: 16),
+                        label: Text(strings.refreshAll),
+                      ),
+                      FilterChip(
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        visualDensity: VisualDensity.compact,
+                        label: Text(strings.unreadOnly),
+                        selected: controller.showOnlyUnread,
+                        onSelected: (bool value) {
+                          controller.setShowOnlyUnread(value);
+                        },
+                      ),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 10,
+                          ),
+                        ),
+                        onPressed: () {
+                          controller.setCurrentRoute(AppRouteId.discoverAddSource);
+                        },
+                        icon: const Icon(Icons.tune_rounded, size: 16),
+                        label: Text(strings.subscriptionManagement),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 210),
+                    child: ListView(
+                      shrinkWrap: true,
+                      padding: EdgeInsets.zero,
+                      children: <Widget>[
+                        _SourceTile(
+                          compact: true,
+                          source: null,
+                          title: strings.allSources,
+                          count: controller.articleCountForSource(null),
+                          unread: controller.unreadCountForSource(null),
+                          active: controller.activeSourceId == null,
+                          onTap: controller.clearSourceFilter,
+                        ),
+                        ...controller.feeds.map((FeedSource source) {
+                          return _SourceTile(
+                            compact: true,
+                            source: source,
+                            title: source.title,
+                            count: controller.articleCountForSource(source.id),
+                            unread: controller.unreadCountForSource(source.id),
+                            active: controller.activeSourceId == source.id,
+                            onTap: () {
+                              controller.selectSource(
+                                source,
+                                enterSourceDetail: false,
+                              );
+                            },
+                          );
+                        }),
+                        if (controller.feeds.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.only(top: 8),
+                            child: Text(
+                              strings.emptySourcePanel,
+                              style: theme.textTheme.bodySmall?.copyWith(
+                                color: palette.secondaryText,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            crossFadeState: expanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+          ),
+        ],
+      ),
     );
   }
 }
