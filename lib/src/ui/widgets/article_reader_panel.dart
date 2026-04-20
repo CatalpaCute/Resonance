@@ -217,6 +217,7 @@ class _ReaderBody extends StatelessWidget {
             ? HtmlWidget(
                 readerHtml,
                 textStyle: readerStyle,
+                factoryBuilder: () => _ReaderHtmlWidgetFactory(),
                 onTapUrl: (String url) async {
                   await onOpenUrl(url);
                   return true;
@@ -226,12 +227,17 @@ class _ReaderBody extends StatelessWidget {
                   if (tagName == 'img') {
                     return <String, String>{
                       'display': 'block',
+                      'max-width': '100%',
+                      'width': 'auto',
+                      'height': 'auto',
                       'margin': '10px 0',
                       'border-radius': '14px',
                     };
                   }
                   if (tagName == 'figure' || tagName == 'blockquote') {
                     return <String, String>{
+                      'display': 'block',
+                      'max-width': '100%',
                       'margin': '14px 0',
                     };
                   }
@@ -254,6 +260,61 @@ class _ReaderBody extends StatelessWidget {
                 style: readerStyle,
               ),
       ),
+    );
+  }
+}
+
+class _ReaderHtmlWidgetFactory extends WidgetFactory {
+  @override
+  Widget? buildImageWidget(BuildTree tree, ImageSource src) {
+    final String url = src.url;
+
+    ImageProvider? provider;
+    if (url.startsWith('asset:')) {
+      provider = imageProviderFromAsset(url);
+    } else if (url.startsWith('data:image/')) {
+      provider = imageProviderFromDataUri(url);
+    } else if (url.startsWith('file:')) {
+      provider = imageProviderFromFileUri(url);
+    } else {
+      provider = imageProviderFromNetwork(url);
+    }
+    if (provider == null) {
+      return null;
+    }
+
+    final ImageMetadata? image = src.image;
+    final String? semanticLabel = image?.alt ?? image?.title;
+
+    // Design intent: the upstream HTML renderer defaults to BoxFit.fill for
+    // images, which can visibly squash media on desktop. Use contain so the
+    // decoded image keeps its intrinsic aspect ratio while still respecting the
+    // HTML layout constraints applied by the renderer.
+    return Image(
+      errorBuilder: (BuildContext context, Object error, StackTrace? _) =>
+          onErrorBuilder(context, tree, error, src) ?? widget0,
+      loadingBuilder: (
+        BuildContext context,
+        Widget child,
+        ImageChunkEvent? loadingProgress,
+      ) {
+        if (loadingProgress == null) {
+          return child;
+        }
+
+        final int? totalBytes = loadingProgress.expectedTotalBytes;
+        final int loadedBytes = loadingProgress.cumulativeBytesLoaded;
+        final double? progress = totalBytes != null && totalBytes > 0
+            ? loadedBytes / totalBytes
+            : null;
+        return onLoadingBuilder(context, tree, progress, src) ?? child;
+      },
+      excludeFromSemantics: semanticLabel == null,
+      fit: BoxFit.contain,
+      alignment: Alignment.centerLeft,
+      filterQuality: FilterQuality.medium,
+      image: provider,
+      semanticLabel: semanticLabel,
     );
   }
 }
