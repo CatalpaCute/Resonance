@@ -187,6 +187,112 @@ class CompactSourceFilterHeader extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
+
+    // Design intent: chips work well only while the source count stays small;
+    // once the list grows, the original expandable panel remains more usable.
+    if (controller.feeds.length <= 5) {
+      final bool refreshingCurrent = controller.activeSourceId != null &&
+          controller.isFeedRefreshing(controller.activeSourceId!);
+
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: SizedBox(
+                  height: 40,
+                  child: ListView(
+                    scrollDirection: Axis.horizontal,
+                    padding: EdgeInsets.zero,
+                    children: <Widget>[
+                      _CompactSourceChip(
+                        label: strings.allSources,
+                        selected: controller.activeSourceId == null,
+                        onTap: controller.clearSourceFilter,
+                      ),
+                      const SizedBox(width: 8),
+                      ...controller.feeds.expand((FeedSource source) {
+                        return <Widget>[
+                          _CompactSourceChip(
+                            label: source.title,
+                            selected: controller.activeSourceId == source.id,
+                            onTap: () {
+                              controller.selectSource(
+                                source,
+                                enterSourceDetail: false,
+                              );
+                            },
+                          ),
+                          const SizedBox(width: 8),
+                        ];
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _CompactToggleChip(
+                active: expanded,
+                icon: expanded
+                    ? Icons.keyboard_arrow_up_rounded
+                    : Icons.tune_rounded,
+                tooltip: strings.sourcesAndFilters,
+                onTap: () => onExpandedChanged(!expanded),
+              ),
+            ],
+          ),
+          AnimatedCrossFade(
+            duration: _compactFilterMotionDuration,
+            reverseDuration: _compactFilterMotionDuration,
+            sizeCurve: _compactFilterMotionCurve,
+            firstChild: const SizedBox.shrink(),
+            secondChild: Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: <Widget>[
+                  _CompactUtilityChip(
+                    icon: Icons.visibility_rounded,
+                    label: strings.unreadOnly,
+                    selected: controller.showOnlyUnread,
+                    onTap: () {
+                      controller.setShowOnlyUnread(!controller.showOnlyUnread);
+                    },
+                  ),
+                  _CompactUtilityChip(
+                    icon: refreshingCurrent
+                        ? Icons.sync_rounded
+                        : Icons.refresh_rounded,
+                    label: strings.refreshCurrentView,
+                    onTap: () {
+                      if (controller.activeSourceId == null) {
+                        controller.refreshAllFeeds();
+                      } else {
+                        controller.refreshSource(controller.activeSourceId!);
+                      }
+                    },
+                  ),
+                  _CompactUtilityChip(
+                    icon: Icons.tune_rounded,
+                    label: strings.subscriptionManagement,
+                    onTap: () {
+                      controller.setCurrentRoute(AppRouteId.discoverAddSource);
+                      onExpandedChanged(false);
+                    },
+                  ),
+                ],
+              ),
+            ),
+            crossFadeState: expanded
+                ? CrossFadeState.showSecond
+                : CrossFadeState.showFirst,
+          ),
+        ],
+      );
+    }
+
     final String sourceLabel = controller.activeSource?.title ?? strings.allSources;
     final String summary = controller.showOnlyUnread
         ? '$sourceLabel · ${strings.unreadOnly}'
@@ -346,6 +452,170 @@ class CompactSourceFilterHeader extends StatelessWidget {
                 : CrossFadeState.showFirst,
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _CompactSourceChip extends StatelessWidget {
+  const _CompactSourceChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: _compactFilterMotionDuration,
+          curve: _compactFilterMotionCurve,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color:
+                selected ? theme.colorScheme.primary : palette.panelMutedBackground,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? theme.colorScheme.primary : palette.border,
+            ),
+          ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 140),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color:
+                    selected ? theme.colorScheme.onPrimary : palette.secondaryText,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactToggleChip extends StatelessWidget {
+  const _CompactToggleChip({
+    required this.active,
+    required this.icon,
+    required this.tooltip,
+    required this.onTap,
+  });
+
+  final bool active;
+  final IconData icon;
+  final String tooltip;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Tooltip(
+      message: tooltip,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(999),
+          child: AnimatedContainer(
+            duration: _compactFilterMotionDuration,
+            curve: _compactFilterMotionCurve,
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: active ? theme.colorScheme.primary : palette.panelBackground,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: active ? theme.colorScheme.primary : palette.border,
+              ),
+            ),
+            child: Icon(
+              icon,
+              size: 18,
+              color:
+                  active ? theme.colorScheme.onPrimary : palette.secondaryText,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactUtilityChip extends StatelessWidget {
+  const _CompactUtilityChip({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.selected = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: _compactFilterMotionDuration,
+          curve: _compactFilterMotionCurve,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          decoration: BoxDecoration(
+            color: selected ? palette.primarySoft : palette.panelBackground,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected
+                  ? theme.colorScheme.primary.withValues(alpha: 0.2)
+                  : palette.border,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                icon,
+                size: 16,
+                color:
+                    selected ? theme.colorScheme.primary : palette.secondaryText,
+              ),
+              const SizedBox(width: 6),
+              Text(
+                label,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color:
+                      selected ? theme.colorScheme.primary : palette.secondaryText,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

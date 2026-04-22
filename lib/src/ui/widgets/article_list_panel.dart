@@ -28,69 +28,77 @@ class ArticleListPanel extends StatelessWidget {
     final AppStrings strings = context.strings;
     final bool compactHome =
         compact && controller.currentRoute == AppRouteId.allArticles;
+    // Design intent: the compact shell header already carries route + brand, so
+    // the content area can focus on filters and article cards instead of repeating
+    // another large title block.
+    final bool showPanelHeader = !compactHome;
+    final bool useLayeredCards = compactHome || !compact;
 
     final Widget content = Padding(
       padding: EdgeInsets.fromLTRB(
-        compactHome ? 10 : (compact ? 12 : 16),
-        compactHome ? 10 : (compact ? 12 : 16),
-        compactHome ? 10 : (compact ? 12 : 16),
-        compactHome ? 8 : (compact ? 10 : 14),
+        compactHome ? 4 : (compact ? 12 : 16),
+        compactHome ? 4 : (compact ? 12 : 16),
+        compactHome ? 4 : (compact ? 12 : 16),
+        compactHome ? 0 : (compact ? 10 : 14),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      controller.currentRouteTitle,
-                      style: compact
-                          ? Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontSize: compactHome ? 19 : null,
-                                fontWeight: FontWeight.w700,
-                              )
-                          : Theme.of(context).textTheme.titleLarge,
-                    ),
-                    SizedBox(height: compactHome ? 2 : 4),
-                    Text(
-                      strings.visibleArticleCount(articles.length),
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: AppTheme.paletteOf(context).secondaryText,
-                          ),
-                    ),
-                  ],
+          if (showPanelHeader) ...<Widget>[
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        controller.currentRouteTitle,
+                        style: compact
+                            ? Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                )
+                            : Theme.of(context).textTheme.titleLarge,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        strings.visibleArticleCount(articles.length),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppTheme.paletteOf(context).secondaryText,
+                            ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              if (controller.currentRoute == AppRouteId.allArticles ||
-                  controller.currentRoute == AppRouteId.sourceDetail ||
-                  controller.currentRoute == AppRouteId.sources)
-                IconButton(
-                  visualDensity:
-                      compact ? VisualDensity.compact : VisualDensity.standard,
-                  onPressed: () {
-                    if (controller.activeSourceId == null) {
-                      controller.refreshAllFeeds();
-                    } else {
-                      controller.refreshSource(controller.activeSourceId!);
-                    }
-                  },
-                  tooltip: strings.refreshCurrentView,
-                  icon: Icon(
-                    controller.activeSourceId != null &&
-                            controller.isFeedRefreshing(controller.activeSourceId!)
-                        ? Icons.sync_rounded
-                        : Icons.refresh_rounded,
+                if (controller.currentRoute == AppRouteId.allArticles ||
+                    controller.currentRoute == AppRouteId.sourceDetail ||
+                    controller.currentRoute == AppRouteId.sources)
+                  IconButton(
+                    visualDensity:
+                        compact ? VisualDensity.compact : VisualDensity.standard,
+                    onPressed: () {
+                      if (controller.activeSourceId == null) {
+                        controller.refreshAllFeeds();
+                      } else {
+                        controller.refreshSource(controller.activeSourceId!);
+                      }
+                    },
+                    tooltip: strings.refreshCurrentView,
+                    icon: Icon(
+                      controller.activeSourceId != null &&
+                              controller.isFeedRefreshing(
+                                controller.activeSourceId!,
+                              )
+                          ? Icons.sync_rounded
+                          : Icons.refresh_rounded,
+                    ),
                   ),
-                  ),
-            ],
-          ),
-          SizedBox(height: compactHome ? 6 : (compact ? 8 : 10)),
+              ],
+            ),
+            SizedBox(height: compact ? 8 : 10),
+          ],
           if (topContent != null) ...<Widget>[
             topContent!,
-            SizedBox(height: compactHome ? 8 : 10),
+            SizedBox(height: compactHome ? 14 : 10),
           ],
           if (articles.isEmpty)
             Expanded(
@@ -99,15 +107,23 @@ class ArticleListPanel extends StatelessWidget {
           else
             Expanded(
               child: ListView.separated(
+                padding: EdgeInsets.only(
+                  bottom: compactHome ? 18 : 8,
+                ),
                 key: PageStorageKey<String>(
                   'article-list-${controller.currentRoute.storageValue}-${compact ? 'compact' : 'desktop'}',
                 ),
                 controller: scrollController,
                 itemCount: articles.length,
-                separatorBuilder: (_, __) => Divider(
-                  height: 1,
-                  color: AppTheme.paletteOf(context).divider,
-                ),
+                separatorBuilder: (_, __) {
+                  if (useLayeredCards) {
+                    return SizedBox(height: compactHome ? 14 : 10);
+                  }
+                  return Divider(
+                    height: 1,
+                    color: AppTheme.paletteOf(context).divider,
+                  );
+                },
                 itemBuilder: (BuildContext context, int index) {
                   final Article article = articles[index];
                   final bool active = controller.selectedArticleId == article.id;
@@ -118,6 +134,7 @@ class ArticleListPanel extends StatelessWidget {
                     sourceTitle: controller.sourceTitleForArticle(article),
                     density: controller.settings.articleListDensity,
                     mobileEmphasis: compactHome,
+                    layered: useLayeredCards,
                     onOpen: () {
                       controller.selectArticle(article, compactMode: compact);
                     },
@@ -142,6 +159,10 @@ class ArticleListPanel extends StatelessWidget {
       return content;
     }
 
+    if (compactHome) {
+      return content;
+    }
+
     return GlassCard(
       padding: EdgeInsets.zero,
       radius: 14,
@@ -158,6 +179,7 @@ class _ArticleTile extends StatelessWidget {
     required this.sourceTitle,
     required this.density,
     required this.mobileEmphasis,
+    required this.layered,
     required this.onOpen,
     required this.onStarToggle,
     required this.onSaveToggle,
@@ -170,6 +192,7 @@ class _ArticleTile extends StatelessWidget {
   final String sourceTitle;
   final ArticleListDensity density;
   final bool mobileEmphasis;
+  final bool layered;
   final VoidCallback onOpen;
   final VoidCallback onStarToggle;
   final VoidCallback onSaveToggle;
@@ -180,150 +203,177 @@ class _ArticleTile extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
-    final double vertical = compact
-        ? (mobileEmphasis ? 7 : 9)
-        : (density == ArticleListDensity.compact ? 9 : 12);
-    final int summaryLines =
-        density == ArticleListDensity.compact ? 2 : (compact ? 2 : 3);
-    final double? sourceFontSize = mobileEmphasis
-        ? ((theme.textTheme.bodySmall?.fontSize ?? 12) + 0.2)
-        : null;
-    final double? titleFontSize = mobileEmphasis
-        ? ((theme.textTheme.titleSmall?.fontSize ?? 14) + 0.6)
-        : null;
-    final double? summaryFontSize = mobileEmphasis
-        ? ((theme.textTheme.bodyMedium?.fontSize ?? 14) + 0.4)
-        : null;
-
-    return InkWell(
-      onTap: onOpen,
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: compact ? 0 : 2,
-          vertical: vertical,
-        ),
-        decoration: BoxDecoration(
-          color: active ? palette.hover : Colors.transparent,
-          borderRadius: BorderRadius.circular(compact ? 10 : 12),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Container(
-              width: 6,
-              height: 6,
-              margin: EdgeInsets.only(
-                top: 8,
-                right: compact ? 8 : 10,
-                left: compact ? 6 : 8,
-              ),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color:
-                    article.isRead ? Colors.transparent : theme.colorScheme.primary,
-                border: article.isRead ? Border.all(color: palette.border) : null,
-              ),
+    final int titleLines = mobileEmphasis ? 3 : 2;
+    final int summaryLines = mobileEmphasis
+        ? 3
+        : (density == ArticleListDensity.compact ? 2 : 3);
+    final double cardRadius = mobileEmphasis ? 18 : (compact ? 16 : 14);
+    final Color cardColor = layered
+        ? (active
+              ? palette.primarySoft.withValues(alpha: 0.62)
+              : palette.panelBackground)
+        : (active ? palette.hover : Colors.transparent);
+    final Color borderColor = layered
+        ? (active
+              ? theme.colorScheme.primary.withValues(alpha: 0.18)
+              : palette.border.withValues(alpha: 0.92))
+        : Colors.transparent;
+    final List<BoxShadow> boxShadow = layered
+        ? <BoxShadow>[
+            BoxShadow(
+              color: palette.shadow.withValues(alpha: mobileEmphasis ? 0.78 : 0.58),
+              blurRadius: mobileEmphasis ? 16 : 10,
+              offset: Offset(0, mobileEmphasis ? 5 : 3),
             ),
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.only(right: 6),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Row(
+          ]
+        : const <BoxShadow>[];
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onOpen,
+        borderRadius: BorderRadius.circular(cardRadius),
+        child: Container(
+          padding: EdgeInsets.fromLTRB(
+            layered ? (compact ? 14 : 16) : (compact ? 0 : 2),
+            layered ? (mobileEmphasis ? 14 : 12) : (compact ? 9 : 12),
+            layered ? (compact ? 14 : 16) : 0,
+            layered ? (mobileEmphasis ? 12 : 10) : (compact ? 9 : 12),
+          ),
+          decoration: BoxDecoration(
+            color: cardColor,
+            borderRadius: BorderRadius.circular(cardRadius),
+            border: Border.all(color: borderColor),
+            boxShadow: boxShadow,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Row(
                       children: <Widget>[
-                        Expanded(
+                        _ReadMarker(
+                          isRead: article.isRead,
+                          color: theme.colorScheme.primary,
+                          borderColor: palette.border,
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
                           child: Text(
                             sourceTitle,
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: palette.secondaryText,
-                              fontSize: sourceFontSize,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.12,
                             ),
-                          ),
-                        ),
-                        Text(
-                          _formatTime(article.publishedAt),
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: palette.tertiaryText,
-                            fontSize: sourceFontSize,
                           ),
                         ),
                       ],
                     ),
-                    SizedBox(height: mobileEmphasis ? 3 : (compact ? 4 : 5)),
-                    Text(
-                      article.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.titleSmall?.copyWith(
-                        fontSize: titleFontSize,
-                        fontWeight: active ? FontWeight.w700 : FontWeight.w600,
-                        height: mobileEmphasis ? 1.22 : null,
-                      ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    _formatTime(article.publishedAt),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: palette.tertiaryText,
                     ),
-                    SizedBox(height: mobileEmphasis ? 3 : (compact ? 4 : 6)),
-                    Text(
-                      article.readerText.isEmpty
-                          ? strings.noReadableSummary
-                          : article.readerText,
-                      maxLines: summaryLines,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        color: palette.secondaryText,
-                        fontSize: summaryFontSize,
-                        height: mobileEmphasis ? 1.38 : null,
-                      ),
-                    ),
-                    SizedBox(height: mobileEmphasis ? 4 : (compact ? 6 : 8)),
-                    Row(
-                      children: <Widget>[
-                        if (article.author != null && article.author!.isNotEmpty)
-                          Expanded(
-                            child: Text(
-                              article.author!,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.bodySmall?.copyWith(
-                                color: palette.tertiaryText,
-                                fontSize: sourceFontSize,
-                              ),
-                            ),
-                          )
-                        else
-                          const Spacer(),
-                        _TinyAction(
-                          icon: article.starred
-                              ? Icons.star_rounded
-                              : Icons.star_border_rounded,
-                          active: article.starred,
-                          tooltip: strings.starAction(article.starred),
-                          onTap: onStarToggle,
-                        ),
-                        _TinyAction(
-                          icon: article.savedForLater
-                              ? Icons.schedule_rounded
-                              : Icons.schedule_outlined,
-                          active: article.savedForLater,
-                          tooltip: strings.readLaterAction(article.savedForLater),
-                          onTap: onSaveToggle,
-                        ),
-                        _TinyAction(
-                          icon: article.isRead
-                              ? Icons.mark_email_unread_outlined
-                              : Icons.done_rounded,
-                          active: article.isRead,
-                          tooltip: strings.readStateAction(article.isRead),
-                          onTap: onReadToggle,
-                        ),
-                      ],
-                    ),
-                  ],
+                  ),
+                ],
+              ),
+              SizedBox(height: mobileEmphasis ? 10 : 8),
+              Text(
+                article.title,
+                maxLines: titleLines,
+                overflow: TextOverflow.ellipsis,
+                style: (compact
+                        ? theme.textTheme.titleMedium
+                        : theme.textTheme.titleSmall)
+                    ?.copyWith(
+                  fontSize: mobileEmphasis ? 18.5 : null,
+                  fontWeight: active ? FontWeight.w700 : FontWeight.w600,
+                  height: mobileEmphasis ? 1.24 : 1.3,
                 ),
               ),
-            ),
-          ],
+              SizedBox(height: mobileEmphasis ? 8 : 6),
+              if (layered &&
+                  article.author != null &&
+                  article.author!.isNotEmpty) ...<Widget>[
+                Text(
+                  article.author!,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: palette.tertiaryText,
+                  ),
+                ),
+                SizedBox(height: mobileEmphasis ? 6 : 4),
+              ],
+              Text(
+                article.readerText.isEmpty
+                    ? strings.noReadableSummary
+                    : article.readerText,
+                maxLines: summaryLines,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.bodyMedium?.copyWith(
+                  color: palette.secondaryText,
+                  height: mobileEmphasis ? 1.52 : 1.46,
+                ),
+              ),
+              SizedBox(height: mobileEmphasis ? 10 : 8),
+              Container(
+                height: 1,
+                color: layered
+                    ? palette.divider.withValues(alpha: 0.92)
+                    : palette.divider,
+              ),
+              SizedBox(height: mobileEmphasis ? 6 : 4),
+              Row(
+                children: <Widget>[
+                  if (!layered && article.author != null && article.author!.isNotEmpty)
+                    Expanded(
+                      child: Text(
+                        article.author!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: palette.tertiaryText,
+                        ),
+                      ),
+                    )
+                  else
+                    const Spacer(),
+                  _TinyAction(
+                    icon: article.starred
+                        ? Icons.star_rounded
+                        : Icons.star_border_rounded,
+                    active: article.starred,
+                    tooltip: strings.starAction(article.starred),
+                    onTap: onStarToggle,
+                  ),
+                  _TinyAction(
+                    icon: article.savedForLater
+                        ? Icons.schedule_rounded
+                        : Icons.schedule_outlined,
+                    active: article.savedForLater,
+                    tooltip: strings.readLaterAction(article.savedForLater),
+                    onTap: onSaveToggle,
+                  ),
+                  _TinyAction(
+                    icon: article.isRead
+                        ? Icons.mark_email_unread_outlined
+                        : Icons.done_rounded,
+                    active: article.isRead,
+                    tooltip: strings.readStateAction(article.isRead),
+                    onTap: onReadToggle,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -336,6 +386,31 @@ class _ArticleTile extends StatelessWidget {
     final String hour = local.hour.toString().padLeft(2, '0');
     final String minute = local.minute.toString().padLeft(2, '0');
     return '$month-$day $hour:$minute';
+  }
+}
+
+class _ReadMarker extends StatelessWidget {
+  const _ReadMarker({
+    required this.isRead,
+    required this.color,
+    required this.borderColor,
+  });
+
+  final bool isRead;
+  final Color color;
+  final Color borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 8,
+      height: 8,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isRead ? Colors.transparent : color,
+        border: isRead ? Border.all(color: borderColor) : null,
+      ),
+    );
   }
 }
 
