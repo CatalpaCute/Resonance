@@ -239,6 +239,23 @@ class ReaderController extends ChangeNotifier {
     await _persistSettings();
   }
 
+  Future<void> setMobileWorkspaceMode(MobileWorkspaceMode mode) async {
+    _settings = _settings.copyWith(mobileWorkspaceMode: mode);
+
+    // When compact mode switches to the desktop-like multi-pane workspace,
+    // the reader should fold back into the main workspace instead of
+    // lingering on the dedicated mobile detail route.
+    if (mode == MobileWorkspaceMode.multiPane &&
+        _currentRoute == AppRouteId.readerDetail &&
+        (_lastWorkspaceRoute == AppRouteId.allArticles ||
+            _lastWorkspaceRoute == AppRouteId.bookmarks)) {
+      _currentRoute = _lastWorkspaceRoute;
+      _compactReaderOpen = false;
+    }
+
+    await _persistSettings();
+  }
+
   Future<void> setStartupHomeMode(StartupHomeMode mode) async {
     _settings = _settings.copyWith(startupHomeMode: mode);
     await _persistSettings();

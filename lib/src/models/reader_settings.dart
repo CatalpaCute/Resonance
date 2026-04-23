@@ -13,6 +13,11 @@ enum MobileSidebarMode {
   rail,
 }
 
+enum MobileWorkspaceMode {
+  singlePane,
+  multiPane,
+}
+
 enum ArticleListDensity {
   comfortable,
   compact,
@@ -28,6 +33,7 @@ class ReaderSettings {
     required this.startupHomeMode,
     required this.themeId,
     required this.mobileSidebarMode,
+    required this.mobileWorkspaceMode,
     required this.desktopSidebarCollapsed,
     required this.articleListDensity,
     required this.articleContentMode,
@@ -37,6 +43,7 @@ class ReaderSettings {
   final StartupHomeMode startupHomeMode;
   final String themeId;
   final MobileSidebarMode mobileSidebarMode;
+  final MobileWorkspaceMode mobileWorkspaceMode;
   final bool desktopSidebarCollapsed;
   final ArticleListDensity articleListDensity;
   final ArticleContentMode articleContentMode;
@@ -46,6 +53,7 @@ class ReaderSettings {
     startupHomeMode: StartupHomeMode.allArticles,
     themeId: 'warm_default',
     mobileSidebarMode: MobileSidebarMode.adaptive,
+    mobileWorkspaceMode: MobileWorkspaceMode.singlePane,
     desktopSidebarCollapsed: false,
     articleListDensity: ArticleListDensity.comfortable,
     articleContentMode: ArticleContentMode.rich,
@@ -67,6 +75,7 @@ class ReaderSettings {
     StartupHomeMode? startupHomeMode,
     String? themeId,
     MobileSidebarMode? mobileSidebarMode,
+    MobileWorkspaceMode? mobileWorkspaceMode,
     bool? desktopSidebarCollapsed,
     ArticleListDensity? articleListDensity,
     ArticleContentMode? articleContentMode,
@@ -76,6 +85,7 @@ class ReaderSettings {
       startupHomeMode: startupHomeMode ?? this.startupHomeMode,
       themeId: themeId ?? this.themeId,
       mobileSidebarMode: mobileSidebarMode ?? this.mobileSidebarMode,
+      mobileWorkspaceMode: mobileWorkspaceMode ?? this.mobileWorkspaceMode,
       desktopSidebarCollapsed:
           desktopSidebarCollapsed ?? this.desktopSidebarCollapsed,
       articleListDensity: articleListDensity ?? this.articleListDensity,
@@ -89,6 +99,7 @@ class ReaderSettings {
       'startupHomeMode': startupHomeMode.name,
       'themeId': themeId,
       'mobileSidebarMode': mobileSidebarMode.name,
+      'mobileWorkspaceMode': mobileWorkspaceMode.name,
       'desktopSidebarCollapsed': desktopSidebarCollapsed,
       'articleListDensity': articleListDensity.name,
       'articleContentMode': articleContentMode.name,
@@ -106,6 +117,10 @@ class ReaderSettings {
       mobileSidebarMode: MobileSidebarMode.values.firstWhere(
         (MobileSidebarMode value) => value.name == json['mobileSidebarMode'],
         orElse: () => defaults.mobileSidebarMode,
+      ),
+      mobileWorkspaceMode: MobileWorkspaceMode.values.firstWhere(
+        (MobileWorkspaceMode value) => value.name == json['mobileWorkspaceMode'],
+        orElse: () => defaults.mobileWorkspaceMode,
       ),
       desktopSidebarCollapsed: json['desktopSidebarCollapsed'] as bool? ??
           defaults.desktopSidebarCollapsed,

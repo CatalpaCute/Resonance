@@ -127,6 +127,9 @@ class ArticleListPanel extends StatelessWidget {
                 itemBuilder: (BuildContext context, int index) {
                   final Article article = articles[index];
                   final bool active = controller.selectedArticleId == article.id;
+                  final bool useCompactReaderRoute = compact &&
+                      controller.settings.mobileWorkspaceMode ==
+                          MobileWorkspaceMode.singlePane;
                   return _ArticleTile(
                     compact: compact,
                     article: article,
@@ -136,7 +139,10 @@ class ArticleListPanel extends StatelessWidget {
                     mobileEmphasis: compactHome,
                     layered: useLayeredCards,
                     onOpen: () {
-                      controller.selectArticle(article, compactMode: compact);
+                      controller.selectArticle(
+                        article,
+                        compactMode: useCompactReaderRoute,
+                      );
                     },
                     onStarToggle: () {
                       controller.toggleStarred(article);

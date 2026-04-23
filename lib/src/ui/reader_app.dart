@@ -88,6 +88,7 @@ class _ReaderHomeState extends State<ReaderHome> {
   final ScrollController _compactHomeListController = ScrollController();
 
   bool _compactFilterExpanded = false;
+  bool _compactRailCollapsed = true;
   AppRouteId? _lastObservedRoute;
   String? _lastObservedSourceId;
   bool? _lastObservedUnreadOnly;
@@ -163,22 +164,29 @@ class _ReaderHomeState extends State<ReaderHome> {
               child: Scaffold(
                 key: _scaffoldKey,
                 backgroundColor: palette.shellBackground,
-                drawer: compact ? mobileDrawer : null,
+                drawer: useDrawer ? mobileDrawer : null,
                 body: Column(
                   children: <Widget>[
                     _ShellHeader(
                       controller: controller,
                       compact: compact,
                       topInset: topInset,
-                      sidebarCollapsed:
-                          controller.settings.desktopSidebarCollapsed,
-                      showSidebarToggle: !compact && !useRail,
+                      sidebarCollapsed: compact
+                          ? _compactRailCollapsed
+                          : controller.settings.desktopSidebarCollapsed,
+                      showSidebarToggle: !compact || useRail,
                       onSidebarToggle: () {
-                        controller.setDesktopSidebarCollapsed(
-                          !controller.settings.desktopSidebarCollapsed,
-                        );
+                        if (compact) {
+                          setState(() {
+                            _compactRailCollapsed = !_compactRailCollapsed;
+                          });
+                        } else {
+                          controller.setDesktopSidebarCollapsed(
+                            !controller.settings.desktopSidebarCollapsed,
+                          );
+                        }
                       },
-                      showMenuButton: compact,
+                      showMenuButton: compact && useDrawer,
                       onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
                     ),
                     Expanded(
@@ -198,7 +206,7 @@ class _ReaderHomeState extends State<ReaderHome> {
                           if (useRail)
                             NavigationSidebar(
                               controller: controller,
-                              collapsed: true,
+                              collapsed: _compactRailCollapsed,
                               showCollapseToggle: false,
                             ),
                           Expanded(
@@ -299,7 +307,16 @@ class _ReaderHomeState extends State<ReaderHome> {
     }
   }
 
+  bool _useCompactMultiPaneWorkspace() {
+    return controller.settings.mobileWorkspaceMode ==
+            MobileWorkspaceMode.multiPane &&
+        (controller.currentRoute == AppRouteId.allArticles ||
+            controller.currentRoute == AppRouteId.bookmarks);
+  }
+
   Widget _buildBody(BuildContext context, {required bool compact}) {
+    final bool useCompactMultiPane = compact && _useCompactMultiPaneWorkspace();
+
     switch (controller.currentRoute) {
       case AppRouteId.discoverAddSource:
         return AddSourceView(controller: controller);
@@ -318,7 +335,12 @@ class _ReaderHomeState extends State<ReaderHome> {
       case AppRouteId.sources:
       case AppRouteId.sourceDetail:
       case AppRouteId.bookmarks:
-        return compact ? _buildCompactWorkspace() : _buildDesktopWorkspace();
+        if (!compact) {
+          return _buildDesktopWorkspace();
+        }
+        return useCompactMultiPane
+            ? _buildCompactMultiPaneWorkspace()
+            : _buildCompactWorkspace();
     }
   }
 
@@ -397,6 +419,72 @@ class _ReaderHomeState extends State<ReaderHome> {
     }
     return ArticleListPanel(controller: controller, compact: true);
   }
+
+  Widget _buildCompactMultiPaneWorkspace() {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        const double leftPaneWidth = 248;
+        const double resizeHandleWidth = 10;
+        const double minimumReaderPaneWidth = 420;
+        final double minimumWorkspaceWidth = leftPaneWidth +
+            controller.articleListPaneWidth +
+            resizeHandleWidth +
+            minimumReaderPaneWidth;
+        final double workspaceWidth = constraints.maxWidth < minimumWorkspaceWidth
+            ? minimumWorkspaceWidth
+            : constraints.maxWidth;
+
+        // Reuse the desktop workspace as-is, but wrap it in a horizontal
+        // canvas so mobile users can opt into the same multi-pane workflow
+        // without introducing a second implementation to maintain.
+        return SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: SizedBox(
+            width: workspaceWidth,
+            child: Row(
+              children: <Widget>[
+                SizedBox(
+                  width: leftPaneWidth,
+                  child: _WorkspacePane(
+                    showTrailingDivider: true,
+                    child: SourcePanel(controller: controller, compact: false),
+                  ),
+                ),
+                SizedBox(
+                  width: controller.articleListPaneWidth,
+                  child: _WorkspacePane(
+                    showTrailingDivider: true,
+                    child: ArticleListPanel(controller: controller, compact: false),
+                  ),
+                ),
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onHorizontalDragUpdate: (DragUpdateDetails details) {
+                    controller.setArticleListPaneWidth(
+                      controller.articleListPaneWidth + details.delta.dx,
+                    );
+                  },
+                  child: const SizedBox(
+                    width: resizeHandleWidth,
+                    child: Center(child: _ResizeHandle()),
+                  ),
+                ),
+                Expanded(
+                  child: _WorkspacePane(
+                    child: ArticleReaderPanel(
+                      controller: controller,
+                      compact: false,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
 
   bool _shouldInterceptCompactAndroidBack(bool compact) {
     if (!compact || kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
@@ -548,11 +636,22 @@ class _ShellHeader extends StatelessWidget {
       child: Row(
         children: <Widget>[
           if (compact)
-            IconButton(
-              onPressed: showMenuButton ? onMenuPressed : null,
-              icon: const Icon(Icons.menu_rounded),
-              splashRadius: 18,
-              tooltip: strings.subscriptionManagement,
+            Padding(
+              padding: const EdgeInsets.only(left: 8, right: 4),
+              // Compact rail mode should behave like desktop: the sidebar
+              // stays mounted and is controlled by the top toggle instead of
+              // opening a second drawer layer from the left edge.
+              child: showSidebarToggle
+                  ? _HeaderSidebarToggle(
+                      collapsed: sidebarCollapsed,
+                      onTap: onSidebarToggle,
+                    )
+                  : IconButton(
+                      onPressed: showMenuButton ? onMenuPressed : null,
+                      icon: const Icon(Icons.menu_rounded),
+                      splashRadius: 18,
+                      tooltip: strings.subscriptionManagement,
+                    ),
             )
           else
             const SizedBox(width: 12),

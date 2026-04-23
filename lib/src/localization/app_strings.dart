@@ -186,10 +186,19 @@ class AppStrings {
         );
       case MobileSidebarMode.rail:
         return _text(
-          zhCn: '始终保留窄栏，并可从顶部按钮打开完整侧栏。',
-          zhHant: '始終保留窄欄，並可從頂部按鈕打開完整側欄。',
-          en: 'Keep a slim rail visible and open the full drawer from the top button.',
+          zhCn: '始终保留窄栏，并像桌面端一样从顶部按钮展开或收起。',
+          zhHant: '始終保留窄欄，並像桌面端一樣從頂部按鈕展開或收起。',
+          en: 'Keep a slim rail visible and toggle it from the top button like desktop.',
         );
+    }
+  }
+
+  String mobileWorkspaceModeLabel(MobileWorkspaceMode mode) {
+    switch (mode) {
+      case MobileWorkspaceMode.singlePane:
+        return _text(zhCn: '整页文章流', zhHant: '整頁文章流', en: 'Single Pane');
+      case MobileWorkspaceMode.multiPane:
+        return _text(zhCn: '多栏工作区', zhHant: '多欄工作區', en: 'Multi Pane');
     }
   }
 
@@ -289,6 +298,16 @@ class AppStrings {
       );
   String get mobileSidebar =>
       _text(zhCn: '移动端侧栏', zhHant: '移動端側欄', en: 'Mobile Sidebar');
+  String get mobileWorkspaceLayout => _text(
+        zhCn: '移动端首页与收藏布局',
+        zhHant: '移動端首頁與收藏佈局',
+        en: 'Mobile Home & Bookmarks Layout',
+      );
+  String get mobileWorkspaceLayoutHint => _text(
+        zhCn: '只在手机和窄屏生效。可以保持现在的单栏文章流，或者切到桌面端那种多栏工作区。',
+        zhHant: '只在手機和窄螢幕生效。可以保留目前的單欄文章流，或切到桌面端那種多欄工作區。',
+        en: 'Applies only on phones and narrow screens. Keep the current single article flow or switch to the desktop-style multi-pane workspace.',
+      );
   String get readingDensity =>
       _text(zhCn: '阅读密度', zhHant: '閱讀密度', en: 'Reading Density');
   String get interfaceLanguage =>

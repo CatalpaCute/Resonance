@@ -154,6 +154,39 @@ class SettingsView extends StatelessWidget {
         SizedBox(height: compact ? 12 : 14),
         _SettingsSection(
           compact: compact,
+          title: strings.mobileWorkspaceLayout,
+          subtitle: strings.mobileWorkspaceLayoutHint,
+          child: SegmentedButton<MobileWorkspaceMode>(
+            direction: compact ? Axis.vertical : Axis.horizontal,
+            segments: <ButtonSegment<MobileWorkspaceMode>>[
+              ButtonSegment<MobileWorkspaceMode>(
+                value: MobileWorkspaceMode.singlePane,
+                label: Text(
+                  strings.mobileWorkspaceModeLabel(
+                    MobileWorkspaceMode.singlePane,
+                  ),
+                ),
+              ),
+              ButtonSegment<MobileWorkspaceMode>(
+                value: MobileWorkspaceMode.multiPane,
+                label: Text(
+                  strings.mobileWorkspaceModeLabel(
+                    MobileWorkspaceMode.multiPane,
+                  ),
+                ),
+              ),
+            ],
+            selected: <MobileWorkspaceMode>{
+              controller.settings.mobileWorkspaceMode,
+            },
+            onSelectionChanged: (Set<MobileWorkspaceMode> values) {
+              controller.setMobileWorkspaceMode(values.first);
+            },
+          ),
+        ),
+        SizedBox(height: compact ? 12 : 14),
+        _SettingsSection(
+          compact: compact,
           title: strings.interfaceLanguage,
           subtitle: strings.interfaceLanguageHint,
           child: DropdownButtonFormField<AppLanguageMode>(
