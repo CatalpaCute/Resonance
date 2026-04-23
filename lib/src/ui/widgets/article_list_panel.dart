@@ -209,24 +209,14 @@ class _ArticleTile extends StatelessWidget {
         : (density == ArticleListDensity.compact ? 2 : 3);
     final double cardRadius = mobileEmphasis ? 18 : (compact ? 16 : 14);
     final Color cardColor = layered
-        ? (active
-              ? palette.primarySoft.withValues(alpha: 0.62)
-              : palette.panelBackground)
+        ? palette.panelBackground
         : (active ? palette.hover : Colors.transparent);
     final Color borderColor = layered
         ? (active
-              ? theme.colorScheme.primary.withValues(alpha: 0.18)
+              ? theme.colorScheme.primary.withValues(alpha: 0.20)
               : palette.border.withValues(alpha: 0.92))
         : Colors.transparent;
-    final List<BoxShadow> boxShadow = layered
-        ? <BoxShadow>[
-            BoxShadow(
-              color: palette.shadow.withValues(alpha: mobileEmphasis ? 0.78 : 0.58),
-              blurRadius: mobileEmphasis ? 16 : 10,
-              offset: Offset(0, mobileEmphasis ? 5 : 3),
-            ),
-          ]
-        : const <BoxShadow>[];
+    final double borderWidth = layered ? (active ? 1.15 : 1) : 1;
 
     return Material(
       color: Colors.transparent,
@@ -243,12 +233,26 @@ class _ArticleTile extends StatelessWidget {
           decoration: BoxDecoration(
             color: cardColor,
             borderRadius: BorderRadius.circular(cardRadius),
-            border: Border.all(color: borderColor),
-            boxShadow: boxShadow,
+            border: Border.all(
+              color: borderColor,
+              width: borderWidth,
+            ),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
+              if (layered && active)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 10),
+                  child: Container(
+                    width: 28,
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.55),
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
               Row(
                 children: <Widget>[
                   Expanded(
