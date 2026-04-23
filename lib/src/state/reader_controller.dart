@@ -184,13 +184,13 @@ class ReaderController extends ChangeNotifier {
   }
 
   Future<void> selectArticle(Article article,
-      {required bool compactMode}) async {
+      {required bool openInReaderRoute}) async {
     _selectedArticleId = article.id;
-    if (compactMode) {
+    if (openInReaderRoute) {
       _lastWorkspaceRoute = _currentRoute;
       _currentRoute = AppRouteId.readerDetail;
     }
-    _compactReaderOpen = compactMode;
+    _compactReaderOpen = openInReaderRoute;
     if (!article.isRead) {
       await _replaceArticle(article.copyWith(readState: ArticleReadState.read));
     } else {
@@ -198,12 +198,16 @@ class ReaderController extends ChangeNotifier {
     }
   }
 
-  void closeCompactReader() {
+  void closeReaderRoute() {
     _compactReaderOpen = false;
     if (_currentRoute == AppRouteId.readerDetail) {
       _currentRoute = _lastWorkspaceRoute;
     }
     notifyListeners();
+  }
+
+  void closeCompactReader() {
+    closeReaderRoute();
   }
 
   Future<void> toggleReadState(Article article) async {
@@ -246,6 +250,23 @@ class ReaderController extends ChangeNotifier {
     // the reader should fold back into the main workspace instead of
     // lingering on the dedicated mobile detail route.
     if (mode == MobileWorkspaceMode.multiPane &&
+        _currentRoute == AppRouteId.readerDetail &&
+        (_lastWorkspaceRoute == AppRouteId.allArticles ||
+            _lastWorkspaceRoute == AppRouteId.bookmarks)) {
+      _currentRoute = _lastWorkspaceRoute;
+      _compactReaderOpen = false;
+    }
+
+    await _persistSettings();
+  }
+
+  Future<void> setDesktopWorkspaceMode(DesktopWorkspaceMode mode) async {
+    _settings = _settings.copyWith(desktopWorkspaceMode: mode);
+
+    // If desktop switches back to the embedded three-pane reader while a
+    // standalone reader page is open, fold back into the workspace so the
+    // selected article appears in the restored right pane.
+    if (mode == DesktopWorkspaceMode.threePane &&
         _currentRoute == AppRouteId.readerDetail &&
         (_lastWorkspaceRoute == AppRouteId.allArticles ||
             _lastWorkspaceRoute == AppRouteId.bookmarks)) {

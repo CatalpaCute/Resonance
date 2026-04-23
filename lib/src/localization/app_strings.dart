@@ -202,6 +202,19 @@ class AppStrings {
     }
   }
 
+  String desktopWorkspaceModeLabel(DesktopWorkspaceMode mode) {
+    switch (mode) {
+      case DesktopWorkspaceMode.threePane:
+        return _text(zhCn: '三栏工作区', zhHant: '三欄工作區', en: 'Three Pane');
+      case DesktopWorkspaceMode.focusedReader:
+        return _text(
+          zhCn: '双栏列表 + 独立阅读页',
+          zhHant: '雙欄列表 + 獨立閱讀頁',
+          en: 'Two Pane + Reader Page',
+        );
+    }
+  }
+
   String articleDensityLabel(ArticleListDensity density) {
     switch (density) {
       case ArticleListDensity.comfortable:
@@ -307,6 +320,16 @@ class AppStrings {
         zhCn: '只在手机和窄屏生效。可以保持现在的单栏文章流，或者切到桌面端那种多栏工作区。',
         zhHant: '只在手機和窄螢幕生效。可以保留目前的單欄文章流，或切到桌面端那種多欄工作區。',
         en: 'Applies only on phones and narrow screens. Keep the current single article flow or switch to the desktop-style multi-pane workspace.',
+      );
+  String get desktopWorkspaceLayout => _text(
+        zhCn: '桌面端阅读布局',
+        zhHant: '桌面端閱讀佈局',
+        en: 'Desktop Reader Layout',
+      );
+  String get desktopWorkspaceLayoutHint => _text(
+        zhCn: '三栏模式会把正文固定放在右侧。双栏模式会隐藏右侧阅读栏，点击文章后进入独立阅读页。',
+        zhHant: '三欄模式會把正文固定放在右側。雙欄模式會隱藏右側閱讀欄，點擊文章後進入獨立閱讀頁。',
+        en: 'Three-pane mode keeps the reader embedded on the right. Two-pane mode hides the reader pane and opens a dedicated reader page when an article is selected.',
       );
   String get readingDensity =>
       _text(zhCn: '阅读密度', zhHant: '閱讀密度', en: 'Reading Density');

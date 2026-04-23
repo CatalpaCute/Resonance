@@ -41,9 +41,10 @@ class ArticleReaderPanel extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    if (compact && onBack != null)
+                    if (onBack != null)
                       IconButton(
-                        visualDensity: VisualDensity.compact,
+                        visualDensity:
+                            compact ? VisualDensity.compact : VisualDensity.standard,
                         onPressed: onBack,
                         icon: const Icon(Icons.arrow_back_rounded),
                       ),

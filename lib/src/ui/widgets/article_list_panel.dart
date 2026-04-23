@@ -127,9 +127,11 @@ class ArticleListPanel extends StatelessWidget {
                 itemBuilder: (BuildContext context, int index) {
                   final Article article = articles[index];
                   final bool active = controller.selectedArticleId == article.id;
-                  final bool useCompactReaderRoute = compact &&
-                      controller.settings.mobileWorkspaceMode ==
-                          MobileWorkspaceMode.singlePane;
+                  final bool useSeparateReaderRoute = compact
+                      ? controller.settings.mobileWorkspaceMode ==
+                          MobileWorkspaceMode.singlePane
+                      : controller.settings.desktopWorkspaceMode ==
+                          DesktopWorkspaceMode.focusedReader;
                   return _ArticleTile(
                     compact: compact,
                     article: article,
@@ -141,7 +143,7 @@ class ArticleListPanel extends StatelessWidget {
                     onOpen: () {
                       controller.selectArticle(
                         article,
-                        compactMode: useCompactReaderRoute,
+                        openInReaderRoute: useSeparateReaderRoute,
                       );
                     },
                     onStarToggle: () {

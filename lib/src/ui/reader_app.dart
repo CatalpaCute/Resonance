@@ -314,8 +314,17 @@ class _ReaderHomeState extends State<ReaderHome> {
             controller.currentRoute == AppRouteId.bookmarks);
   }
 
+  bool _useDesktopFocusedReader() {
+    return controller.settings.desktopWorkspaceMode ==
+            DesktopWorkspaceMode.focusedReader &&
+        (controller.currentRoute == AppRouteId.allArticles ||
+            controller.currentRoute == AppRouteId.bookmarks ||
+            controller.currentRoute == AppRouteId.readerDetail);
+  }
+
   Widget _buildBody(BuildContext context, {required bool compact}) {
     final bool useCompactMultiPane = compact && _useCompactMultiPaneWorkspace();
+    final bool useDesktopFocusedReader = !compact && _useDesktopFocusedReader();
 
     switch (controller.currentRoute) {
       case AppRouteId.discoverAddSource:
@@ -326,17 +335,26 @@ class _ReaderHomeState extends State<ReaderHome> {
         if (compact) {
           return _buildCompactWorkspace();
         }
+        if (useDesktopFocusedReader) {
+          return ArticleReaderPanel(
+            controller: controller,
+            compact: false,
+            onBack: controller.closeReaderRoute,
+          );
+        }
         return ArticleReaderPanel(
           controller: controller,
           compact: compact,
-          onBack: controller.closeCompactReader,
+          onBack: controller.closeReaderRoute,
         );
       case AppRouteId.allArticles:
       case AppRouteId.sources:
       case AppRouteId.sourceDetail:
       case AppRouteId.bookmarks:
         if (!compact) {
-          return _buildDesktopWorkspace();
+          return useDesktopFocusedReader
+              ? _buildDesktopFocusedWorkspace()
+              : _buildDesktopWorkspace();
         }
         return useCompactMultiPane
             ? _buildCompactMultiPaneWorkspace()
@@ -379,6 +397,25 @@ class _ReaderHomeState extends State<ReaderHome> {
               controller: controller,
               compact: false,
             ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDesktopFocusedWorkspace() {
+    return Row(
+      children: <Widget>[
+        SizedBox(
+          width: 248,
+          child: _WorkspacePane(
+            showTrailingDivider: true,
+            child: SourcePanel(controller: controller, compact: false),
+          ),
+        ),
+        Expanded(
+          child: _WorkspacePane(
+            child: ArticleListPanel(controller: controller, compact: false),
           ),
         ),
       ],
