@@ -64,17 +64,32 @@ jobs:
       - name: Run tests
         run: flutter test
 
+      - name: Read app version
+        id: app_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_version="$(grep '^version:' pubspec.yaml | head -n 1 | cut -d ' ' -f 2)"
+          if [ -z "$app_version" ]; then
+            echo "Failed to read version from pubspec.yaml" >&2
+            exit 1
+          fi
+          echo "value=$app_version" >> "$GITHUB_OUTPUT"
+
       - name: Build Android APK
         run: flutter build apk --release
 
       - name: Rename Android artifact
         shell: bash
-        run: cp build/app/outputs/flutter-apk/app-release.apk rsstool-android-${{ github.event.release.tag_name }}.apk
+        run: |
+          artifact_name="Resonance-android-${{ steps.app_version.outputs.value }}-${{ github.event.release.tag_name }}.apk"
+          cp build/app/outputs/flutter-apk/app-release.apk "$artifact_name"
+          echo "ANDROID_ARTIFACT_NAME=$artifact_name" >> "$GITHUB_ENV"
 
       - name: Upload Android artifact to release
         uses: softprops/action-gh-release@v2
         with:
-          files: rsstool-android-${{ github.event.release.tag_name }}.apk
+          files: ${{ env.ANDROID_ARTIFACT_NAME }}
 
   build-windows:
     name: Build Windows Package
@@ -93,6 +108,17 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
+      - name: Read app version
+        id: app_version
+        shell: pwsh
+        run: |
+          $versionLine = Select-String -Path "pubspec.yaml" -Pattern "^version:\s*(.+)$" | Select-Object -First 1
+          if (-not $versionLine) {
+            throw "Failed to read version from pubspec.yaml"
+          }
+          $appVersion = $versionLine.Matches[0].Groups[1].Value.Trim()
+          "value=$appVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
       - name: Build Windows
         run: flutter build windows --release
 
@@ -100,15 +126,17 @@ jobs:
         shell: pwsh
         run: |
           $tag = "${{ github.event.release.tag_name }}"
-          $packageName = "rsstool-windows-$tag"
+          $appVersion = "${{ steps.app_version.outputs.value }}"
+          $packageName = "Resonance-windows-$appVersion-$tag"
           $packageDir = Join-Path $env:RUNNER_TEMP $packageName
 
           New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
           Copy-Item -Path "build\windows\x64\runner\Release\*" -Destination $packageDir -Recurse -Force
 
           Compress-Archive -Path $packageDir -DestinationPath "$packageName.zip" -Force
+          "WINDOWS_ARTIFACT_NAME=$packageName.zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Upload Windows artifact to release
         uses: softprops/action-gh-release@v2
         with:
-          files: rsstool-windows-${{ github.event.release.tag_name }}.zip
+          files: ${{ env.WINDOWS_ARTIFACT_NAME }}
