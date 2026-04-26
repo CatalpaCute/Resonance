@@ -133,7 +133,9 @@ class _ReaderHomeState extends State<ReaderHome> {
         return LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
             final bool compact = constraints.maxWidth < 980;
-            final bool useAndroidMobileUi = compact && _useAndroidMobileUi;
+            final bool useAndroidMobileUi = compact &&
+                _useAndroidMobileUi &&
+                MediaQuery.orientationOf(context) == Orientation.portrait;
             final bool useDrawer = _useDrawer(constraints.maxWidth);
             final bool useRail = compact && !useDrawer;
             final double topInset =
@@ -285,6 +287,7 @@ class _ReaderHomeState extends State<ReaderHome> {
                                         child: _buildBody(
                                           context,
                                           compact: compact,
+                                          mobileRestyled: useAndroidMobileUi,
                                         ),
                                       ),
                                     ],
@@ -348,7 +351,11 @@ class _ReaderHomeState extends State<ReaderHome> {
             controller.currentRoute == AppRouteId.readerDetail);
   }
 
-  Widget _buildBody(BuildContext context, {required bool compact}) {
+  Widget _buildBody(
+    BuildContext context, {
+    required bool compact,
+    required bool mobileRestyled,
+  }) {
     final bool useCompactMultiPane = compact && _useCompactMultiPaneWorkspace();
     final bool useDesktopFocusedReader = !compact && _useDesktopFocusedReader();
 
@@ -359,7 +366,7 @@ class _ReaderHomeState extends State<ReaderHome> {
         return SettingsView(controller: controller);
       case AppRouteId.readerDetail:
         if (compact) {
-          return _buildCompactWorkspace();
+          return _buildCompactWorkspace(mobileRestyled: mobileRestyled);
         }
         if (useDesktopFocusedReader) {
           return ArticleReaderPanel(
@@ -384,7 +391,7 @@ class _ReaderHomeState extends State<ReaderHome> {
         }
         return useCompactMultiPane
             ? _buildCompactMultiPaneWorkspace()
-            : _buildCompactWorkspace();
+            : _buildCompactWorkspace(mobileRestyled: mobileRestyled);
     }
   }
 
@@ -448,7 +455,7 @@ class _ReaderHomeState extends State<ReaderHome> {
     );
   }
 
-  Widget _buildCompactWorkspace() {
+  Widget _buildCompactWorkspace({required bool mobileRestyled}) {
     if (controller.currentRoute == AppRouteId.allArticles ||
         controller.currentRoute == AppRouteId.readerDetail) {
       // Keep the compact home list alive while the reader opens on top of it,
@@ -461,11 +468,11 @@ class _ReaderHomeState extends State<ReaderHome> {
           ArticleListPanel(
             controller: controller,
             compact: true,
-            mobileRestyled: _useAndroidMobileUi,
+            mobileRestyled: mobileRestyled,
             scrollController: _compactHomeListController,
             topContent: CompactSourceFilterHeader(
               controller: controller,
-              mobileRestyled: _useAndroidMobileUi,
+              mobileRestyled: mobileRestyled,
               expanded: _compactFilterExpanded,
               onExpandedChanged: (bool value) {
                 setState(() {
@@ -482,7 +489,11 @@ class _ReaderHomeState extends State<ReaderHome> {
         ],
       );
     }
-    return ArticleListPanel(controller: controller, compact: true);
+    return ArticleListPanel(
+      controller: controller,
+      compact: true,
+      mobileRestyled: mobileRestyled,
+    );
   }
 
   Widget _buildCompactMultiPaneWorkspace() {
@@ -704,7 +715,10 @@ class _ShellHeader extends StatelessWidget {
         children: <Widget>[
           if (compact)
             Padding(
-              padding: const EdgeInsets.only(left: 10, right: 6),
+              padding: EdgeInsets.only(
+                left: mobileRestyled ? 10 : 8,
+                right: mobileRestyled ? 6 : 4,
+              ),
               // Compact rail mode should behave like desktop: the sidebar
               // stays mounted and is controlled by the top toggle instead of
               // opening a second drawer layer from the left edge.
@@ -771,7 +785,7 @@ class _ShellHeader extends StatelessWidget {
           ),
           if (compact)
             Padding(
-              padding: const EdgeInsets.only(right: 12),
+              padding: EdgeInsets.only(right: mobileRestyled ? 12 : 10),
               child: _CompactStat(
                 mobileRestyled: mobileRestyled,
                 text: strings.unreadCountStat(controller.totalUnreadCount),
@@ -819,13 +833,14 @@ class _BrandMark extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         AppBrand.mark,
-        style:
-            (compact ? theme.textTheme.titleSmall : theme.textTheme.labelSmall)
-                ?.copyWith(
-                  color: theme.colorScheme.onPrimary,
-                  fontWeight: FontWeight.w700,
-                  height: mobileRestyled ? 1 : null,
-                ),
+        style: (mobileRestyled
+                ? theme.textTheme.titleSmall
+                : theme.textTheme.labelSmall)
+            ?.copyWith(
+              color: theme.colorScheme.onPrimary,
+              fontWeight: FontWeight.w700,
+              height: mobileRestyled ? 1 : null,
+            ),
       ),
     );
   }

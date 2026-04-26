@@ -28,20 +28,20 @@ class ArticleListPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<Article> articles = controller.visibleArticles;
     final AppStrings strings = context.strings;
-    final bool compactHome = compact &&
-        mobileRestyled &&
-        controller.currentRoute == AppRouteId.allArticles;
+    final bool compactHome =
+        compact && controller.currentRoute == AppRouteId.allArticles;
+    final bool mobileHomeRestyled = compactHome && mobileRestyled;
     // Design intent: the compact shell header already carries route + brand, so
     // the content area can focus on filters and article cards instead of repeating
     // another large title block.
     final bool showPanelHeader = !compactHome;
-    final bool useLayeredCards = compactHome;
+    final bool useLayeredCards = compactHome || !compact;
 
     final Widget content = Padding(
       padding: EdgeInsets.fromLTRB(
-        compactHome ? 10 : (compact ? 12 : 16),
-        compactHome ? 12 : (compact ? 12 : 16),
-        compactHome ? 10 : (compact ? 12 : 16),
+        mobileHomeRestyled ? 10 : (compactHome ? 4 : (compact ? 12 : 16)),
+        mobileHomeRestyled ? 12 : (compactHome ? 4 : (compact ? 12 : 16)),
+        mobileHomeRestyled ? 10 : (compactHome ? 4 : (compact ? 12 : 16)),
         compactHome ? 0 : (compact ? 10 : 14),
       ),
       child: Column(
@@ -101,7 +101,7 @@ class ArticleListPanel extends StatelessWidget {
           ],
           if (topContent != null) ...<Widget>[
             topContent!,
-            SizedBox(height: compactHome ? 16 : 10),
+            SizedBox(height: mobileHomeRestyled ? 16 : (compactHome ? 14 : 10)),
           ],
           if (articles.isEmpty)
             Expanded(
@@ -142,6 +142,7 @@ class ArticleListPanel extends StatelessWidget {
                     sourceTitle: controller.sourceTitleForArticle(article),
                     density: controller.settings.articleListDensity,
                     mobileEmphasis: compactHome,
+                    hideBottomActions: mobileHomeRestyled,
                     layered: useLayeredCards,
                     onOpen: () {
                       controller.selectArticle(
@@ -190,6 +191,7 @@ class _ArticleTile extends StatelessWidget {
     required this.sourceTitle,
     required this.density,
     required this.mobileEmphasis,
+    required this.hideBottomActions,
     required this.layered,
     required this.onOpen,
     required this.onStarToggle,
@@ -203,6 +205,7 @@ class _ArticleTile extends StatelessWidget {
   final String sourceTitle;
   final ArticleListDensity density;
   final bool mobileEmphasis;
+  final bool hideBottomActions;
   final bool layered;
   final VoidCallback onOpen;
   final VoidCallback onStarToggle;
@@ -219,13 +222,13 @@ class _ArticleTile extends StatelessWidget {
         ? 3
         : (density == ArticleListDensity.compact ? 2 : 3);
     final double cardRadius = mobileEmphasis ? 18 : (compact ? 16 : 14);
-    final bool showBottomActions = !mobileEmphasis;
+    final bool showBottomActions = !hideBottomActions;
     final Color cardColor = layered
-        ? (active ? palette.primarySoft.withValues(alpha: 0.58) : palette.panelBackground)
+        ? palette.panelBackground
         : (active ? palette.hover : Colors.transparent);
     final Color borderColor = layered
         ? (active
-              ? theme.colorScheme.primary.withValues(alpha: 0.28)
+              ? theme.colorScheme.primary.withValues(alpha: 0.20)
               : palette.border.withValues(alpha: 0.92))
         : Colors.transparent;
     final double borderWidth = layered ? (active ? 1.15 : 1) : 1;
@@ -249,17 +252,6 @@ class _ArticleTile extends StatelessWidget {
               color: borderColor,
               width: borderWidth,
             ),
-            boxShadow: layered
-                ? <BoxShadow>[
-                    BoxShadow(
-                      color: palette.shadow.withValues(
-                        alpha: active ? 0.12 : 0.08,
-                      ),
-                      blurRadius: active ? 22 : 18,
-                      offset: Offset(0, active ? 8 : 6),
-                    ),
-                  ]
-                : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -327,7 +319,6 @@ class _ArticleTile extends StatelessWidget {
               ),
               SizedBox(height: mobileEmphasis ? 8 : 6),
               if (layered &&
-                  !mobileEmphasis &&
                   article.author != null &&
                   article.author!.isNotEmpty) ...<Widget>[
                 Text(
@@ -338,7 +329,7 @@ class _ArticleTile extends StatelessWidget {
                     color: palette.tertiaryText,
                   ),
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: mobileEmphasis ? 6 : 4),
               ],
               Text(
                 article.readerText.isEmpty
