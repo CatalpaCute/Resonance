@@ -96,6 +96,7 @@ class AppTheme {
     'warm_default',
     'deep_default',
     'neutral_minimal',
+    'wechat_green',
   ];
 
   static const List<String> _fontFallback = <String>[
@@ -118,6 +119,8 @@ class AppTheme {
         return '深色默认';
       case 'neutral_minimal':
         return '极简中性';
+      case 'wechat_green':
+        return '微信绿';
       default:
         return '暖灰默认';
     }
@@ -129,6 +132,8 @@ class AppTheme {
         return _buildDeepTheme();
       case 'neutral_minimal':
         return _buildNeutralTheme();
+      case 'wechat_green':
+        return _buildWechatGreenTheme();
       case 'warm_default':
       default:
         return _buildWarmTheme();
@@ -228,6 +233,37 @@ class AppTheme {
         secondaryText: Color(0xFF69717A),
         tertiaryText: Color(0xFF9AA2AB),
         shadow: Color.fromRGBO(25, 32, 40, 0.04),
+      ),
+    );
+  }
+
+  static ThemeData _buildWechatGreenTheme() {
+    const Color primary = Color(0xFF07C160);
+    final ColorScheme scheme = ColorScheme.fromSeed(
+      seedColor: primary,
+      brightness: Brightness.light,
+      primary: primary,
+      onPrimary: Colors.white,
+      surface: Colors.white,
+    );
+    return _buildTheme(
+      scheme: scheme,
+      scaffoldBackground: const Color(0xFFF7F7F7),
+      bodyColor: const Color(0xFF1A1A1A),
+      palette: const ReaderPalette(
+        shellBackground: Color(0xFFF7F7F7),
+        chromeBackground: Color(0xFFFFFFFF),
+        sidebarBackground: Color(0xFFFFFFFF),
+        canvasBackground: Color(0xFFF7F7F7),
+        panelBackground: Color(0xFFFFFFFF),
+        panelMutedBackground: Color(0xFFF7F7F7),
+        border: Color(0xFFEDEDED),
+        divider: Color(0xFFEDEDED),
+        hover: Color(0xFFF2F2F2),
+        primarySoft: Color.fromRGBO(7, 193, 96, 0.10),
+        secondaryText: Color(0xFF7F7F7F),
+        tertiaryText: Color(0xFFA6A6A6),
+        shadow: Color.fromRGBO(0, 0, 0, 0.04),
       ),
     );
   }

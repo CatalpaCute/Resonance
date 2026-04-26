@@ -41,9 +41,10 @@ class ArticleReaderPanel extends StatelessWidget {
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    if (compact && onBack != null)
+                    if (onBack != null)
                       IconButton(
-                        visualDensity: VisualDensity.compact,
+                        visualDensity:
+                            compact ? VisualDensity.compact : VisualDensity.standard,
                         onPressed: onBack,
                         icon: const Icon(Icons.arrow_back_rounded),
                       ),
@@ -444,7 +445,6 @@ class _EmptyReader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
 
     return Center(
@@ -468,14 +468,6 @@ class _EmptyReader extends StatelessWidget {
               strings.emptyReaderTitle,
               textAlign: TextAlign.center,
               style: theme.textTheme.titleMedium,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              strings.emptyReaderBody,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: palette.secondaryText,
-              ),
             ),
           ],
         ),

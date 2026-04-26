@@ -186,9 +186,31 @@ class AppStrings {
         );
       case MobileSidebarMode.rail:
         return _text(
-          zhCn: '始终保留窄栏，并可从顶部按钮打开完整侧栏。',
-          zhHant: '始終保留窄欄，並可從頂部按鈕打開完整側欄。',
-          en: 'Keep a slim rail visible and open the full drawer from the top button.',
+          zhCn: '始终保留窄栏，并像桌面端一样从顶部按钮展开或收起。',
+          zhHant: '始終保留窄欄，並像桌面端一樣從頂部按鈕展開或收起。',
+          en: 'Keep a slim rail visible and toggle it from the top button like desktop.',
+        );
+    }
+  }
+
+  String mobileWorkspaceModeLabel(MobileWorkspaceMode mode) {
+    switch (mode) {
+      case MobileWorkspaceMode.singlePane:
+        return _text(zhCn: '整页文章流', zhHant: '整頁文章流', en: 'Single Pane');
+      case MobileWorkspaceMode.multiPane:
+        return _text(zhCn: '多栏工作区', zhHant: '多欄工作區', en: 'Multi Pane');
+    }
+  }
+
+  String desktopWorkspaceModeLabel(DesktopWorkspaceMode mode) {
+    switch (mode) {
+      case DesktopWorkspaceMode.threePane:
+        return _text(zhCn: '三栏工作区', zhHant: '三欄工作區', en: 'Three Pane');
+      case DesktopWorkspaceMode.focusedReader:
+        return _text(
+          zhCn: '双栏列表 + 独立阅读页',
+          zhHant: '雙欄列表 + 獨立閱讀頁',
+          en: 'Two Pane + Reader Page',
         );
     }
   }
@@ -289,6 +311,26 @@ class AppStrings {
       );
   String get mobileSidebar =>
       _text(zhCn: '移动端侧栏', zhHant: '移動端側欄', en: 'Mobile Sidebar');
+  String get mobileWorkspaceLayout => _text(
+        zhCn: '移动端首页与收藏布局',
+        zhHant: '移動端首頁與收藏佈局',
+        en: 'Mobile Home & Bookmarks Layout',
+      );
+  String get mobileWorkspaceLayoutHint => _text(
+        zhCn: '只在手机和窄屏生效。可以保持现在的单栏文章流，或者切到桌面端那种多栏工作区。',
+        zhHant: '只在手機和窄螢幕生效。可以保留目前的單欄文章流，或切到桌面端那種多欄工作區。',
+        en: 'Applies only on phones and narrow screens. Keep the current single article flow or switch to the desktop-style multi-pane workspace.',
+      );
+  String get desktopWorkspaceLayout => _text(
+        zhCn: '桌面端阅读布局',
+        zhHant: '桌面端閱讀佈局',
+        en: 'Desktop Reader Layout',
+      );
+  String get desktopWorkspaceLayoutHint => _text(
+        zhCn: '三栏模式会把正文固定放在右侧。双栏模式会隐藏右侧阅读栏，点击文章后进入独立阅读页。',
+        zhHant: '三欄模式會把正文固定放在右側。雙欄模式會隱藏右側閱讀欄，點擊文章後進入獨立閱讀頁。',
+        en: 'Three-pane mode keeps the reader embedded on the right. Two-pane mode hides the reader pane and opens a dedicated reader page when an article is selected.',
+      );
   String get readingDensity =>
       _text(zhCn: '阅读密度', zhHant: '閱讀密度', en: 'Reading Density');
   String get interfaceLanguage =>
@@ -362,11 +404,6 @@ class AppStrings {
         zhCn: '点开一篇文章，阅读区会在这里安静展开。',
         zhHant: '點開一篇文章，閱讀區會在這裡安靜展開。',
         en: 'Open any article and the reader will expand here.',
-      );
-  String get emptyReaderBody => _text(
-        zhCn: '正文、来源、阅读动作和原文跳转都会收在同一块版面里。',
-        zhHant: '正文、來源、閱讀動作和原文跳轉都會留在同一塊版面裡。',
-        en: 'Body text, source info, actions, and the original link stay together here.',
       );
   String get addSourceTitle =>
       _text(zhCn: '添加订阅源', zhHant: '添加訂閱源', en: 'Add Source');

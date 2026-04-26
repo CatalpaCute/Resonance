@@ -7,7 +7,7 @@
 正确流程：
 
 1. 在 GitHub 上创建一个 Draft Release。
-2. 为它选择或新建一个 tag，例如 `v0.1.0`。
+2. 为它选择或新建一个 tag，例如 `v0.7.0`。
 3. 检查 Release 内容。
 4. 点击 `Publish release`。
 
@@ -29,10 +29,17 @@
 
 Android 签名文件会在 CI 运行时临时还原为 `android/upload-keystore.jks`，不会写回仓库。
 
-## 产物说明
+## 产物命名
 
-- Android：上传 `rsstool-android-<tag>.apk`
-- Windows：上传 `rsstool-windows-<tag>.zip`
+工作流会从 `pubspec.yaml` 读取软件版本号，并把版本号和 Release tag 一起写进最终文件名。
+
+- Android：`Resonance-android-<version>-<tag>.apk`
+- Windows：`Resonance-windows-<version>-<tag>.zip`
+
+例如当前 `pubspec.yaml` 里是 `0.7.0+13`，tag 是 `Testv10`，那么产物文件名会是：
+
+- `Resonance-android-0.7.0+13-Testv10.apk`
+- `Resonance-windows-0.7.0+13-Testv10.zip`
 
 Windows 当前输出的是 Flutter `windows` 发布目录压缩包，解压后可直接运行。如果后续需要标准安装器，可以再接 `msix` 或 Inno Setup。
 
