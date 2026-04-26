@@ -13,12 +13,14 @@ class ArticleListPanel extends StatelessWidget {
     super.key,
     required this.controller,
     required this.compact,
+    this.mobileRestyled = false,
     this.topContent,
     this.scrollController,
   });
 
   final ReaderController controller;
   final bool compact;
+  final bool mobileRestyled;
   final Widget? topContent;
   final ScrollController? scrollController;
 
@@ -26,8 +28,9 @@ class ArticleListPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final List<Article> articles = controller.visibleArticles;
     final AppStrings strings = context.strings;
-    final bool compactHome =
-        compact && controller.currentRoute == AppRouteId.allArticles;
+    final bool compactHome = compact &&
+        mobileRestyled &&
+        controller.currentRoute == AppRouteId.allArticles;
     // Design intent: the compact shell header already carries route + brand, so
     // the content area can focus on filters and article cards instead of repeating
     // another large title block.

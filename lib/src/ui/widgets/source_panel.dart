@@ -176,11 +176,13 @@ class CompactSourceFilterHeader extends StatelessWidget {
   const CompactSourceFilterHeader({
     super.key,
     required this.controller,
+    this.mobileRestyled = false,
     required this.expanded,
     required this.onExpandedChanged,
   });
 
   final ReaderController controller;
+  final bool mobileRestyled;
   final bool expanded;
   final ValueChanged<bool> onExpandedChanged;
 
@@ -192,7 +194,7 @@ class CompactSourceFilterHeader extends StatelessWidget {
 
     // Design intent: chips work well only while the source count stays small;
     // once the list grows, the original expandable panel remains more usable.
-    if (controller.feeds.length <= 5) {
+    if (mobileRestyled && controller.feeds.length <= 5) {
       final bool refreshingCurrent = controller.activeSourceId != null &&
           controller.isFeedRefreshing(controller.activeSourceId!);
       void refreshCurrentView() {

@@ -20,6 +20,8 @@ import 'widgets/source_panel.dart';
 
 final bool _useWindowsWindowChrome =
     !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
+final bool _useAndroidMobileUi =
+    !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
 const Duration _shellMotionDuration = Duration(milliseconds: 280);
 const Curve _shellMotionCurve = Cubic(0.18, 0.92, 0.28, 1.0);
 const Color _mobilePageBackground = Color(0xFFFEFCF8);
@@ -131,6 +133,7 @@ class _ReaderHomeState extends State<ReaderHome> {
         return LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
             final bool compact = constraints.maxWidth < 980;
+            final bool useAndroidMobileUi = compact && _useAndroidMobileUi;
             final bool useDrawer = _useDrawer(constraints.maxWidth);
             final bool useRail = compact && !useDrawer;
             final double topInset =
@@ -165,13 +168,16 @@ class _ReaderHomeState extends State<ReaderHome> {
               child: Scaffold(
                 key: _scaffoldKey,
                 backgroundColor:
-                    compact ? _mobilePageBackground : palette.shellBackground,
+                    useAndroidMobileUi
+                        ? _mobilePageBackground
+                        : palette.shellBackground,
                 drawer: useDrawer ? mobileDrawer : null,
                 body: Column(
                   children: <Widget>[
                     _ShellHeader(
                       controller: controller,
                       compact: compact,
+                      mobileRestyled: useAndroidMobileUi,
                       topInset: topInset,
                       sidebarCollapsed: compact
                           ? _compactRailCollapsed
@@ -215,18 +221,33 @@ class _ReaderHomeState extends State<ReaderHome> {
                             child: AnimatedContainer(
                               duration: _shellMotionDuration,
                               curve: _shellMotionCurve,
-                              color: compact
+                              color: useAndroidMobileUi
                                   ? _mobilePageBackground
                                   : palette.chromeBackground,
                               padding: EdgeInsets.fromLTRB(
-                                compact ? 0 : 10,
-                                compact ? 0 : 6,
-                                compact
+                                useAndroidMobileUi
                                     ? 0
-                                    : controller.settings.desktopSidebarCollapsed
-                                        ? 12
+                                    : compact
+                                        ? 6
                                         : 10,
-                                compact ? 0 : 10,
+                                useAndroidMobileUi
+                                    ? 0
+                                    : compact
+                                        ? 6
+                                        : 6,
+                                useAndroidMobileUi
+                                    ? 0
+                                    : compact
+                                        ? 6
+                                        : controller
+                                                .settings.desktopSidebarCollapsed
+                                            ? 12
+                                            : 10,
+                                useAndroidMobileUi
+                                    ? 0
+                                    : compact
+                                        ? 6
+                                        : 10,
                               ),
                               child: TweenAnimationBuilder<double>(
                                 tween: Tween<double>(
@@ -241,6 +262,7 @@ class _ReaderHomeState extends State<ReaderHome> {
                                 curve: _shellMotionCurve,
                                 child: _MainCanvas(
                                   compact: compact,
+                                  mobileRestyled: useAndroidMobileUi,
                                   child: Column(
                                     children: <Widget>[
                                       if (controller.errorMessage != null)
@@ -439,9 +461,11 @@ class _ReaderHomeState extends State<ReaderHome> {
           ArticleListPanel(
             controller: controller,
             compact: true,
+            mobileRestyled: _useAndroidMobileUi,
             scrollController: _compactHomeListController,
             topContent: CompactSourceFilterHeader(
               controller: controller,
+              mobileRestyled: _useAndroidMobileUi,
               expanded: _compactFilterExpanded,
               onExpandedChanged: (bool value) {
                 setState(() {
@@ -642,6 +666,7 @@ class _ShellHeader extends StatelessWidget {
   const _ShellHeader({
     required this.controller,
     required this.compact,
+    required this.mobileRestyled,
     required this.topInset,
     required this.sidebarCollapsed,
     required this.showSidebarToggle,
@@ -652,6 +677,7 @@ class _ShellHeader extends StatelessWidget {
 
   final ReaderController controller;
   final bool compact;
+  final bool mobileRestyled;
   final double topInset;
   final bool sidebarCollapsed;
   final bool showSidebarToggle;
@@ -663,13 +689,13 @@ class _ShellHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
-    final double headerHeight = compact ? 58 : 40;
+    final double headerHeight = mobileRestyled ? 58 : (compact ? 52 : 40);
 
     return Container(
       height: headerHeight + topInset,
       padding: EdgeInsets.only(top: topInset),
       decoration: BoxDecoration(
-        color: compact ? _mobilePageBackground : palette.chromeBackground,
+        color: mobileRestyled ? _mobilePageBackground : palette.chromeBackground,
         border: Border(
           bottom: BorderSide(color: palette.divider),
         ),
@@ -717,6 +743,7 @@ class _ShellHeader extends StatelessWidget {
                 ? _MobileHeaderTitle(
                     controller: controller,
                     strings: strings,
+                    mobileRestyled: mobileRestyled,
                   )
                 : DragToMoveArea(
                     child: SizedBox.expand(
@@ -746,6 +773,7 @@ class _ShellHeader extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(right: 12),
               child: _CompactStat(
+                mobileRestyled: mobileRestyled,
                 text: strings.unreadCountStat(controller.totalUnreadCount),
               ),
             ),
@@ -762,19 +790,23 @@ class _ShellHeader extends StatelessWidget {
 class _BrandMark extends StatelessWidget {
   const _BrandMark({
     required this.compact,
+    this.mobileRestyled = false,
   });
 
   final bool compact;
+  final bool mobileRestyled;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
 
     return Container(
-      width: compact ? 32 : 20,
-      height: compact ? 32 : 20,
+      width: compact ? (mobileRestyled ? 32 : 24) : 20,
+      height: compact ? (mobileRestyled ? 32 : 24) : 20,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(compact ? 12 : 6),
+        borderRadius: BorderRadius.circular(
+          compact ? (mobileRestyled ? 12 : 8) : 6,
+        ),
         gradient: LinearGradient(
           colors: <Color>[
             theme.colorScheme.primary.withValues(alpha: 0.90),
@@ -792,7 +824,7 @@ class _BrandMark extends StatelessWidget {
                 ?.copyWith(
                   color: theme.colorScheme.onPrimary,
                   fontWeight: FontWeight.w700,
-                  height: 1,
+                  height: mobileRestyled ? 1 : null,
                 ),
       ),
     );
@@ -803,10 +835,12 @@ class _MobileHeaderTitle extends StatelessWidget {
   const _MobileHeaderTitle({
     required this.controller,
     required this.strings,
+    required this.mobileRestyled,
   });
 
   final ReaderController controller;
   final AppStrings strings;
+  final bool mobileRestyled;
 
   @override
   Widget build(BuildContext context) {
@@ -814,8 +848,8 @@ class _MobileHeaderTitle extends StatelessWidget {
 
     return Row(
       children: <Widget>[
-        const _BrandMark(compact: true),
-        const SizedBox(width: 12),
+        _BrandMark(compact: true, mobileRestyled: mobileRestyled),
+        SizedBox(width: mobileRestyled ? 12 : 8),
         Expanded(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -825,21 +859,23 @@ class _MobileHeaderTitle extends StatelessWidget {
                 controller.currentRouteTitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w700,
-                      height: 1.12,
-                    ),
+                style: mobileRestyled
+                    ? Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w700,
+                          height: 1.12,
+                        )
+                    : Theme.of(context).textTheme.titleMedium,
               ),
-              const SizedBox(height: 2),
+              SizedBox(height: mobileRestyled ? 2 : 0),
               Text(
                 strings.appName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: palette.secondaryText,
-                      fontWeight: FontWeight.w500,
-                      height: 1.1,
+                      fontWeight: mobileRestyled ? FontWeight.w500 : null,
+                      height: mobileRestyled ? 1.1 : null,
                     ),
               ),
             ],
@@ -852,9 +888,11 @@ class _MobileHeaderTitle extends StatelessWidget {
 
 class _CompactStat extends StatelessWidget {
   const _CompactStat({
+    required this.mobileRestyled,
     required this.text,
   });
 
+  final bool mobileRestyled;
   final String text;
 
   @override
@@ -862,17 +900,21 @@ class _CompactStat extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      padding: mobileRestyled
+          ? const EdgeInsets.symmetric(horizontal: 14, vertical: 9)
+          : const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
-        color: _mobilePageBackground,
+        color: mobileRestyled ? _mobilePageBackground : palette.panelBackground,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: palette.border),
       ),
       child: Text(
         text,
-        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-              fontWeight: FontWeight.w600,
-            ),
+        style: mobileRestyled
+            ? Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                )
+            : Theme.of(context).textTheme.bodySmall,
       ),
     );
   }
@@ -1083,17 +1125,19 @@ class _WindowActionsState extends State<_WindowActions> with WindowListener {
 class _MainCanvas extends StatelessWidget {
   const _MainCanvas({
     required this.compact,
+    required this.mobileRestyled,
     required this.child,
   });
 
   final bool compact;
+  final bool mobileRestyled;
   final Widget child;
 
   @override
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
 
-    if (compact) {
+    if (mobileRestyled) {
       return ColoredBox(
         color: _mobilePageBackground,
         child: child,
