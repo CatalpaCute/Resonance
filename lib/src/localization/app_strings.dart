@@ -405,11 +405,6 @@ class AppStrings {
         zhHant: '點開一篇文章，閱讀區會在這裡安靜展開。',
         en: 'Open any article and the reader will expand here.',
       );
-  String get emptyReaderBody => _text(
-        zhCn: '正文、来源、阅读动作和原文跳转都会收在同一块版面里。',
-        zhHant: '正文、來源、閱讀動作和原文跳轉都會留在同一塊版面裡。',
-        en: 'Body text, source info, actions, and the original link stay together here.',
-      );
   String get addSourceTitle =>
       _text(zhCn: '添加订阅源', zhHant: '添加訂閱源', en: 'Add Source');
   String get feedUrlLabel =>

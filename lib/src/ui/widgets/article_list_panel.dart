@@ -32,13 +32,13 @@ class ArticleListPanel extends StatelessWidget {
     // the content area can focus on filters and article cards instead of repeating
     // another large title block.
     final bool showPanelHeader = !compactHome;
-    final bool useLayeredCards = compactHome || !compact;
+    final bool useLayeredCards = compactHome;
 
     final Widget content = Padding(
       padding: EdgeInsets.fromLTRB(
-        compactHome ? 4 : (compact ? 12 : 16),
-        compactHome ? 4 : (compact ? 12 : 16),
-        compactHome ? 4 : (compact ? 12 : 16),
+        compactHome ? 10 : (compact ? 12 : 16),
+        compactHome ? 12 : (compact ? 12 : 16),
+        compactHome ? 10 : (compact ? 12 : 16),
         compactHome ? 0 : (compact ? 10 : 14),
       ),
       child: Column(
@@ -98,7 +98,7 @@ class ArticleListPanel extends StatelessWidget {
           ],
           if (topContent != null) ...<Widget>[
             topContent!,
-            SizedBox(height: compactHome ? 14 : 10),
+            SizedBox(height: compactHome ? 16 : 10),
           ],
           if (articles.isEmpty)
             Expanded(
@@ -216,12 +216,13 @@ class _ArticleTile extends StatelessWidget {
         ? 3
         : (density == ArticleListDensity.compact ? 2 : 3);
     final double cardRadius = mobileEmphasis ? 18 : (compact ? 16 : 14);
+    final bool showBottomActions = !mobileEmphasis;
     final Color cardColor = layered
-        ? palette.panelBackground
+        ? (active ? palette.primarySoft.withValues(alpha: 0.58) : palette.panelBackground)
         : (active ? palette.hover : Colors.transparent);
     final Color borderColor = layered
         ? (active
-              ? theme.colorScheme.primary.withValues(alpha: 0.20)
+              ? theme.colorScheme.primary.withValues(alpha: 0.28)
               : palette.border.withValues(alpha: 0.92))
         : Colors.transparent;
     final double borderWidth = layered ? (active ? 1.15 : 1) : 1;
@@ -245,6 +246,17 @@ class _ArticleTile extends StatelessWidget {
               color: borderColor,
               width: borderWidth,
             ),
+            boxShadow: layered
+                ? <BoxShadow>[
+                    BoxShadow(
+                      color: palette.shadow.withValues(
+                        alpha: active ? 0.12 : 0.08,
+                      ),
+                      blurRadius: active ? 22 : 18,
+                      offset: Offset(0, active ? 8 : 6),
+                    ),
+                  ]
+                : null,
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -312,6 +324,7 @@ class _ArticleTile extends StatelessWidget {
               ),
               SizedBox(height: mobileEmphasis ? 8 : 6),
               if (layered &&
+                  !mobileEmphasis &&
                   article.author != null &&
                   article.author!.isNotEmpty) ...<Widget>[
                 Text(
@@ -322,7 +335,7 @@ class _ArticleTile extends StatelessWidget {
                     color: palette.tertiaryText,
                   ),
                 ),
-                SizedBox(height: mobileEmphasis ? 6 : 4),
+                const SizedBox(height: 4),
               ],
               Text(
                 article.readerText.isEmpty
@@ -335,55 +348,59 @@ class _ArticleTile extends StatelessWidget {
                   height: mobileEmphasis ? 1.52 : 1.46,
                 ),
               ),
-              SizedBox(height: mobileEmphasis ? 10 : 8),
-              Container(
-                height: 1,
-                color: layered
-                    ? palette.divider.withValues(alpha: 0.92)
-                    : palette.divider,
-              ),
-              SizedBox(height: mobileEmphasis ? 6 : 4),
-              Row(
-                children: <Widget>[
-                  if (!layered && article.author != null && article.author!.isNotEmpty)
-                    Expanded(
-                      child: Text(
-                        article.author!,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: palette.tertiaryText,
+              if (showBottomActions) ...<Widget>[
+                SizedBox(height: mobileEmphasis ? 10 : 8),
+                Container(
+                  height: 1,
+                  color: layered
+                      ? palette.divider.withValues(alpha: 0.92)
+                      : palette.divider,
+                ),
+                SizedBox(height: mobileEmphasis ? 6 : 4),
+                Row(
+                  children: <Widget>[
+                    if (!layered &&
+                        article.author != null &&
+                        article.author!.isNotEmpty)
+                      Expanded(
+                        child: Text(
+                          article.author!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: palette.tertiaryText,
+                          ),
                         ),
-                      ),
-                    )
-                  else
-                    const Spacer(),
-                  _TinyAction(
-                    icon: article.starred
-                        ? Icons.star_rounded
-                        : Icons.star_border_rounded,
-                    active: article.starred,
-                    tooltip: strings.starAction(article.starred),
-                    onTap: onStarToggle,
-                  ),
-                  _TinyAction(
-                    icon: article.savedForLater
-                        ? Icons.schedule_rounded
-                        : Icons.schedule_outlined,
-                    active: article.savedForLater,
-                    tooltip: strings.readLaterAction(article.savedForLater),
-                    onTap: onSaveToggle,
-                  ),
-                  _TinyAction(
-                    icon: article.isRead
-                        ? Icons.mark_email_unread_outlined
-                        : Icons.done_rounded,
-                    active: article.isRead,
-                    tooltip: strings.readStateAction(article.isRead),
-                    onTap: onReadToggle,
-                  ),
-                ],
-              ),
+                      )
+                    else
+                      const Spacer(),
+                    _TinyAction(
+                      icon: article.starred
+                          ? Icons.star_rounded
+                          : Icons.star_border_rounded,
+                      active: article.starred,
+                      tooltip: strings.starAction(article.starred),
+                      onTap: onStarToggle,
+                    ),
+                    _TinyAction(
+                      icon: article.savedForLater
+                          ? Icons.schedule_rounded
+                          : Icons.schedule_outlined,
+                      active: article.savedForLater,
+                      tooltip: strings.readLaterAction(article.savedForLater),
+                      onTap: onSaveToggle,
+                    ),
+                    _TinyAction(
+                      icon: article.isRead
+                          ? Icons.mark_email_unread_outlined
+                          : Icons.done_rounded,
+                      active: article.isRead,
+                      tooltip: strings.readStateAction(article.isRead),
+                      onTap: onReadToggle,
+                    ),
+                  ],
+                ),
+              ],
             ],
           ),
         ),

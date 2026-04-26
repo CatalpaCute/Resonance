@@ -213,16 +213,18 @@ class _ReaderHomeState extends State<ReaderHome> {
                             child: AnimatedContainer(
                               duration: _shellMotionDuration,
                               curve: _shellMotionCurve,
-                              color: palette.chromeBackground,
+                              color: compact
+                                  ? palette.shellBackground
+                                  : palette.chromeBackground,
                               padding: EdgeInsets.fromLTRB(
-                                compact ? 6 : 10,
-                                compact ? 6 : 6,
+                                compact ? 0 : 10,
+                                compact ? 0 : 6,
                                 compact
-                                    ? 6
+                                    ? 0
                                     : controller.settings.desktopSidebarCollapsed
                                         ? 12
                                         : 10,
-                                compact ? 6 : 10,
+                                compact ? 0 : 10,
                               ),
                               child: TweenAnimationBuilder<double>(
                                 tween: Tween<double>(
@@ -659,7 +661,7 @@ class _ShellHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
-    final double headerHeight = compact ? 52 : 40;
+    final double headerHeight = compact ? 58 : 40;
 
     return Container(
       height: headerHeight + topInset,
@@ -674,7 +676,7 @@ class _ShellHeader extends StatelessWidget {
         children: <Widget>[
           if (compact)
             Padding(
-              padding: const EdgeInsets.only(left: 8, right: 4),
+              padding: const EdgeInsets.only(left: 10, right: 6),
               // Compact rail mode should behave like desktop: the sidebar
               // stays mounted and is controlled by the top toggle instead of
               // opening a second drawer layer from the left edge.
@@ -740,7 +742,7 @@ class _ShellHeader extends StatelessWidget {
           ),
           if (compact)
             Padding(
-              padding: const EdgeInsets.only(right: 10),
+              padding: const EdgeInsets.only(right: 12),
               child: _CompactStat(
                 text: strings.unreadCountStat(controller.totalUnreadCount),
               ),
@@ -767,10 +769,10 @@ class _BrandMark extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
 
     return Container(
-      width: compact ? 24 : 20,
-      height: compact ? 24 : 20,
+      width: compact ? 34 : 20,
+      height: compact ? 34 : 20,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(compact ? 8 : 6),
+        borderRadius: BorderRadius.circular(compact ? 12 : 6),
         gradient: LinearGradient(
           colors: <Color>[
             theme.colorScheme.primary.withValues(alpha: 0.90),
@@ -783,10 +785,12 @@ class _BrandMark extends StatelessWidget {
       alignment: Alignment.center,
       child: Text(
         AppBrand.mark,
-        style: theme.textTheme.labelSmall?.copyWith(
-          color: theme.colorScheme.onPrimary,
-          fontWeight: FontWeight.w700,
-        ),
+        style:
+            (compact ? theme.textTheme.titleSmall : theme.textTheme.labelSmall)
+                ?.copyWith(
+                  color: theme.colorScheme.onPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
       ),
     );
   }
@@ -808,7 +812,7 @@ class _MobileHeaderTitle extends StatelessWidget {
     return Row(
       children: <Widget>[
         const _BrandMark(compact: true),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -818,14 +822,18 @@ class _MobileHeaderTitle extends StatelessWidget {
                 controller.currentRouteTitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium,
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
               ),
+              const SizedBox(height: 1),
               Text(
                 strings.appName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: palette.secondaryText,
+                      fontWeight: FontWeight.w500,
                     ),
               ),
             ],
@@ -848,7 +856,7 @@ class _CompactStat extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
         color: palette.panelBackground,
         borderRadius: BorderRadius.circular(999),
@@ -856,7 +864,9 @@ class _CompactStat extends StatelessWidget {
       ),
       child: Text(
         text,
-        style: Theme.of(context).textTheme.bodySmall,
+        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w600,
+            ),
       ),
     );
   }
@@ -1076,6 +1086,13 @@ class _MainCanvas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    if (compact) {
+      return ColoredBox(
+        color: palette.shellBackground,
+        child: child,
+      );
+    }
 
     return Container(
       decoration: BoxDecoration(

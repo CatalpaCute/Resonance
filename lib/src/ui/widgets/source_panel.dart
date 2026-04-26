@@ -193,6 +193,13 @@ class CompactSourceFilterHeader extends StatelessWidget {
     if (controller.feeds.length <= 5) {
       final bool refreshingCurrent = controller.activeSourceId != null &&
           controller.isFeedRefreshing(controller.activeSourceId!);
+      void refreshCurrentView() {
+        if (controller.activeSourceId == null) {
+          controller.refreshAllFeeds();
+        } else {
+          controller.refreshSource(controller.activeSourceId!);
+        }
+      }
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -240,6 +247,15 @@ class CompactSourceFilterHeader extends StatelessWidget {
                 tooltip: strings.sourcesAndFilters,
                 onTap: () => onExpandedChanged(!expanded),
               ),
+              const SizedBox(width: 8),
+              _CompactToggleChip(
+                active: false,
+                icon: refreshingCurrent
+                    ? Icons.sync_rounded
+                    : Icons.refresh_rounded,
+                tooltip: strings.refreshCurrentView,
+                onTap: refreshCurrentView,
+              ),
             ],
           ),
           AnimatedCrossFade(
@@ -259,19 +275,6 @@ class CompactSourceFilterHeader extends StatelessWidget {
                     selected: controller.showOnlyUnread,
                     onTap: () {
                       controller.setShowOnlyUnread(!controller.showOnlyUnread);
-                    },
-                  ),
-                  _CompactUtilityChip(
-                    icon: refreshingCurrent
-                        ? Icons.sync_rounded
-                        : Icons.refresh_rounded,
-                    label: strings.refreshCurrentView,
-                    onTap: () {
-                      if (controller.activeSourceId == null) {
-                        controller.refreshAllFeeds();
-                      } else {
-                        controller.refreshSource(controller.activeSourceId!);
-                      }
                     },
                   ),
                   _CompactUtilityChip(
