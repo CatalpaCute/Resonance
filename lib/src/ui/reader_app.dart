@@ -22,6 +22,7 @@ final bool _useWindowsWindowChrome =
     !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 const Duration _shellMotionDuration = Duration(milliseconds: 280);
 const Curve _shellMotionCurve = Cubic(0.18, 0.92, 0.28, 1.0);
+const Color _mobilePageBackground = Color(0xFFFEFCF8);
 
 class ReaderApp extends StatelessWidget {
   const ReaderApp({
@@ -163,7 +164,8 @@ class _ReaderHomeState extends State<ReaderHome> {
               },
               child: Scaffold(
                 key: _scaffoldKey,
-                backgroundColor: palette.shellBackground,
+                backgroundColor:
+                    compact ? _mobilePageBackground : palette.shellBackground,
                 drawer: useDrawer ? mobileDrawer : null,
                 body: Column(
                   children: <Widget>[
@@ -214,7 +216,7 @@ class _ReaderHomeState extends State<ReaderHome> {
                               duration: _shellMotionDuration,
                               curve: _shellMotionCurve,
                               color: compact
-                                  ? palette.shellBackground
+                                  ? _mobilePageBackground
                                   : palette.chromeBackground,
                               padding: EdgeInsets.fromLTRB(
                                 compact ? 0 : 10,
@@ -667,7 +669,7 @@ class _ShellHeader extends StatelessWidget {
       height: headerHeight + topInset,
       padding: EdgeInsets.only(top: topInset),
       decoration: BoxDecoration(
-        color: palette.chromeBackground,
+        color: compact ? _mobilePageBackground : palette.chromeBackground,
         border: Border(
           bottom: BorderSide(color: palette.divider),
         ),
@@ -769,8 +771,8 @@ class _BrandMark extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
 
     return Container(
-      width: compact ? 34 : 20,
-      height: compact ? 34 : 20,
+      width: compact ? 32 : 20,
+      height: compact ? 32 : 20,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(compact ? 12 : 6),
         gradient: LinearGradient(
@@ -790,6 +792,7 @@ class _BrandMark extends StatelessWidget {
                 ?.copyWith(
                   color: theme.colorScheme.onPrimary,
                   fontWeight: FontWeight.w700,
+                  height: 1,
                 ),
       ),
     );
@@ -822,18 +825,21 @@ class _MobileHeaderTitle extends StatelessWidget {
                 controller.currentRouteTitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontSize: 20,
                       fontWeight: FontWeight.w700,
+                      height: 1.12,
                     ),
               ),
-              const SizedBox(height: 1),
+              const SizedBox(height: 2),
               Text(
                 strings.appName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: palette.secondaryText,
                       fontWeight: FontWeight.w500,
+                      height: 1.1,
                     ),
               ),
             ],
@@ -858,7 +864,7 @@ class _CompactStat extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
       decoration: BoxDecoration(
-        color: palette.panelBackground,
+        color: _mobilePageBackground,
         borderRadius: BorderRadius.circular(999),
         border: Border.all(color: palette.border),
       ),
@@ -1089,7 +1095,7 @@ class _MainCanvas extends StatelessWidget {
 
     if (compact) {
       return ColoredBox(
-        color: palette.shellBackground,
+        color: _mobilePageBackground,
         child: child,
       );
     }

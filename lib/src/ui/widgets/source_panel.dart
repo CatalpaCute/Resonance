@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 
 import '../../localization/app_strings.dart';
@@ -201,98 +203,128 @@ class CompactSourceFilterHeader extends StatelessWidget {
         }
       }
 
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: SizedBox(
-                  height: 40,
-                  child: ListView(
-                    scrollDirection: Axis.horizontal,
-                    padding: EdgeInsets.zero,
-                    children: <Widget>[
-                      _CompactSourceChip(
-                        label: strings.allSources,
-                        selected: controller.activeSourceId == null,
-                        onTap: controller.clearSourceFilter,
-                      ),
-                      const SizedBox(width: 8),
-                      ...controller.feeds.expand((FeedSource source) {
-                        return <Widget>[
-                          _CompactSourceChip(
-                            label: source.title,
-                            selected: controller.activeSourceId == source.id,
-                            onTap: () {
-                              controller.selectSource(
-                                source,
-                                enterSourceDetail: false,
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                        ];
-                      }),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              _CompactToggleChip(
-                active: expanded,
-                icon: expanded
-                    ? Icons.keyboard_arrow_up_rounded
-                    : Icons.tune_rounded,
-                tooltip: strings.sourcesAndFilters,
-                onTap: () => onExpandedChanged(!expanded),
-              ),
-              const SizedBox(width: 8),
-              _CompactToggleChip(
-                active: false,
-                icon: refreshingCurrent
-                    ? Icons.sync_rounded
-                    : Icons.refresh_rounded,
-                tooltip: strings.refreshCurrentView,
-                onTap: refreshCurrentView,
-              ),
-            ],
-          ),
-          AnimatedCrossFade(
-            duration: _compactFilterMotionDuration,
-            reverseDuration: _compactFilterMotionDuration,
-            sizeCurve: _compactFilterMotionCurve,
-            firstChild: const SizedBox.shrink(),
-            secondChild: Padding(
-              padding: const EdgeInsets.only(top: 10),
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
+      return AnimatedContainer(
+        duration: _compactFilterMotionDuration,
+        curve: _compactFilterMotionCurve,
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: palette.panelBackground.withValues(alpha: 0.92),
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: palette.border.withValues(alpha: 0.70)),
+          boxShadow: <BoxShadow>[
+            BoxShadow(
+              color: palette.shadow.withValues(alpha: 0.06),
+              blurRadius: 18,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            SizedBox(
+              height: 40,
+              child: Stack(
                 children: <Widget>[
-                  _CompactUtilityChip(
-                    icon: Icons.visibility_rounded,
-                    label: strings.unreadOnly,
-                    selected: controller.showOnlyUnread,
-                    onTap: () {
-                      controller.setShowOnlyUnread(!controller.showOnlyUnread);
-                    },
+                  Positioned.fill(
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.only(right: 96),
+                      children: <Widget>[
+                        _CompactSourceChip(
+                          label: strings.allSources,
+                          selected: controller.activeSourceId == null,
+                          onTap: controller.clearSourceFilter,
+                        ),
+                        const SizedBox(width: 8),
+                        ...controller.feeds.expand((FeedSource source) {
+                          return <Widget>[
+                            _CompactSourceChip(
+                              label: source.title,
+                              selected: controller.activeSourceId == source.id,
+                              onTap: () {
+                                controller.selectSource(
+                                  source,
+                                  enterSourceDetail: false,
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                          ];
+                        }),
+                      ],
+                    ),
                   ),
-                  _CompactUtilityChip(
-                    icon: Icons.tune_rounded,
-                    label: strings.subscriptionManagement,
-                    onTap: () {
-                      controller.setCurrentRoute(AppRouteId.discoverAddSource);
-                      onExpandedChanged(false);
-                    },
+                  Positioned(
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    child: _CompactActionDock(
+                      children: <Widget>[
+                        _CompactToggleChip(
+                          active: expanded,
+                          icon: expanded
+                              ? Icons.keyboard_arrow_up_rounded
+                              : Icons.tune_rounded,
+                          tooltip: strings.sourcesAndFilters,
+                          onTap: () => onExpandedChanged(!expanded),
+                        ),
+                        const SizedBox(width: 8),
+                        _CompactToggleChip(
+                          active: false,
+                          icon: refreshingCurrent
+                              ? Icons.sync_rounded
+                              : Icons.refresh_rounded,
+                          tooltip: strings.refreshCurrentView,
+                          onTap: refreshCurrentView,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
             ),
-            crossFadeState: expanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
-          ),
-        ],
+            AnimatedSize(
+              duration: _compactFilterMotionDuration,
+              curve: _compactFilterMotionCurve,
+              alignment: Alignment.topCenter,
+              child: expanded
+                  ? Padding(
+                      padding: const EdgeInsets.only(top: 10),
+                      child: Row(
+                        children: <Widget>[
+                          Expanded(
+                            child: _CompactUtilityChip(
+                              icon: Icons.visibility_rounded,
+                              label: strings.unreadOnly,
+                              selected: controller.showOnlyUnread,
+                              onTap: () {
+                                controller.setShowOnlyUnread(
+                                  !controller.showOnlyUnread,
+                                );
+                              },
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: _CompactUtilityChip(
+                              icon: Icons.tune_rounded,
+                              label: strings.subscriptionManagement,
+                              onTap: () {
+                                controller.setCurrentRoute(
+                                  AppRouteId.discoverAddSource,
+                                );
+                                onExpandedChanged(false);
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : const SizedBox.shrink(),
+            ),
+          ],
+        ),
       );
     }
 
@@ -512,6 +544,61 @@ class _CompactSourceChip extends StatelessWidget {
   }
 }
 
+class _CompactActionDock extends StatelessWidget {
+  const _CompactActionDock({
+    required this.children,
+  });
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return ClipPath(
+      clipper: _CompactActionDockClipper(),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.only(left: 12),
+          decoration: BoxDecoration(
+            color: palette.panelBackground.withValues(alpha: 0.78),
+            border: Border(
+              left: BorderSide(
+                color: palette.border.withValues(alpha: 0.38),
+              ),
+            ),
+          ),
+          child: Row(children: children),
+        ),
+      ),
+    );
+  }
+}
+
+class _CompactActionDockClipper extends CustomClipper<Path> {
+  @override
+  Path getClip(Size size) {
+    return Path()
+      ..moveTo(18, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width, size.height)
+      ..lineTo(18, size.height)
+      ..cubicTo(
+        2,
+        size.height * 0.72,
+        2,
+        size.height * 0.28,
+        18,
+        0,
+      )
+      ..close();
+  }
+
+  @override
+  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+}
+
 class _CompactToggleChip extends StatelessWidget {
   const _CompactToggleChip({
     required this.active,
@@ -599,6 +686,7 @@ class _CompactUtilityChip extends StatelessWidget {
             ),
           ),
           child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: <Widget>[
               Icon(
