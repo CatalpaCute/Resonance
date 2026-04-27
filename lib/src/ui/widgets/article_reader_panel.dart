@@ -25,6 +25,7 @@ class ArticleReaderPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final Article? article = controller.selectedArticle;
     final AppStrings strings = context.strings;
+    final bool showReadLaterDone = controller.shouldShowReadLaterDoneAction;
 
     final Widget content = Padding(
       padding: EdgeInsets.fromLTRB(
@@ -141,6 +142,9 @@ class ArticleReaderPanel extends StatelessWidget {
                       contentMode: controller.settings.articleContentMode,
                       strings: strings,
                       onOpenUrl: _openOriginal,
+                      onCompleteReadLater: showReadLaterDone
+                          ? () => controller.completeReadLaterArticle(article)
+                          : null,
                     ),
                   ),
                 ),
@@ -182,6 +186,7 @@ class _ReaderBody extends StatelessWidget {
     required this.contentMode,
     required this.strings,
     required this.onOpenUrl,
+    this.onCompleteReadLater,
   });
 
   final Article article;
@@ -189,6 +194,7 @@ class _ReaderBody extends StatelessWidget {
   final ArticleContentMode contentMode;
   final AppStrings strings;
   final Future<void> Function(String url) onOpenUrl;
+  final Future<void> Function()? onCompleteReadLater;
 
   @override
   Widget build(BuildContext context) {
@@ -212,54 +218,101 @@ class _ReaderBody extends StatelessWidget {
       );
     }
 
+    final Widget body = !useTextOnly && readerHtml.isNotEmpty
+        ? HtmlWidget(
+            readerHtml,
+            textStyle: readerStyle,
+            factoryBuilder: () => _ReaderHtmlWidgetFactory(),
+            onTapUrl: (String url) async {
+              await onOpenUrl(url);
+              return true;
+            },
+            customStylesBuilder: (element) {
+              final String tagName = element.localName ?? '';
+              if (tagName == 'img') {
+                return <String, String>{
+                  'display': 'block',
+                  'max-width': '100%',
+                  'width': 'auto',
+                  'height': 'auto',
+                  'margin': '10px 0',
+                  'border-radius': '14px',
+                };
+              }
+              if (tagName == 'figure' || tagName == 'blockquote') {
+                return <String, String>{
+                  'display': 'block',
+                  'max-width': '100%',
+                  'margin': '14px 0',
+                };
+              }
+              if (tagName == 'p') {
+                return <String, String>{
+                  'margin': '0 0 14px 0',
+                };
+              }
+              if (tagName == 'a' &&
+                  (element.attributes['href']?.isNotEmpty ?? false)) {
+                return <String, String>{
+                  'color': '#8f7658',
+                };
+              }
+              return null;
+            },
+          )
+        : SelectableText(
+            readerText,
+            style: readerStyle,
+          );
+
     return Scrollbar(
       child: SingleChildScrollView(
-        child: !useTextOnly && readerHtml.isNotEmpty
-            ? HtmlWidget(
-                readerHtml,
-                textStyle: readerStyle,
-                factoryBuilder: () => _ReaderHtmlWidgetFactory(),
-                onTapUrl: (String url) async {
-                  await onOpenUrl(url);
-                  return true;
-                },
-                customStylesBuilder: (element) {
-                  final String tagName = element.localName ?? '';
-                  if (tagName == 'img') {
-                    return <String, String>{
-                      'display': 'block',
-                      'max-width': '100%',
-                      'width': 'auto',
-                      'height': 'auto',
-                      'margin': '10px 0',
-                      'border-radius': '14px',
-                    };
-                  }
-                  if (tagName == 'figure' || tagName == 'blockquote') {
-                    return <String, String>{
-                      'display': 'block',
-                      'max-width': '100%',
-                      'margin': '14px 0',
-                    };
-                  }
-                  if (tagName == 'p') {
-                    return <String, String>{
-                      'margin': '0 0 14px 0',
-                    };
-                  }
-                  if (tagName == 'a' &&
-                      (element.attributes['href']?.isNotEmpty ?? false)) {
-                    return <String, String>{
-                      'color': '#8f7658',
-                    };
-                  }
-                  return null;
-                },
-              )
-            : SelectableText(
-                readerText,
-                style: readerStyle,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            body,
+            if (onCompleteReadLater != null) ...<Widget>[
+              SizedBox(height: compact ? 18 : 22),
+              _ReadLaterDoneButton(
+                compact: compact,
+                label: strings.readLaterDoneAction,
+                onPressed: onCompleteReadLater!,
               ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ReadLaterDoneButton extends StatelessWidget {
+  const _ReadLaterDoneButton({
+    required this.compact,
+    required this.label,
+    required this.onPressed,
+  });
+
+  final bool compact;
+  final String label;
+  final Future<void> Function() onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    return FilledButton.icon(
+      onPressed: () async {
+        await onPressed();
+      },
+      icon: Icon(Icons.done_rounded, size: compact ? 18 : 20),
+      label: Text(label),
+      style: FilledButton.styleFrom(
+        minimumSize: Size.fromHeight(compact ? 48 : 52),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(compact ? 18 : 20),
+        ),
+        textStyle: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w700,
+            ),
       ),
     );
   }

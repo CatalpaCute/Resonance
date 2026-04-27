@@ -389,6 +389,9 @@ class AppStrings {
       ? _text(zhCn: '取消稍后读', zhHant: '取消稍後讀', en: 'Remove from Later')
       : _text(zhCn: '稍后读', zhHant: '稍後讀', en: 'Read Later');
 
+  String get readLaterDoneAction =>
+      _text(zhCn: '已读', zhHant: '已讀', en: 'Done Reading');
+
   String readStateAction(bool isRead) => isRead
       ? _text(zhCn: '标为未读', zhHant: '標為未讀', en: 'Mark Unread')
       : _text(zhCn: '标为已读', zhHant: '標為已讀', en: 'Mark Read');

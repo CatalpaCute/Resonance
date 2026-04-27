@@ -59,6 +59,15 @@ class ReaderController extends ChangeNotifier {
 
   FeedSource? get activeSource => _feedById(_activeSourceId);
   Article? get selectedArticle => _articleById(_selectedArticleId);
+  bool get shouldShowReadLaterDoneAction {
+    final Article? article = selectedArticle;
+    final bool readingFromBookmarks = _currentRoute == AppRouteId.bookmarks ||
+        (_currentRoute == AppRouteId.readerDetail &&
+            _lastWorkspaceRoute == AppRouteId.bookmarks);
+    return readingFromBookmarks &&
+        _bookmarkFilter == BookmarkFilter.savedForLater &&
+        (article?.savedForLater ?? false);
+  }
 
   bool get routeUsesReaderWorkspace {
     return _currentRoute == AppRouteId.allArticles ||
@@ -244,6 +253,13 @@ class ReaderController extends ChangeNotifier {
   Future<void> toggleSavedForLater(Article article) async {
     await _replaceArticle(
         article.copyWith(savedForLater: !article.savedForLater));
+  }
+
+  Future<void> completeReadLaterArticle(Article article) async {
+    if (!article.savedForLater) {
+      return;
+    }
+    await _replaceArticle(article.copyWith(savedForLater: false));
   }
 
   Future<void> setShowOnlyUnread(bool value) async {
