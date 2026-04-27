@@ -20,7 +20,7 @@ import 'widgets/source_panel.dart';
 
 final bool _useWindowsWindowChrome =
     !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
-final bool _useNativePortraitMobileUi =
+final bool _isNativeMobilePlatform =
     !kIsWeb &&
     (defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS);
@@ -135,9 +135,8 @@ class _ReaderHomeState extends State<ReaderHome> {
         return LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
             final bool compact = constraints.maxWidth < 980;
-            final bool useNativePortraitMobileUi = compact &&
-                _useNativePortraitMobileUi &&
-                MediaQuery.orientationOf(context) == Orientation.portrait;
+            final bool usePortraitMobileHome =
+                _usePortraitMobileHome(context, constraints);
             final bool useDrawer = _useDrawer(constraints.maxWidth);
             final bool useRail = compact && !useDrawer;
             final double topInset =
@@ -172,7 +171,7 @@ class _ReaderHomeState extends State<ReaderHome> {
               child: Scaffold(
                 key: _scaffoldKey,
                 backgroundColor:
-                    useNativePortraitMobileUi
+                    usePortraitMobileHome
                         ? _mobilePageBackground
                         : palette.shellBackground,
                 drawer: useDrawer ? mobileDrawer : null,
@@ -181,7 +180,7 @@ class _ReaderHomeState extends State<ReaderHome> {
                     _ShellHeader(
                       controller: controller,
                       compact: compact,
-                      mobileRestyled: useNativePortraitMobileUi,
+                      mobileRestyled: usePortraitMobileHome,
                       topInset: topInset,
                       sidebarCollapsed: compact
                           ? _compactRailCollapsed
@@ -225,21 +224,21 @@ class _ReaderHomeState extends State<ReaderHome> {
                             child: AnimatedContainer(
                               duration: _shellMotionDuration,
                               curve: _shellMotionCurve,
-                              color: useNativePortraitMobileUi
+                              color: usePortraitMobileHome
                                   ? _mobilePageBackground
                                   : palette.chromeBackground,
                               padding: EdgeInsets.fromLTRB(
-                                useNativePortraitMobileUi
+                                usePortraitMobileHome
                                     ? 0
                                     : compact
                                         ? 6
                                         : 10,
-                                useNativePortraitMobileUi
+                                usePortraitMobileHome
                                     ? 0
                                     : compact
                                         ? 6
                                         : 6,
-                                useNativePortraitMobileUi
+                                usePortraitMobileHome
                                     ? 0
                                     : compact
                                         ? 6
@@ -247,7 +246,7 @@ class _ReaderHomeState extends State<ReaderHome> {
                                                 .settings.desktopSidebarCollapsed
                                             ? 12
                                             : 10,
-                                useNativePortraitMobileUi
+                                usePortraitMobileHome
                                     ? 0
                                     : compact
                                         ? 6
@@ -266,7 +265,7 @@ class _ReaderHomeState extends State<ReaderHome> {
                                 curve: _shellMotionCurve,
                                 child: _MainCanvas(
                                   compact: compact,
-                                  mobileRestyled: useNativePortraitMobileUi,
+                                  mobileRestyled: usePortraitMobileHome,
                                   child: Column(
                                     children: <Widget>[
                                       if (controller.errorMessage != null)
@@ -289,8 +288,7 @@ class _ReaderHomeState extends State<ReaderHome> {
                                         child: _buildBody(
                                           context,
                                           compact: compact,
-                                          mobileRestyled:
-                                              useNativePortraitMobileUi,
+                                          mobileRestyled: usePortraitMobileHome,
                                         ),
                                       ),
                                     ],
@@ -337,6 +335,16 @@ class _ReaderHomeState extends State<ReaderHome> {
       case MobileSidebarMode.adaptive:
         return width < 720;
     }
+  }
+
+  bool _usePortraitMobileHome(
+    BuildContext context,
+    BoxConstraints constraints,
+  ) {
+    if (!_isNativeMobilePlatform || constraints.maxWidth >= 980) {
+      return false;
+    }
+    return MediaQuery.orientationOf(context) == Orientation.portrait;
   }
 
   bool _useCompactMultiPaneWorkspace() {
