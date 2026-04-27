@@ -30,19 +30,28 @@ class ArticleListPanel extends StatelessWidget {
     final AppStrings strings = context.strings;
     final bool compactHome =
         compact && controller.currentRoute == AppRouteId.allArticles;
-    final bool mobileHomeRestyled = compactHome && mobileRestyled;
+    final bool compactMobileListRoute = compact &&
+        (controller.currentRoute == AppRouteId.allArticles ||
+            controller.currentRoute == AppRouteId.bookmarks);
+    final bool mobileHomeRestyled = mobileRestyled && compactMobileListRoute;
     // Design intent: the compact shell header already carries route + brand, so
     // the content area can focus on filters and article cards instead of repeating
     // another large title block.
-    final bool showPanelHeader = !compactHome;
-    final bool useLayeredCards = compactHome || !compact;
+    final bool showPanelHeader = !compactMobileListRoute;
+    final bool useLayeredCards = compactMobileListRoute || !compact;
 
     final Widget content = Padding(
       padding: EdgeInsets.fromLTRB(
-        mobileHomeRestyled ? 10 : (compactHome ? 4 : (compact ? 12 : 16)),
-        mobileHomeRestyled ? 12 : (compactHome ? 4 : (compact ? 12 : 16)),
-        mobileHomeRestyled ? 10 : (compactHome ? 4 : (compact ? 12 : 16)),
-        compactHome ? 0 : (compact ? 10 : 14),
+        mobileHomeRestyled
+            ? 10
+            : (compactMobileListRoute ? 4 : (compact ? 12 : 16)),
+        mobileHomeRestyled
+            ? 12
+            : (compactMobileListRoute ? 4 : (compact ? 12 : 16)),
+        mobileHomeRestyled
+            ? 10
+            : (compactMobileListRoute ? 4 : (compact ? 12 : 16)),
+        compactMobileListRoute ? 0 : (compact ? 10 : 14),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -101,7 +110,11 @@ class ArticleListPanel extends StatelessWidget {
           ],
           if (topContent != null) ...<Widget>[
             topContent!,
-            SizedBox(height: mobileHomeRestyled ? 16 : (compactHome ? 14 : 10)),
+            SizedBox(
+              height: mobileHomeRestyled
+                  ? 16
+                  : (compactMobileListRoute ? 14 : 10),
+            ),
           ],
           if (articles.isEmpty)
             Expanded(
@@ -111,7 +124,7 @@ class ArticleListPanel extends StatelessWidget {
             Expanded(
               child: ListView.separated(
                 padding: EdgeInsets.only(
-                  bottom: compactHome ? 18 : 8,
+                  bottom: compactMobileListRoute ? 18 : 8,
                 ),
                 key: PageStorageKey<String>(
                   'article-list-${controller.currentRoute.storageValue}-${compact ? 'compact' : 'desktop'}',
@@ -120,7 +133,7 @@ class ArticleListPanel extends StatelessWidget {
                 itemCount: articles.length,
                 separatorBuilder: (_, __) {
                   if (useLayeredCards) {
-                    return SizedBox(height: compactHome ? 14 : 10);
+                    return SizedBox(height: compactMobileListRoute ? 14 : 10);
                   }
                   return Divider(
                     height: 1,
@@ -141,7 +154,7 @@ class ArticleListPanel extends StatelessWidget {
                     active: active,
                     sourceTitle: controller.sourceTitleForArticle(article),
                     density: controller.settings.articleListDensity,
-                    mobileEmphasis: compactHome,
+                    mobileEmphasis: compactMobileListRoute,
                     hideBottomActions: mobileHomeRestyled,
                     layered: useLayeredCards,
                     onOpen: () {
@@ -171,7 +184,7 @@ class ArticleListPanel extends StatelessWidget {
       return content;
     }
 
-    if (compactHome) {
+    if (compactMobileListRoute) {
       return content;
     }
 
