@@ -494,6 +494,252 @@ class CompactSourceFilterHeader extends StatelessWidget {
   }
 }
 
+class CompactBookmarkFilterHeader extends StatelessWidget {
+  const CompactBookmarkFilterHeader({
+    super.key,
+    required this.controller,
+  });
+
+  final ReaderController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final List<FeedSource> sources = _sourcesWithBookmarkedArticles();
+    final bool singleSource = sources.length == 1;
+
+    return AnimatedContainer(
+      duration: _compactFilterMotionDuration,
+      curve: _compactFilterMotionCurve,
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: palette.panelBackground.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: palette.border.withValues(alpha: 0.70)),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: palette.shadow.withValues(alpha: 0.06),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: SizedBox(
+        height: 40,
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: singleSource
+                  ? _BookmarkSingleSourceChip(
+                      source: sources.first,
+                      selected: true,
+                      onTap: () => controller.selectSource(
+                        sources.first,
+                        enterSourceDetail: false,
+                      ),
+                    )
+                  : ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: EdgeInsets.zero,
+                      itemCount: sources.length,
+                      separatorBuilder: (_, __) => const SizedBox(width: 8),
+                      itemBuilder: (BuildContext context, int index) {
+                        final FeedSource source = sources[index];
+                        final bool selected =
+                            controller.activeSourceId == source.id;
+                        return _CompactSourceChip(
+                          label: source.title,
+                          selected: selected,
+                          onTap: () {
+                            if (selected) {
+                              controller.clearSourceFilter();
+                              return;
+                            }
+                            controller.selectSource(
+                              source,
+                              enterSourceDetail: false,
+                            );
+                          },
+                        );
+                      },
+                    ),
+            ),
+            const SizedBox(width: 8),
+            _BookmarkModeSwitch(
+              value: controller.bookmarkFilter,
+              onChanged: controller.selectBookmarkFilter,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  List<FeedSource> _sourcesWithBookmarkedArticles() {
+    final Set<String> sourceIds = controller.articles
+        .where((Article article) {
+          switch (controller.bookmarkFilter) {
+            case BookmarkFilter.starred:
+              return article.starred;
+            case BookmarkFilter.savedForLater:
+              return article.savedForLater;
+          }
+        })
+        .map((Article article) => article.sourceId)
+        .toSet();
+
+    return controller.feeds
+        .where((FeedSource source) => sourceIds.contains(source.id))
+        .toList(growable: false);
+  }
+}
+
+class _BookmarkSingleSourceChip extends StatelessWidget {
+  const _BookmarkSingleSourceChip({
+    required this.source,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final FeedSource source;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(999),
+        child: AnimatedContainer(
+          duration: _compactFilterMotionDuration,
+          curve: _compactFilterMotionCurve,
+          alignment: Alignment.center,
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color:
+                selected ? theme.colorScheme.primary : palette.panelMutedBackground,
+            borderRadius: BorderRadius.circular(999),
+            border: Border.all(
+              color: selected ? theme.colorScheme.primary : palette.border,
+            ),
+          ),
+          child: Text(
+            source.title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: selected ? theme.colorScheme.onPrimary : palette.secondaryText,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BookmarkModeSwitch extends StatelessWidget {
+  const _BookmarkModeSwitch({
+    required this.value,
+    required this.onChanged,
+  });
+
+  final BookmarkFilter value;
+  final ValueChanged<BookmarkFilter> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final bool savedSelected = value == BookmarkFilter.savedForLater;
+
+    return Semantics(
+      button: true,
+      label: value == BookmarkFilter.starred ? '收藏' : '稍后读',
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () {
+            onChanged(
+              savedSelected
+                  ? BookmarkFilter.starred
+                  : BookmarkFilter.savedForLater,
+            );
+          },
+          borderRadius: BorderRadius.circular(999),
+          child: AnimatedContainer(
+            duration: _compactFilterMotionDuration,
+            curve: _compactFilterMotionCurve,
+            width: 78,
+            height: 40,
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withValues(alpha: 0.30),
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(
+                color: theme.colorScheme.primary.withValues(alpha: 0.20),
+              ),
+            ),
+            child: Stack(
+              children: <Widget>[
+                AnimatedAlign(
+                  duration: _compactFilterMotionDuration,
+                  curve: _compactFilterMotionCurve,
+                  alignment: savedSelected
+                      ? Alignment.centerRight
+                      : Alignment.centerLeft,
+                  child: Container(
+                    width: 34,
+                    height: 32,
+                    decoration: BoxDecoration(
+                      color: palette.panelBackground,
+                      borderRadius: BorderRadius.circular(999),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: palette.shadow.withValues(alpha: 0.12),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Icon(
+                        Icons.star_rounded,
+                        size: 17,
+                        color: value == BookmarkFilter.starred
+                            ? theme.colorScheme.primary
+                            : palette.secondaryText,
+                      ),
+                    ),
+                    Expanded(
+                      child: Icon(
+                        Icons.schedule_rounded,
+                        size: 17,
+                        color: value == BookmarkFilter.savedForLater
+                            ? theme.colorScheme.primary
+                            : palette.secondaryText,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _CompactSourceChip extends StatelessWidget {
   const _CompactSourceChip({
     required this.label,

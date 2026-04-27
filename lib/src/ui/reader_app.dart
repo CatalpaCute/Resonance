@@ -500,6 +500,16 @@ class _ReaderHomeState extends State<ReaderHome> {
         ],
       );
     }
+    if (controller.currentRoute == AppRouteId.bookmarks) {
+      return ArticleListPanel(
+        controller: controller,
+        compact: true,
+        mobileRestyled: mobileRestyled,
+        topContent: mobileRestyled
+            ? CompactBookmarkFilterHeader(controller: controller)
+            : null,
+      );
+    }
     return ArticleListPanel(
       controller: controller,
       compact: true,

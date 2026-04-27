@@ -179,8 +179,26 @@ class ReaderController extends ChangeNotifier {
 
   void selectBookmarkFilter(BookmarkFilter filter) {
     _bookmarkFilter = filter;
+    if (_activeSourceId != null &&
+        !_bookmarkFilterHasSource(filter, _activeSourceId!)) {
+      _activeSourceId = null;
+    }
     _selectedArticleId = null;
     notifyListeners();
+  }
+
+  bool _bookmarkFilterHasSource(BookmarkFilter filter, String sourceId) {
+    return _articles.any((Article article) {
+      if (article.sourceId != sourceId) {
+        return false;
+      }
+      switch (filter) {
+        case BookmarkFilter.starred:
+          return article.starred;
+        case BookmarkFilter.savedForLater:
+          return article.savedForLater;
+      }
+    });
   }
 
   Future<void> selectArticle(Article article,

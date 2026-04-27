@@ -30,9 +30,10 @@ class ArticleListPanel extends StatelessWidget {
     final AppStrings strings = context.strings;
     final bool compactHome =
         compact && controller.currentRoute == AppRouteId.allArticles;
-    final bool compactMobileListRoute = compact &&
-        (controller.currentRoute == AppRouteId.allArticles ||
-            controller.currentRoute == AppRouteId.bookmarks);
+    final bool compactBookmarkRestyled = compact &&
+        mobileRestyled &&
+        controller.currentRoute == AppRouteId.bookmarks;
+    final bool compactMobileListRoute = compactHome || compactBookmarkRestyled;
     final bool mobileHomeRestyled = mobileRestyled && compactMobileListRoute;
     // Design intent: the compact shell header already carries route + brand, so
     // the content area can focus on filters and article cards instead of repeating
