@@ -20,8 +20,10 @@ import 'widgets/source_panel.dart';
 
 final bool _useWindowsWindowChrome =
     !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
-final bool _useAndroidMobileUi =
-    !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+final bool _useNativePortraitMobileUi =
+    !kIsWeb &&
+    (defaultTargetPlatform == TargetPlatform.android ||
+        defaultTargetPlatform == TargetPlatform.iOS);
 const Duration _shellMotionDuration = Duration(milliseconds: 280);
 const Curve _shellMotionCurve = Cubic(0.18, 0.92, 0.28, 1.0);
 const Color _mobilePageBackground = Color(0xFFFEFCF8);
@@ -133,8 +135,8 @@ class _ReaderHomeState extends State<ReaderHome> {
         return LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
             final bool compact = constraints.maxWidth < 980;
-            final bool useAndroidMobileUi = compact &&
-                _useAndroidMobileUi &&
+            final bool useNativePortraitMobileUi = compact &&
+                _useNativePortraitMobileUi &&
                 MediaQuery.orientationOf(context) == Orientation.portrait;
             final bool useDrawer = _useDrawer(constraints.maxWidth);
             final bool useRail = compact && !useDrawer;
@@ -170,7 +172,7 @@ class _ReaderHomeState extends State<ReaderHome> {
               child: Scaffold(
                 key: _scaffoldKey,
                 backgroundColor:
-                    useAndroidMobileUi
+                    useNativePortraitMobileUi
                         ? _mobilePageBackground
                         : palette.shellBackground,
                 drawer: useDrawer ? mobileDrawer : null,
@@ -179,7 +181,7 @@ class _ReaderHomeState extends State<ReaderHome> {
                     _ShellHeader(
                       controller: controller,
                       compact: compact,
-                      mobileRestyled: useAndroidMobileUi,
+                      mobileRestyled: useNativePortraitMobileUi,
                       topInset: topInset,
                       sidebarCollapsed: compact
                           ? _compactRailCollapsed
@@ -223,21 +225,21 @@ class _ReaderHomeState extends State<ReaderHome> {
                             child: AnimatedContainer(
                               duration: _shellMotionDuration,
                               curve: _shellMotionCurve,
-                              color: useAndroidMobileUi
+                              color: useNativePortraitMobileUi
                                   ? _mobilePageBackground
                                   : palette.chromeBackground,
                               padding: EdgeInsets.fromLTRB(
-                                useAndroidMobileUi
+                                useNativePortraitMobileUi
                                     ? 0
                                     : compact
                                         ? 6
                                         : 10,
-                                useAndroidMobileUi
+                                useNativePortraitMobileUi
                                     ? 0
                                     : compact
                                         ? 6
                                         : 6,
-                                useAndroidMobileUi
+                                useNativePortraitMobileUi
                                     ? 0
                                     : compact
                                         ? 6
@@ -245,7 +247,7 @@ class _ReaderHomeState extends State<ReaderHome> {
                                                 .settings.desktopSidebarCollapsed
                                             ? 12
                                             : 10,
-                                useAndroidMobileUi
+                                useNativePortraitMobileUi
                                     ? 0
                                     : compact
                                         ? 6
@@ -264,7 +266,7 @@ class _ReaderHomeState extends State<ReaderHome> {
                                 curve: _shellMotionCurve,
                                 child: _MainCanvas(
                                   compact: compact,
-                                  mobileRestyled: useAndroidMobileUi,
+                                  mobileRestyled: useNativePortraitMobileUi,
                                   child: Column(
                                     children: <Widget>[
                                       if (controller.errorMessage != null)
@@ -287,7 +289,8 @@ class _ReaderHomeState extends State<ReaderHome> {
                                         child: _buildBody(
                                           context,
                                           compact: compact,
-                                          mobileRestyled: useAndroidMobileUi,
+                                          mobileRestyled:
+                                              useNativePortraitMobileUi,
                                         ),
                                       ),
                                     ],
