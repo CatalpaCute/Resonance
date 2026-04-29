@@ -2,9 +2,12 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../localization/app_strings.dart';
+import '../../models/auto_refresh.dart';
 import '../../models/feed_source.dart';
+import '../../models/app_route.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
+import '../widgets/auto_refresh_interval_picker.dart';
 import '../widgets/feed_editor_dialog.dart';
 import '../widgets/glass_card.dart';
 
@@ -24,6 +27,8 @@ class _AddSourceViewState extends State<AddSourceView> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   late final TextEditingController _urlController;
   late final TextEditingController _titleController;
+  bool _autoRefreshEnabled = false;
+  int _autoRefreshIntervalMinutes = kDefaultAutoRefreshIntervalMinutes;
 
   @override
   void initState() {
@@ -104,6 +109,22 @@ class _AddSourceViewState extends State<AddSourceView> {
                           ),
                         ),
                         SizedBox(height: compact ? 16 : 18),
+                        _AutoRefreshEditorSection(
+                          compact: compact,
+                          enabled: _autoRefreshEnabled,
+                          intervalMinutes: _autoRefreshIntervalMinutes,
+                          onEnabledChanged: (bool value) {
+                            setState(() {
+                              _autoRefreshEnabled = value;
+                            });
+                          },
+                          onIntervalChanged: (int minutes) {
+                            setState(() {
+                              _autoRefreshIntervalMinutes = minutes;
+                            });
+                          },
+                        ),
+                        SizedBox(height: compact ? 16 : 18),
                         Align(
                           alignment: Alignment.centerLeft,
                           child: FilledButton.icon(
@@ -122,12 +143,20 @@ class _AddSourceViewState extends State<AddSourceView> {
                                     await widget.controller.addFeed(
                                       url: _urlController.text,
                                       title: _titleController.text,
+                                      autoRefreshEnabled: _autoRefreshEnabled,
+                                      autoRefreshIntervalMinutes:
+                                          _autoRefreshIntervalMinutes,
                                     );
                                     if (mounted &&
                                         widget.controller.errorMessage ==
                                             null) {
                                       _urlController.clear();
                                       _titleController.clear();
+                                      setState(() {
+                                        _autoRefreshEnabled = false;
+                                        _autoRefreshIntervalMinutes =
+                                            kDefaultAutoRefreshIntervalMinutes;
+                                      });
                                     }
                                   },
                             icon: const Icon(Icons.add_link_rounded),
@@ -163,6 +192,18 @@ class _AddSourceViewState extends State<AddSourceView> {
                           height: 1.4,
                         ),
                       ),
+                      const SizedBox(height: 12),
+                      if (!widget.controller.settings.autoRefreshEnabled)
+                        _AutoRefreshDisabledBanner(
+                          compact: compact,
+                          onTap: () {
+                            widget.controller.setCurrentRoute(
+                              AppRouteId.settings,
+                            );
+                          },
+                        ),
+                      if (!widget.controller.settings.autoRefreshEnabled)
+                        const SizedBox(height: 12),
                       const SizedBox(height: 12),
                       if (widget.controller.feeds.isEmpty)
                         Text(
@@ -260,6 +301,8 @@ class _AddSourceViewState extends State<AddSourceView> {
               confirmText: context.strings.update,
               initialTitle: feed.title,
               initialUrl: feed.url,
+              initialAutoRefreshEnabled: feed.autoRefreshEnabled,
+              initialAutoRefreshIntervalMinutes: feed.autoRefreshIntervalMinutes,
             );
           },
         );
@@ -268,6 +311,8 @@ class _AddSourceViewState extends State<AddSourceView> {
             original: feed,
             url: result.url,
             title: result.title,
+            autoRefreshEnabled: result.autoRefreshEnabled,
+            autoRefreshIntervalMinutes: result.autoRefreshIntervalMinutes,
           );
         }
         return;
@@ -297,6 +342,141 @@ class _AddSourceViewState extends State<AddSourceView> {
         }
         return;
     }
+  }
+}
+
+class _AutoRefreshEditorSection extends StatelessWidget {
+  const _AutoRefreshEditorSection({
+    required this.compact,
+    required this.enabled,
+    required this.intervalMinutes,
+    required this.onEnabledChanged,
+    required this.onIntervalChanged,
+  });
+
+  final bool compact;
+  final bool enabled;
+  final int intervalMinutes;
+  final ValueChanged<bool> onEnabledChanged;
+  final ValueChanged<int> onIntervalChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final AppStrings strings = context.strings;
+    final bool useMobileWheel = compact &&
+        MediaQuery.orientationOf(context) == Orientation.portrait;
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.paletteOf(context).border),
+      ),
+      child: Padding(
+        padding: EdgeInsets.all(compact ? 12 : 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              strings.autoRefreshConfig,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              dense: compact,
+              value: enabled,
+              onChanged: onEnabledChanged,
+              title: Text(strings.autoRefreshSourceEnabled),
+              subtitle: Text(strings.autoRefreshSourceDisabledHint),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              strings.autoRefreshInterval,
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            const SizedBox(height: 10),
+            AutoRefreshIntervalPicker(
+              selectedMinutes: intervalMinutes,
+              enabled: enabled,
+              mobileWheel: useMobileWheel,
+              onChanged: onIntervalChanged,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AutoRefreshDisabledBanner extends StatelessWidget {
+  const _AutoRefreshDisabledBanner({
+    required this.compact,
+    required this.onTap,
+  });
+
+  final bool compact;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final AppStrings strings = context.strings;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Ink(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 12 : 14,
+            vertical: compact ? 11 : 12,
+          ),
+          decoration: BoxDecoration(
+            color: palette.panelBackground,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: palette.border),
+          ),
+          child: Row(
+            children: <Widget>[
+              Icon(
+                Icons.schedule_outlined,
+                size: 18,
+                color: palette.secondaryText,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      strings.autoRefreshDisabledNotice,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: palette.secondaryText,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      strings.autoRefreshGoToSettings,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: palette.tertiaryText,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.arrow_forward_rounded,
+                size: 18,
+                color: palette.secondaryText,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -346,13 +526,28 @@ class _ManagedFeedTile extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      feed.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodyMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
+                    Row(
+                      children: <Widget>[
+                        if (feed.autoRefreshEnabled)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: Icon(
+                              Icons.schedule_rounded,
+                              size: 16,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        Expanded(
+                          child: Text(
+                            feed.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 2),
                     Text(
@@ -361,6 +556,18 @@ class _ManagedFeedTile extends StatelessWidget {
                         color: palette.secondaryText,
                       ),
                     ),
+                    if (feed.autoRefreshEnabled) ...<Widget>[
+                      const SizedBox(height: 3),
+                      Text(
+                        strings.autoRefreshIntervalSummary(
+                          feed.autoRefreshIntervalMinutes,
+                        ),
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.primary,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

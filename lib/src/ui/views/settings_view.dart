@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../localization/app_language.dart';
 import '../../localization/app_strings.dart';
@@ -93,6 +94,23 @@ class SettingsView extends StatelessWidget {
                 },
               );
             }).toList(),
+          ),
+        ),
+        SizedBox(height: compact ? 12 : 14),
+        _SettingsSection(
+          compact: compact,
+          title: strings.autoRefreshSettings,
+          subtitle: !kIsWeb && defaultTargetPlatform == TargetPlatform.windows
+              ? strings.autoRefreshSettingsHintWindows
+              : strings.autoRefreshSettingsHintAndroid,
+          child: SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: compact,
+            value: controller.settings.autoRefreshEnabled,
+            onChanged: (bool value) {
+              controller.setAutoRefreshEnabled(value);
+            },
+            title: Text(strings.autoRefreshEnabledLabel),
           ),
         ),
         SizedBox(height: compact ? 12 : 14),

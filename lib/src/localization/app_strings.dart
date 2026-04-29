@@ -331,6 +331,56 @@ class AppStrings {
         zhHant: '三欄模式會把正文固定放在右側。雙欄模式會隱藏右側閱讀欄，點擊文章後進入獨立閱讀頁。',
         en: 'Three-pane mode keeps the reader embedded on the right. Two-pane mode hides the reader pane and opens a dedicated reader page when an article is selected.',
       );
+  String get autoRefreshSettings => _text(
+        zhCn: '自动更新订阅',
+        zhHant: '自動更新訂閱',
+        en: 'Automatic Subscription Refresh',
+      );
+  String get autoRefreshEnabledLabel => _text(
+        zhCn: '开启自动更新订阅',
+        zhHant: '開啟自動更新訂閱',
+        en: 'Enable automatic subscription refresh',
+      );
+  String get autoRefreshSettingsHintWindows => _text(
+        zhCn: 'Windows 开启后，关闭窗口会转入托盘常驻，并按订阅源配置定时刷新。',
+        zhHant: 'Windows 開啟後，關閉視窗會轉入系統匣常駐，並依訂閱源設定定時刷新。',
+        en: 'On Windows, closing the window keeps the app in the tray and refreshes enabled sources on schedule.',
+      );
+  String get autoRefreshSettingsHintAndroid => _text(
+        zhCn: 'Android 当前只保存规则，后台执行暂未启用。',
+        zhHant: 'Android 目前只保存規則，背景執行暫未啟用。',
+        en: 'Android currently saves the rules only. Background execution is not enabled yet.',
+      );
+  String get autoRefreshDisabledNotice => _text(
+        zhCn: '自动更新订阅未开启',
+        zhHant: '自動更新訂閱尚未開啟',
+        en: 'Automatic subscription refresh is turned off',
+      );
+  String get autoRefreshGoToSettings => _text(
+        zhCn: '点击前往设置开启',
+        zhHant: '點擊前往設定開啟',
+        en: 'Tap to open Settings',
+      );
+  String get autoRefreshConfig => _text(
+        zhCn: '自动更新',
+        zhHant: '自動更新',
+        en: 'Automatic Refresh',
+      );
+  String get autoRefreshSourceEnabled => _text(
+        zhCn: '更新这个订阅源',
+        zhHant: '更新這個訂閱源',
+        en: 'Refresh this source automatically',
+      );
+  String get autoRefreshInterval => _text(
+        zhCn: '更新间隔',
+        zhHant: '更新間隔',
+        en: 'Refresh interval',
+      );
+  String get autoRefreshSourceDisabledHint => _text(
+        zhCn: '关闭后会保留当前间隔，但不会进入自动更新调度。',
+        zhHant: '關閉後會保留目前間隔，但不會進入自動更新排程。',
+        en: 'The saved interval stays in place, but this source stops participating in automatic refresh.',
+      );
   String get readingDensity =>
       _text(zhCn: '阅读密度', zhHant: '閱讀密度', en: 'Reading Density');
   String get interfaceLanguage =>
@@ -504,6 +554,55 @@ class AppStrings {
     }
     return unread > 0 ? '$count 篇文章 · $unread 未读' : '$count 篇文章';
   }
+
+  String autoRefreshIntervalLabel(int minutes) {
+    switch (minutes) {
+      case 15:
+        return _text(zhCn: '15 分钟', zhHant: '15 分鐘', en: '15 min');
+      case 30:
+        return _text(zhCn: '30 分钟', zhHant: '30 分鐘', en: '30 min');
+      case 60:
+        return _text(zhCn: '1 小时', zhHant: '1 小時', en: '1 hour');
+      case 180:
+        return _text(zhCn: '3 小时', zhHant: '3 小時', en: '3 hours');
+      case 360:
+        return _text(zhCn: '6 小时', zhHant: '6 小時', en: '6 hours');
+      case 720:
+        return _text(zhCn: '12 小时', zhHant: '12 小時', en: '12 hours');
+      case 1440:
+        return _text(zhCn: '1 天', zhHant: '1 天', en: '1 day');
+      case 4320:
+        return _text(zhCn: '3 天', zhHant: '3 天', en: '3 days');
+      case 10080:
+        return _text(zhCn: '7 天', zhHant: '7 天', en: '7 days');
+      default:
+        return _language == _AppTextLanguage.en
+            ? '$minutes min'
+            : '$minutes 分钟';
+    }
+  }
+
+  String autoRefreshIntervalSummary(int minutes) => _text(
+        zhCn: '自动更新：每 ${autoRefreshIntervalLabel(minutes)}',
+        zhHant: '自動更新：每 ${autoRefreshIntervalLabel(minutes)}',
+        en: 'Auto refresh: every ${autoRefreshIntervalLabel(minutes)}',
+      );
+
+  String get trayShowWindow => _text(
+        zhCn: '显示主窗口',
+        zhHant: '顯示主視窗',
+        en: 'Show Window',
+      );
+  String get trayRefreshDueFeeds => _text(
+        zhCn: '立即刷新到期订阅',
+        zhHant: '立即刷新到期訂閱',
+        en: 'Refresh Due Subscriptions',
+      );
+  String get trayExitApp => _text(
+        zhCn: '退出应用',
+        zhHant: '退出應用',
+        en: 'Exit App',
+      );
 
   String initializationFailed(Object error) => _text(
         zhCn: '初始化本地数据失败：$error',

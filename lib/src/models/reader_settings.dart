@@ -40,6 +40,7 @@ class ReaderSettings {
     required this.mobileSidebarMode,
     required this.mobileWorkspaceMode,
     required this.desktopWorkspaceMode,
+    required this.autoRefreshEnabled,
     required this.desktopSidebarCollapsed,
     required this.articleListDensity,
     required this.articleContentMode,
@@ -51,6 +52,7 @@ class ReaderSettings {
   final MobileSidebarMode mobileSidebarMode;
   final MobileWorkspaceMode mobileWorkspaceMode;
   final DesktopWorkspaceMode desktopWorkspaceMode;
+  final bool autoRefreshEnabled;
   final bool desktopSidebarCollapsed;
   final ArticleListDensity articleListDensity;
   final ArticleContentMode articleContentMode;
@@ -62,6 +64,7 @@ class ReaderSettings {
     mobileSidebarMode: MobileSidebarMode.adaptive,
     mobileWorkspaceMode: MobileWorkspaceMode.singlePane,
     desktopWorkspaceMode: DesktopWorkspaceMode.threePane,
+    autoRefreshEnabled: false,
     desktopSidebarCollapsed: false,
     articleListDensity: ArticleListDensity.comfortable,
     articleContentMode: ArticleContentMode.rich,
@@ -85,6 +88,7 @@ class ReaderSettings {
     MobileSidebarMode? mobileSidebarMode,
     MobileWorkspaceMode? mobileWorkspaceMode,
     DesktopWorkspaceMode? desktopWorkspaceMode,
+    bool? autoRefreshEnabled,
     bool? desktopSidebarCollapsed,
     ArticleListDensity? articleListDensity,
     ArticleContentMode? articleContentMode,
@@ -97,6 +101,7 @@ class ReaderSettings {
       mobileWorkspaceMode: mobileWorkspaceMode ?? this.mobileWorkspaceMode,
       desktopWorkspaceMode:
           desktopWorkspaceMode ?? this.desktopWorkspaceMode,
+      autoRefreshEnabled: autoRefreshEnabled ?? this.autoRefreshEnabled,
       desktopSidebarCollapsed:
           desktopSidebarCollapsed ?? this.desktopSidebarCollapsed,
       articleListDensity: articleListDensity ?? this.articleListDensity,
@@ -112,6 +117,7 @@ class ReaderSettings {
       'mobileSidebarMode': mobileSidebarMode.name,
       'mobileWorkspaceMode': mobileWorkspaceMode.name,
       'desktopWorkspaceMode': desktopWorkspaceMode.name,
+      'autoRefreshEnabled': autoRefreshEnabled,
       'desktopSidebarCollapsed': desktopSidebarCollapsed,
       'articleListDensity': articleListDensity.name,
       'articleContentMode': articleContentMode.name,
@@ -139,6 +145,8 @@ class ReaderSettings {
             value.name == json['desktopWorkspaceMode'],
         orElse: () => defaults.desktopWorkspaceMode,
       ),
+      autoRefreshEnabled:
+          json['autoRefreshEnabled'] as bool? ?? defaults.autoRefreshEnabled,
       desktopSidebarCollapsed: json['desktopSidebarCollapsed'] as bool? ??
           defaults.desktopSidebarCollapsed,
       articleListDensity: ArticleListDensity.values.firstWhere(

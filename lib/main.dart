@@ -5,8 +5,11 @@ import 'package:window_manager/window_manager.dart';
 
 import 'src/services/json_store.dart';
 import 'src/services/rss_service.dart';
+import 'src/services/windows_auto_refresh_service.dart';
 import 'src/state/reader_controller.dart';
 import 'src/ui/reader_app.dart';
+
+WindowsAutoRefreshService? _windowsAutoRefreshService;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,6 +43,13 @@ Future<void> main() async {
     rssService: RssService(),
   );
   await controller.initialize();
+
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+    _windowsAutoRefreshService = WindowsAutoRefreshService(
+      controller: controller,
+    );
+    await _windowsAutoRefreshService!.initialize();
+  }
 
   runApp(ReaderApp(controller: controller));
 }

@@ -11,6 +11,7 @@ void main() {
         mobileSidebarMode: MobileSidebarMode.rail,
         mobileWorkspaceMode: MobileWorkspaceMode.multiPane,
         desktopWorkspaceMode: DesktopWorkspaceMode.focusedReader,
+        autoRefreshEnabled: true,
         desktopSidebarCollapsed: true,
         articleListDensity: ArticleListDensity.compact,
         articleContentMode: ArticleContentMode.textOnly,
@@ -26,6 +27,7 @@ void main() {
       expect(restored.mobileWorkspaceMode, MobileWorkspaceMode.multiPane);
       expect(
           restored.desktopWorkspaceMode, DesktopWorkspaceMode.focusedReader);
+      expect(restored.autoRefreshEnabled, isTrue);
       expect(restored.desktopSidebarCollapsed, isTrue);
       expect(restored.articleListDensity, ArticleListDensity.compact);
       expect(restored.articleContentMode, ArticleContentMode.textOnly);

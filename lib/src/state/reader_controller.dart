@@ -6,6 +6,7 @@ import '../localization/app_language.dart';
 import '../localization/app_strings.dart';
 import '../models/app_route.dart';
 import '../models/article.dart';
+import '../models/auto_refresh.dart';
 import '../models/feed_source.dart';
 import '../models/reader_settings.dart';
 import '../services/json_store.dart';
@@ -311,6 +312,11 @@ class ReaderController extends ChangeNotifier {
     await _persistSettings();
   }
 
+  Future<void> setAutoRefreshEnabled(bool value) async {
+    _settings = _settings.copyWith(autoRefreshEnabled: value);
+    await _persistSettings();
+  }
+
   Future<void> setStartupHomeMode(StartupHomeMode mode) async {
     _settings = _settings.copyWith(startupHomeMode: mode);
     await _persistSettings();
@@ -344,6 +350,8 @@ class ReaderController extends ChangeNotifier {
   Future<void> addFeed({
     required String url,
     String? title,
+    bool autoRefreshEnabled = false,
+    int autoRefreshIntervalMinutes = kDefaultAutoRefreshIntervalMinutes,
   }) async {
     final String normalizedUrl = _normalizeInputUrl(url);
     final bool exists =
@@ -368,6 +376,10 @@ class ReaderController extends ChangeNotifier {
           siteUrl: parsed.siteUrl,
           iconUrl: parsed.iconUrl,
           enabled: true,
+          autoRefreshEnabled: autoRefreshEnabled,
+          autoRefreshIntervalMinutes: normalizeAutoRefreshInterval(
+            autoRefreshIntervalMinutes,
+          ),
           lastFetchedAt: DateTime.now(),
         );
         _feeds = <FeedSource>[source, ..._feeds];
@@ -384,6 +396,8 @@ class ReaderController extends ChangeNotifier {
     required FeedSource original,
     required String url,
     required String title,
+    required bool autoRefreshEnabled,
+    required int autoRefreshIntervalMinutes,
   }) async {
     final String normalizedUrl = _normalizeInputUrl(url);
     final bool exists = _feeds.any(
@@ -399,19 +413,30 @@ class ReaderController extends ChangeNotifier {
     await _runBusy(
       _strings.updatingSubscription,
       () async {
-        final ParsedFeedResult parsed =
-            await _rssService.fetchFeed(normalizedUrl);
-        final FeedSource nextSource = original.copyWith(
-          title: title.trim().isEmpty ? parsed.title : title.trim(),
+        FeedSource nextSource = original.copyWith(
+          title: title.trim().isEmpty ? original.title : title.trim(),
           url: normalizedUrl,
-          siteUrl: parsed.siteUrl,
-          iconUrl: parsed.iconUrl,
-          lastFetchedAt: DateTime.now(),
+          autoRefreshEnabled: autoRefreshEnabled,
+          autoRefreshIntervalMinutes: normalizeAutoRefreshInterval(
+            autoRefreshIntervalMinutes,
+          ),
         );
+
+        if (normalizedUrl != original.url) {
+          final ParsedFeedResult parsed =
+              await _rssService.fetchFeed(normalizedUrl);
+          nextSource = nextSource.copyWith(
+            title: title.trim().isEmpty ? parsed.title : title.trim(),
+            siteUrl: parsed.siteUrl,
+            iconUrl: parsed.iconUrl,
+            lastFetchedAt: DateTime.now(),
+          );
+          _mergeArticlesForSource(nextSource, parsed.articles);
+        }
+
         _feeds = _feeds.map((FeedSource item) {
           return item.id == original.id ? nextSource : item;
         }).toList();
-        _mergeArticlesForSource(nextSource, parsed.articles);
         await _persistAll();
         _statusMessage = _strings.updatedFeed(nextSource.title);
       },
@@ -497,6 +522,78 @@ class ReaderController extends ChangeNotifier {
     );
   }
 
+  DateTime? nextAutoRefreshAt({DateTime? now}) {
+    if (!_settings.autoRefreshEnabled) {
+      return null;
+    }
+
+    final DateTime cursor = now ?? DateTime.now();
+    DateTime? earliest;
+    for (final FeedSource source in _feeds) {
+      final DateTime? nextAt = _nextAutoRefreshTimeForSource(source, cursor);
+      if (nextAt == null) {
+        continue;
+      }
+      if (earliest == null || nextAt.isBefore(earliest)) {
+        earliest = nextAt;
+      }
+    }
+    return earliest;
+  }
+
+  List<FeedSource> dueAutoRefreshFeeds({DateTime? now}) {
+    if (!_settings.autoRefreshEnabled) {
+      return const <FeedSource>[];
+    }
+
+    final DateTime cursor = now ?? DateTime.now();
+    return _feeds.where((FeedSource source) {
+      final DateTime? nextAt = _nextAutoRefreshTimeForSource(source, cursor);
+      return nextAt != null && !nextAt.isAfter(cursor);
+    }).toList();
+  }
+
+  Future<int> refreshDueAutoRefreshFeeds({DateTime? now}) async {
+    if (_isBusy) {
+      return 0;
+    }
+
+    final List<FeedSource> dueFeeds = dueAutoRefreshFeeds(now: now);
+    if (dueFeeds.isEmpty) {
+      return 0;
+    }
+
+    for (final FeedSource originalSource in dueFeeds) {
+      final FeedSource? latest = _feedById(originalSource.id);
+      if (latest == null) {
+        continue;
+      }
+      if (_refreshingFeedIds.contains(latest.id) || !latest.enabled) {
+        continue;
+      }
+
+      final DateTime attemptAt = DateTime.now();
+      final FeedSource markedAttempt = latest.copyWith(
+        lastAutoRefreshAttemptAt: attemptAt,
+      );
+      _feeds = _feeds.map((FeedSource item) {
+        return item.id == latest.id ? markedAttempt : item;
+      }).toList();
+      await _store.saveFeeds(_feeds);
+      notifyListeners();
+
+      try {
+        await _refreshFeed(markedAttempt);
+      } catch (_) {
+        // Background auto-refresh should not surface a blocking error banner.
+        // The attempt timestamp already throttles the next retry window.
+      }
+    }
+
+    await _persistAll();
+    return dueFeeds.length;
+  }
+
   bool isFeedRefreshing(String sourceId) =>
       _refreshingFeedIds.contains(sourceId);
 
@@ -571,6 +668,36 @@ class ReaderController extends ChangeNotifier {
 
   bool _feedEnabled(String sourceId) {
     return _feedById(sourceId)?.enabled ?? false;
+  }
+
+  DateTime? _nextAutoRefreshTimeForSource(
+    FeedSource source,
+    DateTime now,
+  ) {
+    if (!source.enabled || !source.autoRefreshEnabled) {
+      return null;
+    }
+
+    final DateTime? baseTime = _latestAutoRefreshBaseTime(source);
+    if (baseTime == null) {
+      return now;
+    }
+
+    return baseTime.add(
+      Duration(minutes: source.autoRefreshIntervalMinutes),
+    );
+  }
+
+  DateTime? _latestAutoRefreshBaseTime(FeedSource source) {
+    final DateTime? fetchedAt = source.lastFetchedAt;
+    final DateTime? attemptedAt = source.lastAutoRefreshAttemptAt;
+    if (fetchedAt == null) {
+      return attemptedAt;
+    }
+    if (attemptedAt == null) {
+      return fetchedAt;
+    }
+    return fetchedAt.isAfter(attemptedAt) ? fetchedAt : attemptedAt;
   }
 
   Future<void> _replaceArticle(Article nextArticle) async {
