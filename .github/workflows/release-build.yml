@@ -91,6 +91,62 @@ jobs:
         with:
           files: ${{ env.ANDROID_ARTIFACT_NAME }}
 
+  build-linux:
+    name: Build Linux Package
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Linux build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang cmake ninja-build pkg-config libgtk-3-dev libstdc++-12-dev
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Read app version
+        id: app_version
+        shell: bash
+        run: |
+          set -euo pipefail
+          app_version="$(grep '^version:' pubspec.yaml | head -n 1 | cut -d ' ' -f 2)"
+          if [ -z "$app_version" ]; then
+            echo "Failed to read version from pubspec.yaml" >&2
+            exit 1
+          fi
+          echo "value=$app_version" >> "$GITHUB_OUTPUT"
+
+      - name: Build Linux
+        run: flutter build linux --release
+
+      - name: Package Linux output
+        shell: bash
+        run: |
+          set -euo pipefail
+          artifact_base="Resonance-linux-${{ steps.app_version.outputs.value }}-${{ github.event.release.tag_name }}"
+          package_dir="$RUNNER_TEMP/$artifact_base"
+
+          mkdir -p "$package_dir"
+          cp -R build/linux/x64/release/bundle/. "$package_dir/"
+
+          cd "$RUNNER_TEMP"
+          zip -r "${artifact_base}.zip" "$artifact_base"
+          echo "LINUX_ARTIFACT_NAME=${artifact_base}.zip" >> "$GITHUB_ENV"
+
+      - name: Upload Linux artifact to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ env.LINUX_ARTIFACT_NAME }}
+
   build-windows:
     name: Build Windows Package
     runs-on: windows-latest

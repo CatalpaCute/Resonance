@@ -11,9 +11,10 @@
 3. 检查 Release 内容。
 4. 点击 `Publish release`。
 
-触发后，Actions 会自动执行两项构建：
+触发后，Actions 会自动执行三项构建：
 
 - Android `release` APK
+- Linux `release` bundle 压缩包
 - Windows `release` 打包压缩包
 
 构建完成后，产物会自动上传回当前这个 Release。
@@ -34,16 +35,21 @@ Android 签名文件会在 CI 运行时临时还原为 `android/upload-keystore.
 工作流会从 `pubspec.yaml` 读取软件版本号，并把版本号和 Release tag 一起写进最终文件名。
 
 - Android：`Resonance-android-<version>-<tag>.apk`
+- Linux：`Resonance-linux-<version>-<tag>.zip`
 - Windows：`Resonance-windows-<version>-<tag>.zip`
 
 例如当前 `pubspec.yaml` 里是 `0.7.0+13`，tag 是 `Testv10`，那么产物文件名会是：
 
 - `Resonance-android-0.7.0+13-Testv10.apk`
+- `Resonance-linux-0.7.0+13-Testv10.zip`
 - `Resonance-windows-0.7.0+13-Testv10.zip`
+
+Linux 当前输出的是 Flutter `linux` 的 `bundle` 目录压缩包，解压后可直接运行其中名为 `Resonance` 的可执行文件，但目标机器仍需要系统级 GTK 运行库。
 
 Windows 当前输出的是 Flutter `windows` 发布目录压缩包，解压后可直接运行。如果后续需要标准安装器，可以再接 `msix` 或 Inno Setup。
 
 ## 设计说明
 
 - 工作流使用 `release.published`，因为 GitHub 对 Draft Release 的 `created/edited/deleted` 事件不会触发 workflow。
+- Linux 构建依赖按 Flutter 官方 Linux 桌面文档安装：`clang`、`cmake`、`ninja-build`、`pkg-config`、`libgtk-3-dev`、`libstdc++-12-dev`。
 - Android 构建优先读取 CI 生成的 `android/key.properties`；本地没配正式签名时，会自动回退到 debug 签名，避免影响日常开发。
