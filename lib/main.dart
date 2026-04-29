@@ -5,17 +5,21 @@ import 'package:window_manager/window_manager.dart';
 
 import 'src/services/json_store.dart';
 import 'src/services/rss_service.dart';
+import 'src/services/android_auto_refresh_scheduler.dart';
+import 'src/services/android_auto_refresh_service.dart';
 import 'src/services/windows_auto_refresh_service.dart';
 import 'src/state/reader_controller.dart';
 import 'src/ui/reader_app.dart';
 
 WindowsAutoRefreshService? _windowsAutoRefreshService;
+AndroidAutoRefreshService? _androidAutoRefreshService;
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   if (defaultTargetPlatform == TargetPlatform.android) {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    await AndroidAutoRefreshScheduler.initialize();
   }
 
   if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
@@ -49,6 +53,11 @@ Future<void> main() async {
       controller: controller,
     );
     await _windowsAutoRefreshService!.initialize();
+  } else if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    _androidAutoRefreshService = AndroidAutoRefreshService(
+      controller: controller,
+    );
+    await _androidAutoRefreshService!.initialize();
   }
 
   runApp(ReaderApp(controller: controller));

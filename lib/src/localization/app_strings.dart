@@ -347,9 +347,9 @@ class AppStrings {
         en: 'On Windows, closing the window keeps the app in the tray and refreshes enabled sources on schedule.',
       );
   String get autoRefreshSettingsHintAndroid => _text(
-        zhCn: 'Android 当前只保存规则，后台执行暂未启用。',
-        zhHant: 'Android 目前只保存規則，背景執行暫未啟用。',
-        en: 'Android currently saves the rules only. Background execution is not enabled yet.',
+        zhCn: 'Android 会使用系统后台任务自动刷新，不显示常驻通知，实际执行时间可能会延后。',
+        zhHant: 'Android 會使用系統背景任務自動刷新，不顯示常駐通知，實際執行時間可能延後。',
+        en: 'Android uses system-managed background work without a persistent notification. Actual execution may be delayed.',
       );
   String get autoRefreshDisabledNotice => _text(
         zhCn: '自动更新订阅未开启',

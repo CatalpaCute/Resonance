@@ -9,6 +9,7 @@ import '../models/article.dart';
 import '../models/auto_refresh.dart';
 import '../models/feed_source.dart';
 import '../models/reader_settings.dart';
+import '../services/auto_refresh_engine.dart';
 import '../services/json_store.dart';
 import '../services/rss_service.dart';
 
@@ -21,6 +22,10 @@ class ReaderController extends ChangeNotifier {
 
   final JsonStore _store;
   final RssService _rssService;
+  late final AutoRefreshEngine _autoRefreshEngine = AutoRefreshEngine(
+    store: _store,
+    rssService: _rssService,
+  );
 
   List<FeedSource> _feeds = <FeedSource>[];
   List<Article> _articles = <Article>[];
@@ -195,6 +200,35 @@ class ReaderController extends ChangeNotifier {
     }
     _selectedArticleId = null;
     notifyListeners();
+  }
+
+  /// 设计意图：
+  /// Android 后台 Worker 可能在独立 isolate 中已经把订阅和文章写回本地。
+  /// 应用恢复到前台时，需要从持久化状态重新对账，而不是继续使用过期内存。
+  Future<void> reloadPersistedState({bool notify = true}) async {
+    final PersistedReaderState persisted = await _store.load();
+    _feeds = persisted.feeds;
+    _articles = persisted.articles;
+    _settings = persisted.settings;
+
+    if (_activeSourceId != null && _feedById(_activeSourceId) == null) {
+      _activeSourceId = null;
+    }
+    if (_selectedArticleId != null && _articleById(_selectedArticleId) == null) {
+      _selectedArticleId = null;
+    }
+
+    if (_currentRoute == AppRouteId.readerDetail &&
+        _selectedArticleId == null &&
+        (_lastWorkspaceRoute == AppRouteId.allArticles ||
+            _lastWorkspaceRoute == AppRouteId.bookmarks)) {
+      _currentRoute = _lastWorkspaceRoute;
+      _compactReaderOpen = false;
+    }
+
+    if (notify) {
+      notifyListeners();
+    }
   }
 
   bool _bookmarkFilterHasSource(BookmarkFilter filter, String sourceId) {
@@ -523,34 +557,19 @@ class ReaderController extends ChangeNotifier {
   }
 
   DateTime? nextAutoRefreshAt({DateTime? now}) {
-    if (!_settings.autoRefreshEnabled) {
-      return null;
-    }
-
-    final DateTime cursor = now ?? DateTime.now();
-    DateTime? earliest;
-    for (final FeedSource source in _feeds) {
-      final DateTime? nextAt = _nextAutoRefreshTimeForSource(source, cursor);
-      if (nextAt == null) {
-        continue;
-      }
-      if (earliest == null || nextAt.isBefore(earliest)) {
-        earliest = nextAt;
-      }
-    }
-    return earliest;
+    return _autoRefreshEngine.nextRefreshAt(
+      settings: _settings,
+      feeds: _feeds,
+      now: now,
+    );
   }
 
   List<FeedSource> dueAutoRefreshFeeds({DateTime? now}) {
-    if (!_settings.autoRefreshEnabled) {
-      return const <FeedSource>[];
-    }
-
-    final DateTime cursor = now ?? DateTime.now();
-    return _feeds.where((FeedSource source) {
-      final DateTime? nextAt = _nextAutoRefreshTimeForSource(source, cursor);
-      return nextAt != null && !nextAt.isAfter(cursor);
-    }).toList();
+    return _autoRefreshEngine.dueFeeds(
+      settings: _settings,
+      feeds: _feeds,
+      now: now,
+    );
   }
 
   Future<int> refreshDueAutoRefreshFeeds({DateTime? now}) async {
@@ -558,40 +577,14 @@ class ReaderController extends ChangeNotifier {
       return 0;
     }
 
-    final List<FeedSource> dueFeeds = dueAutoRefreshFeeds(now: now);
-    if (dueFeeds.isEmpty) {
+    final AutoRefreshRunResult result =
+        await _autoRefreshEngine.refreshPersistedDueFeeds(now: now);
+    if (result.attemptedCount == 0) {
       return 0;
     }
 
-    for (final FeedSource originalSource in dueFeeds) {
-      final FeedSource? latest = _feedById(originalSource.id);
-      if (latest == null) {
-        continue;
-      }
-      if (_refreshingFeedIds.contains(latest.id) || !latest.enabled) {
-        continue;
-      }
-
-      final DateTime attemptAt = DateTime.now();
-      final FeedSource markedAttempt = latest.copyWith(
-        lastAutoRefreshAttemptAt: attemptAt,
-      );
-      _feeds = _feeds.map((FeedSource item) {
-        return item.id == latest.id ? markedAttempt : item;
-      }).toList();
-      await _store.saveFeeds(_feeds);
-      notifyListeners();
-
-      try {
-        await _refreshFeed(markedAttempt);
-      } catch (_) {
-        // Background auto-refresh should not surface a blocking error banner.
-        // The attempt timestamp already throttles the next retry window.
-      }
-    }
-
-    await _persistAll();
-    return dueFeeds.length;
+    await reloadPersistedState();
+    return result.attemptedCount;
   }
 
   bool isFeedRefreshing(String sourceId) =>
@@ -668,36 +661,6 @@ class ReaderController extends ChangeNotifier {
 
   bool _feedEnabled(String sourceId) {
     return _feedById(sourceId)?.enabled ?? false;
-  }
-
-  DateTime? _nextAutoRefreshTimeForSource(
-    FeedSource source,
-    DateTime now,
-  ) {
-    if (!source.enabled || !source.autoRefreshEnabled) {
-      return null;
-    }
-
-    final DateTime? baseTime = _latestAutoRefreshBaseTime(source);
-    if (baseTime == null) {
-      return now;
-    }
-
-    return baseTime.add(
-      Duration(minutes: source.autoRefreshIntervalMinutes),
-    );
-  }
-
-  DateTime? _latestAutoRefreshBaseTime(FeedSource source) {
-    final DateTime? fetchedAt = source.lastFetchedAt;
-    final DateTime? attemptedAt = source.lastAutoRefreshAttemptAt;
-    if (fetchedAt == null) {
-      return attemptedAt;
-    }
-    if (attemptedAt == null) {
-      return fetchedAt;
-    }
-    return fetchedAt.isAfter(attemptedAt) ? fetchedAt : attemptedAt;
   }
 
   Future<void> _replaceArticle(Article nextArticle) async {
