@@ -7,7 +7,7 @@ void main() {
   group('AutoRefreshEngine', () {
     final AutoRefreshEngine engine = AutoRefreshEngine.defaultInstance();
 
-    test('computes next refresh time per source independently', () {
+    test('computes earliest next refresh time per source independently', () {
       final DateTime now = DateTime.parse('2026-04-30T12:00:00Z');
       final ReaderSettings settings = ReaderSettings.defaults.copyWith(
         autoRefreshEnabled: true,
@@ -53,8 +53,8 @@ void main() {
         now: now,
       );
 
-      expect(nextAt?.toUtc(), DateTime.parse('2026-04-30T11:55:00Z'));
-      expect(dueFeeds.map((FeedSource item) => item.id), <String>['a']);
+      expect(nextAt?.toUtc(), DateTime.parse('2026-04-30T12:05:00Z'));
+      expect(dueFeeds, isEmpty);
     });
 
     test('treats first-time enabled source as immediately due', () {
