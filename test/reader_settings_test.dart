@@ -11,6 +11,7 @@ void main() {
         mobileSidebarMode: MobileSidebarMode.rail,
         mobileWorkspaceMode: MobileWorkspaceMode.multiPane,
         desktopWorkspaceMode: DesktopWorkspaceMode.focusedReader,
+        desktopContentSurfaceMode: DesktopContentSurfaceMode.layered,
         autoRefreshMode: AutoRefreshMode.allOn,
         globalAutoRefreshIntervalMinutes: 4320,
         desktopSidebarCollapsed: true,
@@ -28,6 +29,10 @@ void main() {
       expect(restored.mobileWorkspaceMode, MobileWorkspaceMode.multiPane);
       expect(
           restored.desktopWorkspaceMode, DesktopWorkspaceMode.focusedReader);
+      expect(
+        restored.desktopContentSurfaceMode,
+        DesktopContentSurfaceMode.layered,
+      );
       expect(restored.autoRefreshMode, AutoRefreshMode.allOn);
       expect(restored.globalAutoRefreshIntervalMinutes, 4320);
       expect(restored.autoRefreshEnabled, isTrue);
@@ -49,6 +54,10 @@ void main() {
           ReaderSettings.defaults.mobileWorkspaceMode);
       expect(restored.desktopWorkspaceMode,
           ReaderSettings.defaults.desktopWorkspaceMode);
+      expect(
+        restored.desktopContentSurfaceMode,
+        ReaderSettings.defaults.desktopContentSurfaceMode,
+      );
       expect(restored.desktopSidebarCollapsed,
           ReaderSettings.defaults.desktopSidebarCollapsed);
       expect(restored.articleListDensity,
