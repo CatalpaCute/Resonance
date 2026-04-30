@@ -30,6 +30,7 @@ void main() {
       expect(palette.divider, const Color(0xFFEDEDED));
       expect(palette.hover, const Color(0xFFF2F2F2));
       expect(palette.primarySoft, const Color.fromRGBO(7, 193, 96, 0.10));
+      expect(palette.linkText, const Color(0xFF047A3D));
       expect(palette.secondaryText, const Color(0xFF7F7F7F));
       expect(palette.tertiaryText, const Color(0xFFA6A6A6));
       expect(palette.shadow, const Color.fromRGBO(0, 0, 0, 0.04));
@@ -42,6 +43,11 @@ void main() {
       expect(theme.brightness, Brightness.light);
       expect(theme.colorScheme.primary, Colors.black);
       expect(theme.colorScheme.onPrimary, Colors.white);
+      expect(theme.colorScheme.secondary, Colors.black);
+      expect(theme.colorScheme.tertiary, Colors.black);
+      expect(theme.colorScheme.primaryContainer, const Color(0xFFC2C2C2));
+      expect(theme.colorScheme.secondaryContainer, const Color(0xFFD9D9D9));
+      expect(theme.colorScheme.tertiaryContainer, const Color(0xFFE0E0E0));
       expect(theme.scaffoldBackgroundColor, Colors.white);
       expect(palette, isNotNull);
       expect(palette!.shellBackground, Colors.white);
@@ -52,9 +58,29 @@ void main() {
       expect(palette.divider, const Color(0xFF5F5F5F));
       expect(palette.hover, const Color(0xFFE0E0E0));
       expect(palette.primarySoft, const Color(0xFFC2C2C2));
+      expect(palette.linkText, Colors.black);
       expect(palette.secondaryText, const Color(0xFF333333));
       expect(palette.tertiaryText, const Color(0xFF666666));
       expect(palette.shadow, const Color.fromRGBO(0, 0, 0, 0));
+    });
+
+    test('provides coordinated link colors for every theme', () {
+      const Map<String, Color> expectedLinkColors = <String, Color>{
+        'warm_default': Color(0xFF8F7658),
+        'deep_default': Color(0xFFE0C49A),
+        'neutral_minimal': Color(0xFF3F4850),
+        'wechat_green': Color(0xFF047A3D),
+        'ink_black_white': Colors.black,
+      };
+
+      expect(AppTheme.themeIds, expectedLinkColors.keys);
+      for (final MapEntry<String, Color> entry in expectedLinkColors.entries) {
+        final ReaderPalette? palette =
+            AppTheme.themeFor(entry.key).extension<ReaderPalette>();
+
+        expect(palette, isNotNull);
+        expect(palette!.linkText, entry.value);
+      }
     });
   });
 }

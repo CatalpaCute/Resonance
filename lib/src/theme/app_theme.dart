@@ -13,6 +13,7 @@ class ReaderPalette extends ThemeExtension<ReaderPalette> {
     required this.divider,
     required this.hover,
     required this.primarySoft,
+    required this.linkText,
     required this.secondaryText,
     required this.tertiaryText,
     required this.shadow,
@@ -28,6 +29,7 @@ class ReaderPalette extends ThemeExtension<ReaderPalette> {
   final Color divider;
   final Color hover;
   final Color primarySoft;
+  final Color linkText;
   final Color secondaryText;
   final Color tertiaryText;
   final Color shadow;
@@ -44,6 +46,7 @@ class ReaderPalette extends ThemeExtension<ReaderPalette> {
     Color? divider,
     Color? hover,
     Color? primarySoft,
+    Color? linkText,
     Color? secondaryText,
     Color? tertiaryText,
     Color? shadow,
@@ -59,6 +62,7 @@ class ReaderPalette extends ThemeExtension<ReaderPalette> {
       divider: divider ?? this.divider,
       hover: hover ?? this.hover,
       primarySoft: primarySoft ?? this.primarySoft,
+      linkText: linkText ?? this.linkText,
       secondaryText: secondaryText ?? this.secondaryText,
       tertiaryText: tertiaryText ?? this.tertiaryText,
       shadow: shadow ?? this.shadow,
@@ -84,6 +88,7 @@ class ReaderPalette extends ThemeExtension<ReaderPalette> {
       divider: Color.lerp(divider, other.divider, t) ?? divider,
       hover: Color.lerp(hover, other.hover, t) ?? hover,
       primarySoft: Color.lerp(primarySoft, other.primarySoft, t) ?? primarySoft,
+      linkText: Color.lerp(linkText, other.linkText, t) ?? linkText,
       secondaryText: Color.lerp(secondaryText, other.secondaryText, t) ?? secondaryText,
       tertiaryText: Color.lerp(tertiaryText, other.tertiaryText, t) ?? tertiaryText,
       shadow: Color.lerp(shadow, other.shadow, t) ?? shadow,
@@ -173,6 +178,7 @@ class AppTheme {
         divider: Color(0xFFEEE7DB),
         hover: Color(0xFFF2ECE2),
         primarySoft: Color(0xFFF1E8DB),
+        linkText: Color(0xFF8F7658),
         secondaryText: Color(0xFF8A8074),
         tertiaryText: Color(0xFFB0A597),
         shadow: Color.fromRGBO(93, 74, 48, 0.05),
@@ -204,6 +210,7 @@ class AppTheme {
         divider: Color(0xFF312921),
         hover: Color(0xFF2D261F),
         primarySoft: Color.fromRGBO(208, 177, 138, 0.14),
+        linkText: Color(0xFFE0C49A),
         secondaryText: Color(0xFFC0B19D),
         tertiaryText: Color(0xFF8E8376),
         shadow: Color.fromRGBO(0, 0, 0, 0.18),
@@ -235,6 +242,7 @@ class AppTheme {
         divider: Color(0xFFECEEED),
         hover: Color(0xFFF2F4F5),
         primarySoft: Color.fromRGBO(74, 80, 86, 0.10),
+        linkText: Color(0xFF3F4850),
         secondaryText: Color(0xFF69717A),
         tertiaryText: Color(0xFF9AA2AB),
         shadow: Color.fromRGBO(25, 32, 40, 0.04),
@@ -266,6 +274,7 @@ class AppTheme {
         divider: Color(0xFFEDEDED),
         hover: Color(0xFFF2F2F2),
         primarySoft: Color.fromRGBO(7, 193, 96, 0.10),
+        linkText: Color(0xFF047A3D),
         secondaryText: Color(0xFF7F7F7F),
         tertiaryText: Color(0xFFA6A6A6),
         shadow: Color.fromRGBO(0, 0, 0, 0.04),
@@ -281,6 +290,27 @@ class AppTheme {
       primary: primary,
       onPrimary: Colors.white,
       surface: Colors.white,
+    ).copyWith(
+      secondary: Colors.black,
+      onSecondary: Colors.white,
+      tertiary: Colors.black,
+      onTertiary: Colors.white,
+      primaryContainer: const Color(0xFFC2C2C2),
+      onPrimaryContainer: Colors.black,
+      secondaryContainer: const Color(0xFFD9D9D9),
+      onSecondaryContainer: Colors.black,
+      tertiaryContainer: const Color(0xFFE0E0E0),
+      onTertiaryContainer: Colors.black,
+      outline: const Color(0xFF5F5F5F),
+      outlineVariant: const Color(0xFF8A8A8A),
+      inverseSurface: Colors.black,
+      onInverseSurface: Colors.white,
+      inversePrimary: Colors.white,
+      surfaceTint: Colors.transparent,
+      error: Colors.black,
+      onError: Colors.white,
+      errorContainer: const Color(0xFFE0E0E0),
+      onErrorContainer: Colors.black,
     );
     return _buildTheme(
       scheme: scheme,
@@ -297,6 +327,7 @@ class AppTheme {
         divider: Color(0xFF5F5F5F),
         hover: Color(0xFFE0E0E0),
         primarySoft: Color(0xFFC2C2C2),
+        linkText: Color(0xFF000000),
         secondaryText: Color(0xFF333333),
         tertiaryText: Color(0xFF666666),
         shadow: Color.fromRGBO(0, 0, 0, 0),

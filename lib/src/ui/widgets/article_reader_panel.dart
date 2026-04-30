@@ -202,6 +202,7 @@ class _ReaderBody extends StatelessWidget {
     final String readerText = article.readerText.trim();
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final bool useTextOnly = contentMode == ArticleContentMode.textOnly;
+    final String linkColor = _cssColor(palette.linkText);
     final TextStyle? readerStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
           height: compact ? 1.75 : 1.9,
         );
@@ -254,7 +255,7 @@ class _ReaderBody extends StatelessWidget {
               if (tagName == 'a' &&
                   (element.attributes['href']?.isNotEmpty ?? false)) {
                 return <String, String>{
-                  'color': '#8f7658',
+                  'color': linkColor,
                 };
               }
               return null;
@@ -284,6 +285,11 @@ class _ReaderBody extends StatelessWidget {
       ),
     );
   }
+}
+
+String _cssColor(Color color) {
+  final int value = color.toARGB32() & 0xFFFFFF;
+  return '#${value.toRadixString(16).padLeft(6, '0')}';
 }
 
 class _ReadLaterDoneButton extends StatelessWidget {
