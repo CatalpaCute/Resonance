@@ -134,13 +134,14 @@ jobs:
           set -euo pipefail
           artifact_base="Resonance-linux-${{ steps.app_version.outputs.value }}-${{ github.event.release.tag_name }}"
           package_dir="$RUNNER_TEMP/$artifact_base"
+          package_path="$RUNNER_TEMP/${artifact_base}.zip"
 
           mkdir -p "$package_dir"
           cp -R build/linux/x64/release/bundle/. "$package_dir/"
 
           cd "$RUNNER_TEMP"
-          zip -r "${artifact_base}.zip" "$artifact_base"
-          echo "LINUX_ARTIFACT_NAME=${artifact_base}.zip" >> "$GITHUB_ENV"
+          zip -r "$package_path" "$artifact_base"
+          echo "LINUX_ARTIFACT_NAME=$package_path" >> "$GITHUB_ENV"
 
       - name: Upload Linux artifact to release
         uses: softprops/action-gh-release@v2

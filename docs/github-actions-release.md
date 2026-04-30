@@ -44,7 +44,7 @@ Android 签名文件会在 CI 运行时临时还原为 `android/upload-keystore.
 - `Resonance-linux-0.7.0+13-Testv10.zip`
 - `Resonance-windows-0.7.0+13-Testv10.zip`
 
-Linux 当前输出的是 Flutter `linux` 的 `bundle` 目录压缩包，解压后可直接运行其中名为 `Resonance` 的可执行文件，但目标机器仍需要系统级 GTK 运行库。
+Linux 当前输出的是 Flutter `linux` 的 `bundle` 目录压缩包，解压后可直接运行其中名为 `Resonance` 的可执行文件，但目标机器仍需要系统级 GTK 运行库。CI 会先在 runner 的临时目录生成这个 zip，再把它作为 Release 资产上传回当前发布。
 
 Windows 当前输出的是 Flutter `windows` 发布目录压缩包，解压后可直接运行。如果后续需要标准安装器，可以再接 `msix` 或 Inno Setup。
 
