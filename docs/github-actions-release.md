@@ -51,5 +51,5 @@ Windows 当前输出的是 Flutter `windows` 发布目录压缩包，解压后�
 ## 设计说明
 
 - 工作流使用 `release.published`，因为 GitHub 对 Draft Release 的 `created/edited/deleted` 事件不会触发 workflow。
-- Linux 构建依赖按 Flutter 官方 Linux 桌面文档安装：`clang`、`cmake`、`ninja-build`、`pkg-config`、`libgtk-3-dev`、`libstdc++-12-dev`。
+- Linux 构建依赖按 Flutter 官方 Linux 桌面文档安装，并额外补上 `tray_manager` 需要的 `libayatana-appindicator3-dev`：`clang`、`cmake`、`ninja-build`、`pkg-config`、`libgtk-3-dev`、`libstdc++-12-dev`、`libayatana-appindicator3-dev`。
 - Android 构建优先读取 CI 生成的 `android/key.properties`；本地没配正式签名时，会自动回退到 debug 签名，避免影响日常开发。
