@@ -347,7 +347,25 @@ class ReaderController extends ChangeNotifier {
   }
 
   Future<void> setAutoRefreshEnabled(bool value) async {
-    _settings = _settings.copyWith(autoRefreshEnabled: value);
+    _settings = _settings.copyWith(
+      autoRefreshMode: value
+          ? (_settings.autoRefreshMode == AutoRefreshMode.allOn
+              ? AutoRefreshMode.allOn
+              : AutoRefreshMode.partial)
+          : AutoRefreshMode.allOff,
+    );
+    await _persistSettings();
+  }
+
+  Future<void> setAutoRefreshMode(AutoRefreshMode mode) async {
+    _settings = _settings.copyWith(autoRefreshMode: mode);
+    await _persistSettings();
+  }
+
+  Future<void> setGlobalAutoRefreshIntervalMinutes(int minutes) async {
+    _settings = _settings.copyWith(
+      globalAutoRefreshIntervalMinutes: normalizeAutoRefreshInterval(minutes),
+    );
     await _persistSettings();
   }
 
@@ -589,6 +607,24 @@ class ReaderController extends ChangeNotifier {
 
   bool isFeedRefreshing(String sourceId) =>
       _refreshingFeedIds.contains(sourceId);
+
+  bool isFeedEffectivelyAutoRefreshEnabled(FeedSource source) {
+    switch (_settings.autoRefreshMode) {
+      case AutoRefreshMode.allOff:
+        return false;
+      case AutoRefreshMode.partial:
+        return source.enabled && source.autoRefreshEnabled;
+      case AutoRefreshMode.allOn:
+        return source.enabled;
+    }
+  }
+
+  int effectiveAutoRefreshIntervalMinutesForFeed(FeedSource source) {
+    if (_settings.autoRefreshMode == AutoRefreshMode.allOn) {
+      return _settings.globalAutoRefreshIntervalMinutes;
+    }
+    return source.autoRefreshIntervalMinutes;
+  }
 
   int unreadCountForSource(String? sourceId) {
     return _articles.where((Article article) {

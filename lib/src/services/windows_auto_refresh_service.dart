@@ -295,7 +295,9 @@ class WindowsAutoRefreshService
 
   String _buildSchedulingSignature() {
     final StringBuffer buffer = StringBuffer()
-      ..write(controller.settings.autoRefreshEnabled)
+      ..write(controller.settings.autoRefreshMode.name)
+      ..write(':')
+      ..write(controller.settings.globalAutoRefreshIntervalMinutes)
       ..write('|')
       ..write(controller.isBusy);
     for (final FeedSource source in controller.feeds) {
@@ -318,6 +320,7 @@ class WindowsAutoRefreshService
 
   String _buildPresentationSignature() {
     return '${controller.settings.appLanguageMode.name}|'
-        '${controller.settings.autoRefreshEnabled}';
+        '${controller.settings.autoRefreshMode.name}|'
+        '${controller.settings.globalAutoRefreshIntervalMinutes}';
   }
 }

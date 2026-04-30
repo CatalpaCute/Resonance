@@ -10,7 +10,7 @@ void main() {
     test('computes earliest next refresh time per source independently', () {
       final DateTime now = DateTime.parse('2026-04-30T12:00:00Z');
       final ReaderSettings settings = ReaderSettings.defaults.copyWith(
-        autoRefreshEnabled: true,
+        autoRefreshMode: AutoRefreshMode.partial,
       );
       final List<FeedSource> feeds = <FeedSource>[
         FeedSource(
@@ -60,7 +60,7 @@ void main() {
     test('treats first-time enabled source as immediately due', () {
       final DateTime now = DateTime.parse('2026-04-30T12:00:00Z');
       final ReaderSettings settings = ReaderSettings.defaults.copyWith(
-        autoRefreshEnabled: true,
+        autoRefreshMode: AutoRefreshMode.partial,
       );
       final FeedSource firstRunFeed = FeedSource(
         id: 'fresh',
@@ -78,6 +78,32 @@ void main() {
       );
 
       expect(nextAt, now);
+    });
+
+    test('all-on mode uses global interval without overriding per-source values', () {
+      final DateTime now = DateTime.parse('2026-04-30T12:00:00Z');
+      final ReaderSettings settings = ReaderSettings.defaults.copyWith(
+        autoRefreshMode: AutoRefreshMode.allOn,
+        globalAutoRefreshIntervalMinutes: 60,
+      );
+      final FeedSource feed = FeedSource(
+        id: 'locked',
+        title: 'Locked',
+        url: 'https://example.com/locked.xml',
+        enabled: true,
+        autoRefreshEnabled: false,
+        autoRefreshIntervalMinutes: 4320,
+        lastFetchedAt: DateTime.parse('2026-04-30T11:30:00Z'),
+      );
+
+      final DateTime? nextAt = engine.nextRefreshTimeForSource(
+        settings: settings,
+        source: feed,
+        now: now,
+      );
+
+      expect(nextAt?.toUtc(), DateTime.parse('2026-04-30T12:30:00Z'));
+      expect(feed.autoRefreshIntervalMinutes, 4320);
     });
   });
 }

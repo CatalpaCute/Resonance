@@ -93,10 +93,20 @@ class AutoRefreshEngine {
     required FeedSource source,
     DateTime? now,
   }) {
-    if (!settings.autoRefreshEnabled ||
-        !source.enabled ||
-        !source.autoRefreshEnabled) {
+    if (!source.enabled) {
       return null;
+    }
+
+    switch (settings.autoRefreshMode) {
+      case AutoRefreshMode.allOff:
+        return null;
+      case AutoRefreshMode.partial:
+        if (!source.autoRefreshEnabled) {
+          return null;
+        }
+        break;
+      case AutoRefreshMode.allOn:
+        break;
     }
 
     final DateTime cursor = now ?? DateTime.now();
@@ -106,7 +116,11 @@ class AutoRefreshEngine {
     }
 
     return baseTime.add(
-      Duration(minutes: source.autoRefreshIntervalMinutes),
+      Duration(
+        minutes: settings.autoRefreshMode == AutoRefreshMode.allOn
+            ? settings.globalAutoRefreshIntervalMinutes
+            : source.autoRefreshIntervalMinutes,
+      ),
     );
   }
 
@@ -151,7 +165,12 @@ class AutoRefreshEngine {
       }
 
       final FeedSource current = feeds[index];
-      if (!current.enabled || !current.autoRefreshEnabled) {
+      if (nextRefreshTimeForSource(
+            settings: state.settings,
+            source: current,
+            now: cursor,
+          ) ==
+          null) {
         continue;
       }
 

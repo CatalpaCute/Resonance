@@ -1,5 +1,6 @@
 import 'app_route.dart';
 import '../localization/app_language.dart';
+import 'auto_refresh.dart';
 
 enum StartupHomeMode {
   allArticles,
@@ -33,6 +34,12 @@ enum ArticleContentMode {
   textOnly,
 }
 
+enum AutoRefreshMode {
+  allOff,
+  partial,
+  allOn,
+}
+
 class ReaderSettings {
   const ReaderSettings({
     required this.startupHomeMode,
@@ -40,7 +47,8 @@ class ReaderSettings {
     required this.mobileSidebarMode,
     required this.mobileWorkspaceMode,
     required this.desktopWorkspaceMode,
-    required this.autoRefreshEnabled,
+    required this.autoRefreshMode,
+    required this.globalAutoRefreshIntervalMinutes,
     required this.desktopSidebarCollapsed,
     required this.articleListDensity,
     required this.articleContentMode,
@@ -52,11 +60,15 @@ class ReaderSettings {
   final MobileSidebarMode mobileSidebarMode;
   final MobileWorkspaceMode mobileWorkspaceMode;
   final DesktopWorkspaceMode desktopWorkspaceMode;
-  final bool autoRefreshEnabled;
+  final AutoRefreshMode autoRefreshMode;
+  final int globalAutoRefreshIntervalMinutes;
   final bool desktopSidebarCollapsed;
   final ArticleListDensity articleListDensity;
   final ArticleContentMode articleContentMode;
   final AppLanguageMode appLanguageMode;
+
+  bool get autoRefreshEnabled => autoRefreshMode != AutoRefreshMode.allOff;
+  bool get autoRefreshAllEnabled => autoRefreshMode == AutoRefreshMode.allOn;
 
   static const ReaderSettings defaults = ReaderSettings(
     startupHomeMode: StartupHomeMode.allArticles,
@@ -64,7 +76,8 @@ class ReaderSettings {
     mobileSidebarMode: MobileSidebarMode.adaptive,
     mobileWorkspaceMode: MobileWorkspaceMode.singlePane,
     desktopWorkspaceMode: DesktopWorkspaceMode.threePane,
-    autoRefreshEnabled: false,
+    autoRefreshMode: AutoRefreshMode.allOff,
+    globalAutoRefreshIntervalMinutes: 1440,
     desktopSidebarCollapsed: false,
     articleListDensity: ArticleListDensity.comfortable,
     articleContentMode: ArticleContentMode.rich,
@@ -88,7 +101,8 @@ class ReaderSettings {
     MobileSidebarMode? mobileSidebarMode,
     MobileWorkspaceMode? mobileWorkspaceMode,
     DesktopWorkspaceMode? desktopWorkspaceMode,
-    bool? autoRefreshEnabled,
+    AutoRefreshMode? autoRefreshMode,
+    int? globalAutoRefreshIntervalMinutes,
     bool? desktopSidebarCollapsed,
     ArticleListDensity? articleListDensity,
     ArticleContentMode? articleContentMode,
@@ -101,7 +115,12 @@ class ReaderSettings {
       mobileWorkspaceMode: mobileWorkspaceMode ?? this.mobileWorkspaceMode,
       desktopWorkspaceMode:
           desktopWorkspaceMode ?? this.desktopWorkspaceMode,
-      autoRefreshEnabled: autoRefreshEnabled ?? this.autoRefreshEnabled,
+      autoRefreshMode: autoRefreshMode ?? this.autoRefreshMode,
+      globalAutoRefreshIntervalMinutes:
+          normalizeAutoRefreshInterval(
+            globalAutoRefreshIntervalMinutes ??
+                this.globalAutoRefreshIntervalMinutes,
+          ),
       desktopSidebarCollapsed:
           desktopSidebarCollapsed ?? this.desktopSidebarCollapsed,
       articleListDensity: articleListDensity ?? this.articleListDensity,
@@ -117,7 +136,8 @@ class ReaderSettings {
       'mobileSidebarMode': mobileSidebarMode.name,
       'mobileWorkspaceMode': mobileWorkspaceMode.name,
       'desktopWorkspaceMode': desktopWorkspaceMode.name,
-      'autoRefreshEnabled': autoRefreshEnabled,
+      'autoRefreshMode': autoRefreshMode.name,
+      'globalAutoRefreshIntervalMinutes': globalAutoRefreshIntervalMinutes,
       'desktopSidebarCollapsed': desktopSidebarCollapsed,
       'articleListDensity': articleListDensity.name,
       'articleContentMode': articleContentMode.name,
@@ -145,8 +165,18 @@ class ReaderSettings {
             value.name == json['desktopWorkspaceMode'],
         orElse: () => defaults.desktopWorkspaceMode,
       ),
-      autoRefreshEnabled:
-          json['autoRefreshEnabled'] as bool? ?? defaults.autoRefreshEnabled,
+      autoRefreshMode: AutoRefreshMode.values.firstWhere(
+        (AutoRefreshMode value) => value.name == json['autoRefreshMode'],
+        orElse: () {
+          final bool legacyEnabled =
+              json['autoRefreshEnabled'] as bool? ?? defaults.autoRefreshEnabled;
+          return legacyEnabled ? AutoRefreshMode.partial : AutoRefreshMode.allOff;
+        },
+      ),
+      globalAutoRefreshIntervalMinutes: normalizeAutoRefreshInterval(
+        json['globalAutoRefreshIntervalMinutes'] as int? ??
+            defaults.globalAutoRefreshIntervalMinutes,
+      ),
       desktopSidebarCollapsed: json['desktopSidebarCollapsed'] as bool? ??
           defaults.desktopSidebarCollapsed,
       articleListDensity: ArticleListDensity.values.firstWhere(

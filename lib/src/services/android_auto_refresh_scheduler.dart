@@ -52,7 +52,6 @@ class AndroidAutoRefreshScheduler {
     }
     await Workmanager().initialize(
       resonanceAutoRefreshCallbackDispatcher,
-      isInDebugMode: kDebugMode,
     );
   }
 

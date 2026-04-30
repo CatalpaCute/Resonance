@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 
 import '../models/feed_source.dart';
@@ -123,7 +122,9 @@ class AndroidAutoRefreshService with WidgetsBindingObserver {
 
   String _buildSchedulingSignature() {
     final StringBuffer buffer = StringBuffer()
-      ..write(controller.settings.autoRefreshEnabled)
+      ..write(controller.settings.autoRefreshMode.name)
+      ..write(':')
+      ..write(controller.settings.globalAutoRefreshIntervalMinutes)
       ..write('|')
       ..write(controller.isBusy);
     for (final FeedSource source in controller.feeds) {

@@ -25,6 +25,8 @@ class FeedEditorDialog extends StatefulWidget {
     this.initialUrl,
     this.initialAutoRefreshEnabled = false,
     this.initialAutoRefreshIntervalMinutes = kDefaultAutoRefreshIntervalMinutes,
+    this.lockAutoRefreshControls = false,
+    this.autoRefreshLockHint,
     this.dialogTitle = '',
     this.confirmText = '',
   });
@@ -33,6 +35,8 @@ class FeedEditorDialog extends StatefulWidget {
   final String? initialUrl;
   final bool initialAutoRefreshEnabled;
   final int initialAutoRefreshIntervalMinutes;
+  final bool lockAutoRefreshControls;
+  final String? autoRefreshLockHint;
   final String dialogTitle;
   final String confirmText;
 
@@ -117,7 +121,7 @@ class _FeedEditorDialogState extends State<FeedEditorDialog> {
                 contentPadding: EdgeInsets.zero,
                 dense: compact,
                 value: _autoRefreshEnabled,
-                onChanged: (bool value) {
+                onChanged: widget.lockAutoRefreshControls ? null : (bool value) {
                   setState(() {
                     _autoRefreshEnabled = value;
                   });
@@ -125,6 +129,17 @@ class _FeedEditorDialogState extends State<FeedEditorDialog> {
                 title: Text(strings.autoRefreshSourceEnabled),
                 subtitle: Text(strings.autoRefreshSourceDisabledHint),
               ),
+              if (widget.lockAutoRefreshControls &&
+                  widget.autoRefreshLockHint != null) ...<Widget>[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    widget.autoRefreshLockHint!,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
               const SizedBox(height: 10),
               Align(
                 alignment: Alignment.centerLeft,
@@ -136,7 +151,8 @@ class _FeedEditorDialogState extends State<FeedEditorDialog> {
               const SizedBox(height: 10),
               AutoRefreshIntervalPicker(
                 selectedMinutes: _autoRefreshIntervalMinutes,
-                enabled: _autoRefreshEnabled,
+                enabled:
+                    !widget.lockAutoRefreshControls && _autoRefreshEnabled,
                 mobileWheel: useMobileWheel,
                 onChanged: (int minutes) {
                   setState(() {

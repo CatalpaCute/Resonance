@@ -366,6 +366,16 @@ class AppStrings {
         zhHant: '自動更新',
         en: 'Automatic Refresh',
       );
+  String autoRefreshModeLabel(AutoRefreshMode mode) {
+    switch (mode) {
+      case AutoRefreshMode.allOff:
+        return _text(zhCn: '全部关闭', zhHant: '全部關閉', en: 'All Off');
+      case AutoRefreshMode.partial:
+        return _text(zhCn: '部分开启', zhHant: '部分開啟', en: 'Partial');
+      case AutoRefreshMode.allOn:
+        return _text(zhCn: '全部开启', zhHant: '全部開啟', en: 'All On');
+    }
+  }
   String get autoRefreshSourceEnabled => _text(
         zhCn: '更新这个订阅源',
         zhHant: '更新這個訂閱源',
@@ -380,6 +390,31 @@ class AppStrings {
         zhCn: '关闭后会保留当前间隔，但不会进入自动更新调度。',
         zhHant: '關閉後會保留目前間隔，但不會進入自動更新排程。',
         en: 'The saved interval stays in place, but this source stops participating in automatic refresh.',
+      );
+  String get autoRefreshPanelHint => _text(
+        zhCn: '这里可以统一控制全部订阅源的自动更新方式。',
+        zhHant: '這裡可以統一控制全部訂閱源的自動更新方式。',
+        en: 'Control the automatic refresh mode for all subscriptions here.',
+      );
+  String get autoRefreshGlobalInterval => _text(
+        zhCn: '全局更新间隔',
+        zhHant: '全域更新間隔',
+        en: 'Global refresh interval',
+      );
+  String get autoRefreshGlobalIntervalHint => _text(
+        zhCn: '只在“全部开启”时生效，不会改写每个订阅源原本保存的间隔。',
+        zhHant: '只在「全部開啟」時生效，不會改寫每個訂閱源原本保存的間隔。',
+        en: 'Only applies in All On mode and does not overwrite per-source saved intervals.',
+      );
+  String get autoRefreshFollowGlobalHint => _text(
+        zhCn: '当前已开启全部订阅源自动更新，更新间隔跟随全局设置。',
+        zhHant: '目前已開啟全部訂閱源自動更新，更新間隔跟隨全域設定。',
+        en: 'All subscriptions now follow the global automatic refresh interval.',
+      );
+  String autoRefreshGlobalSummary(int minutes) => _text(
+        zhCn: '跟随全局：每 ${autoRefreshIntervalLabel(minutes)}',
+        zhHant: '跟隨全域：每 ${autoRefreshIntervalLabel(minutes)}',
+        en: 'Follow global: every ${autoRefreshIntervalLabel(minutes)}',
       );
   String get readingDensity =>
       _text(zhCn: '阅读密度', zhHant: '閱讀密度', en: 'Reading Density');
