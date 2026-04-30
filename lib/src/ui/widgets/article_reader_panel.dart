@@ -44,8 +44,9 @@ class ArticleReaderPanel extends StatelessWidget {
                   children: <Widget>[
                     if (onBack != null)
                       IconButton(
-                        visualDensity:
-                            compact ? VisualDensity.compact : VisualDensity.standard,
+                        visualDensity: compact
+                            ? VisualDensity.compact
+                            : VisualDensity.standard,
                         onPressed: onBack,
                         icon: const Icon(Icons.arrow_back_rounded),
                       ),
@@ -55,8 +56,12 @@ class ArticleReaderPanel extends StatelessWidget {
                         children: <Widget>[
                           Text(
                             controller.sourceTitleForArticle(article),
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: AppTheme.paletteOf(context).secondaryText,
+                            style: Theme.of(context)
+                                .textTheme
+                                .bodySmall
+                                ?.copyWith(
+                                  color:
+                                      AppTheme.paletteOf(context).secondaryText,
                                 ),
                           ),
                           const SizedBox(height: 6),
@@ -203,9 +208,10 @@ class _ReaderBody extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final bool useTextOnly = contentMode == ArticleContentMode.textOnly;
     final String linkColor = _cssColor(palette.linkText);
-    final TextStyle? readerStyle = Theme.of(context).textTheme.bodyLarge?.copyWith(
-          height: compact ? 1.75 : 1.9,
-        );
+    final TextStyle? readerStyle =
+        Theme.of(context).textTheme.bodyLarge?.copyWith(
+              height: compact ? 1.75 : 1.9,
+            );
 
     if (readerHtml.isEmpty && readerText.isEmpty) {
       return Center(
@@ -327,7 +333,8 @@ class _ReadLaterDoneButton extends StatelessWidget {
 class _ReaderHtmlWidgetFactory extends WidgetFactory {
   @override
   Widget? buildImage(BuildTree tree, ImageMetadata data) {
-    final ImageSource? src = data.sources.isNotEmpty ? data.sources.first : null;
+    final ImageSource? src =
+        data.sources.isNotEmpty ? data.sources.first : null;
     if (src == null) {
       return null;
     }
@@ -377,8 +384,9 @@ class _ReaderHtmlWidgetFactory extends WidgetFactory {
             width: maxWidth,
             child: Image(
               width: maxWidth,
-              errorBuilder: (BuildContext context, Object error, StackTrace? _) =>
-                  onErrorBuilder(context, tree, error, src) ?? widget0,
+              errorBuilder:
+                  (BuildContext context, Object error, StackTrace? _) =>
+                      onErrorBuilder(context, tree, error, src) ?? widget0,
               loadingBuilder: (
                 BuildContext context,
                 Widget child,
@@ -475,7 +483,8 @@ class _ActionChip extends StatelessWidget {
           vertical: compact ? 6 : 8,
         ),
         decoration: BoxDecoration(
-          color: compact ? palette.panelMutedBackground : palette.panelBackground,
+          color:
+              compact ? palette.panelMutedBackground : palette.panelBackground,
           borderRadius: BorderRadius.circular(999),
           border: Border.all(color: palette.border),
         ),

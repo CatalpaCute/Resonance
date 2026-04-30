@@ -214,7 +214,8 @@ class ReaderController extends ChangeNotifier {
     if (_activeSourceId != null && _feedById(_activeSourceId) == null) {
       _activeSourceId = null;
     }
-    if (_selectedArticleId != null && _articleById(_selectedArticleId) == null) {
+    if (_selectedArticleId != null &&
+        _articleById(_selectedArticleId) == null) {
       _selectedArticleId = null;
     }
 
@@ -343,6 +344,13 @@ class ReaderController extends ChangeNotifier {
       _compactReaderOpen = false;
     }
 
+    await _persistSettings();
+  }
+
+  Future<void> setDesktopContentSurfaceMode(
+    DesktopContentSurfaceMode mode,
+  ) async {
+    _settings = _settings.copyWith(desktopContentSurfaceMode: mode);
     await _persistSettings();
   }
 

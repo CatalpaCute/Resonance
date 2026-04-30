@@ -48,6 +48,8 @@ class _AddSourceViewState extends State<AddSourceView> {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
     final bool compact = MediaQuery.sizeOf(context).width < 900;
+    final GlassCardSurface surface =
+        desktopContentSurface(widget.controller.settings, compact: compact);
 
     return ListView(
       padding: EdgeInsets.all(compact ? 14 : 22),
@@ -55,6 +57,7 @@ class _AddSourceViewState extends State<AddSourceView> {
         GlassCard(
           padding: EdgeInsets.all(compact ? 16 : 20),
           radius: compact ? 16 : 18,
+          surface: surface,
           child: LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
               final bool stacked = constraints.maxWidth < 920;
@@ -143,102 +146,105 @@ class _AddSourceViewState extends State<AddSourceView> {
                 ],
               );
 
-              final Widget managementCard = DecoratedBox(
-                decoration: BoxDecoration(
-                  color: palette.panelMutedBackground,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: palette.border),
-                ),
-                child: Padding(
-                  padding: EdgeInsets.all(compact ? 14 : 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        strings.currentSubscriptions,
-                        style: theme.textTheme.titleMedium,
+              final Widget managementContent = Padding(
+                padding: EdgeInsets.all(compact ? 14 : 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      strings.currentSubscriptions,
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      strings.currentSubscriptionsHint,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: palette.secondaryText,
+                        height: 1.4,
                       ),
-                      const SizedBox(height: 6),
+                    ),
+                    const SizedBox(height: 12),
+                    _AutoRefreshSubscriptionsPanel(
+                      compact: compact,
+                      controller: widget.controller,
+                    ),
+                    const SizedBox(height: 12),
+                    if (widget.controller.feeds.isEmpty)
                       Text(
-                        strings.currentSubscriptionsHint,
-                        style: theme.textTheme.bodySmall?.copyWith(
+                        strings.noSubscriptionsYet,
+                        style: theme.textTheme.bodyMedium?.copyWith(
                           color: palette.secondaryText,
-                          height: 1.4,
+                          height: 1.45,
+                        ),
+                      )
+                    else
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxHeight: compact ? 420 : 520,
+                        ),
+                        child: ReorderableListView.builder(
+                          buildDefaultDragHandles: false,
+                          itemCount: widget.controller.feeds.length,
+                          onReorder: (int oldIndex, int newIndex) async {
+                            await widget.controller.moveFeed(
+                              oldIndex,
+                              newIndex,
+                            );
+                          },
+                          proxyDecorator: (
+                            Widget child,
+                            int index,
+                            Animation<double> animation,
+                          ) {
+                            return Material(
+                              color: Colors.transparent,
+                              child: child,
+                            );
+                          },
+                          itemBuilder: (BuildContext context, int index) {
+                            final FeedSource feed =
+                                widget.controller.feeds[index];
+                            return _ManagedFeedTile(
+                              key: ValueKey<String>(feed.id),
+                              index: index,
+                              feed: feed,
+                              compact: compact,
+                              count: widget.controller
+                                  .articleCountForSource(feed.id),
+                              unread:
+                                  widget.controller.unreadCountForSource(feed.id),
+                              autoRefreshEnabled: widget.controller
+                                  .isFeedEffectivelyAutoRefreshEnabled(feed),
+                              autoRefreshSummary:
+                                  widget.controller.settings.autoRefreshMode ==
+                                          AutoRefreshMode.allOn
+                                      ? strings.autoRefreshGlobalSummary(
+                                          widget.controller.settings
+                                              .globalAutoRefreshIntervalMinutes,
+                                        )
+                                      : strings.autoRefreshIntervalSummary(
+                                          feed.autoRefreshIntervalMinutes,
+                                        ),
+                              onActionSelected: (String action) async {
+                                await _handleFeedAction(feed, action);
+                              },
+                            );
+                          },
                         ),
                       ),
-                      const SizedBox(height: 12),
-                      _AutoRefreshSubscriptionsPanel(
-                        compact: compact,
-                        controller: widget.controller,
-                      ),
-                      const SizedBox(height: 12),
-                      if (widget.controller.feeds.isEmpty)
-                        Text(
-                          strings.noSubscriptionsYet,
-                          style: theme.textTheme.bodyMedium?.copyWith(
-                            color: palette.secondaryText,
-                            height: 1.45,
-                          ),
-                        )
-                      else
-                        ConstrainedBox(
-                          constraints: BoxConstraints(
-                            maxHeight: compact ? 420 : 520,
-                          ),
-                          child: ReorderableListView.builder(
-                            buildDefaultDragHandles: false,
-                            itemCount: widget.controller.feeds.length,
-                            onReorder: (int oldIndex, int newIndex) async {
-                              await widget.controller.moveFeed(
-                                oldIndex,
-                                newIndex,
-                              );
-                            },
-                            proxyDecorator: (
-                              Widget child,
-                              int index,
-                              Animation<double> animation,
-                            ) {
-                              return Material(
-                                color: Colors.transparent,
-                                child: child,
-                              );
-                            },
-                            itemBuilder: (BuildContext context, int index) {
-                              final FeedSource feed =
-                                  widget.controller.feeds[index];
-                              return _ManagedFeedTile(
-                                key: ValueKey<String>(feed.id),
-                                index: index,
-                                feed: feed,
-                                compact: compact,
-                                count: widget.controller
-                                    .articleCountForSource(feed.id),
-                                unread: widget.controller
-                                    .unreadCountForSource(feed.id),
-                                autoRefreshEnabled: widget.controller
-                                    .isFeedEffectivelyAutoRefreshEnabled(feed),
-                                autoRefreshSummary:
-                                    widget.controller.settings.autoRefreshMode ==
-                                            AutoRefreshMode.allOn
-                                        ? strings.autoRefreshGlobalSummary(
-                                            widget.controller.settings
-                                                .globalAutoRefreshIntervalMinutes,
-                                          )
-                                        : strings.autoRefreshIntervalSummary(
-                                            feed.autoRefreshIntervalMinutes,
-                                          ),
-                                onActionSelected: (String action) async {
-                                  await _handleFeedAction(feed, action);
-                                },
-                              );
-                            },
-                          ),
-                        ),
-                    ],
-                  ),
+                  ],
                 ),
               );
+              final Widget managementCard = surface == GlassCardSurface.flat
+                  ? managementContent
+                  : DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: palette.panelMutedBackground,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: palette.border),
+                      ),
+                      child: managementContent,
+                    );
 
               if (stacked) {
                 return Column(

@@ -24,6 +24,11 @@ enum DesktopWorkspaceMode {
   focusedReader,
 }
 
+enum DesktopContentSurfaceMode {
+  flat,
+  layered,
+}
+
 enum ArticleListDensity {
   comfortable,
   compact,
@@ -47,6 +52,7 @@ class ReaderSettings {
     required this.mobileSidebarMode,
     required this.mobileWorkspaceMode,
     required this.desktopWorkspaceMode,
+    required this.desktopContentSurfaceMode,
     required this.autoRefreshMode,
     required this.globalAutoRefreshIntervalMinutes,
     required this.desktopSidebarCollapsed,
@@ -60,6 +66,7 @@ class ReaderSettings {
   final MobileSidebarMode mobileSidebarMode;
   final MobileWorkspaceMode mobileWorkspaceMode;
   final DesktopWorkspaceMode desktopWorkspaceMode;
+  final DesktopContentSurfaceMode desktopContentSurfaceMode;
   final AutoRefreshMode autoRefreshMode;
   final int globalAutoRefreshIntervalMinutes;
   final bool desktopSidebarCollapsed;
@@ -76,6 +83,7 @@ class ReaderSettings {
     mobileSidebarMode: MobileSidebarMode.adaptive,
     mobileWorkspaceMode: MobileWorkspaceMode.singlePane,
     desktopWorkspaceMode: DesktopWorkspaceMode.threePane,
+    desktopContentSurfaceMode: DesktopContentSurfaceMode.flat,
     autoRefreshMode: AutoRefreshMode.allOff,
     globalAutoRefreshIntervalMinutes: 1440,
     desktopSidebarCollapsed: false,
@@ -101,6 +109,7 @@ class ReaderSettings {
     MobileSidebarMode? mobileSidebarMode,
     MobileWorkspaceMode? mobileWorkspaceMode,
     DesktopWorkspaceMode? desktopWorkspaceMode,
+    DesktopContentSurfaceMode? desktopContentSurfaceMode,
     AutoRefreshMode? autoRefreshMode,
     int? globalAutoRefreshIntervalMinutes,
     bool? desktopSidebarCollapsed,
@@ -115,6 +124,8 @@ class ReaderSettings {
       mobileWorkspaceMode: mobileWorkspaceMode ?? this.mobileWorkspaceMode,
       desktopWorkspaceMode:
           desktopWorkspaceMode ?? this.desktopWorkspaceMode,
+      desktopContentSurfaceMode:
+          desktopContentSurfaceMode ?? this.desktopContentSurfaceMode,
       autoRefreshMode: autoRefreshMode ?? this.autoRefreshMode,
       globalAutoRefreshIntervalMinutes:
           normalizeAutoRefreshInterval(
@@ -136,6 +147,7 @@ class ReaderSettings {
       'mobileSidebarMode': mobileSidebarMode.name,
       'mobileWorkspaceMode': mobileWorkspaceMode.name,
       'desktopWorkspaceMode': desktopWorkspaceMode.name,
+      'desktopContentSurfaceMode': desktopContentSurfaceMode.name,
       'autoRefreshMode': autoRefreshMode.name,
       'globalAutoRefreshIntervalMinutes': globalAutoRefreshIntervalMinutes,
       'desktopSidebarCollapsed': desktopSidebarCollapsed,
@@ -164,6 +176,11 @@ class ReaderSettings {
         (DesktopWorkspaceMode value) =>
             value.name == json['desktopWorkspaceMode'],
         orElse: () => defaults.desktopWorkspaceMode,
+      ),
+      desktopContentSurfaceMode: DesktopContentSurfaceMode.values.firstWhere(
+        (DesktopContentSurfaceMode value) =>
+            value.name == json['desktopContentSurfaceMode'],
+        orElse: () => defaults.desktopContentSurfaceMode,
       ),
       autoRefreshMode: AutoRefreshMode.values.firstWhere(
         (AutoRefreshMode value) => value.name == json['autoRefreshMode'],

@@ -215,6 +215,15 @@ class AppStrings {
     }
   }
 
+  String desktopContentSurfaceModeLabel(DesktopContentSurfaceMode mode) {
+    switch (mode) {
+      case DesktopContentSurfaceMode.flat:
+        return _text(zhCn: '扁平背景板', zhHant: '扁平背景板', en: 'Flat Surfaces');
+      case DesktopContentSurfaceMode.layered:
+        return _text(zhCn: '层叠背景板', zhHant: '層疊背景板', en: 'Layered Surfaces');
+    }
+  }
+
   String articleDensityLabel(ArticleListDensity density) {
     switch (density) {
       case ArticleListDensity.comfortable:
@@ -248,8 +257,7 @@ class AppStrings {
 
   String get allArticles =>
       _text(zhCn: '全部文章', zhHant: '全部文章', en: 'All Articles');
-  String get sources =>
-      _text(zhCn: '订阅源', zhHant: '訂閱源', en: 'Sources');
+  String get sources => _text(zhCn: '订阅源', zhHant: '訂閱源', en: 'Sources');
   String get sourceArticles =>
       _text(zhCn: '来源文章', zhHant: '來源文章', en: 'Source Articles');
   String get bookmarksAndLater => _text(
@@ -277,17 +285,14 @@ class AppStrings {
         zhHant: '長按右側拖動柄可調整順序，選單裡可以重新整理、編輯或刪除站點。',
         en: 'Long-press the drag handle to reorder. Use the menu to refresh, edit, or delete a source.',
       );
-  String get settings =>
-      _text(zhCn: '设置', zhHant: '設定', en: 'Settings');
+  String get settings => _text(zhCn: '设置', zhHant: '設定', en: 'Settings');
   String get readerDetail =>
       _text(zhCn: '阅读详情', zhHant: '閱讀詳情', en: 'Reader Detail');
-  String get starred =>
-      _text(zhCn: '收藏', zhHant: '收藏', en: 'Starred');
+  String get starred => _text(zhCn: '收藏', zhHant: '收藏', en: 'Starred');
   String get savedForLater =>
       _text(zhCn: '稍后读', zhHant: '稍後讀', en: 'Read Later');
   String get home => _text(zhCn: '首页', zhHant: '首頁', en: 'Home');
-  String get unlocked =>
-      _text(zhCn: '未锁定', zhHant: '未鎖定', en: 'Unlocked');
+  String get unlocked => _text(zhCn: '未锁定', zhHant: '未鎖定', en: 'Unlocked');
   String get localReader => _text(
         zhCn: '本地阅读器',
         zhHant: '本地閱讀器',
@@ -300,8 +305,7 @@ class AppStrings {
       );
   String get startupPage =>
       _text(zhCn: '启动页', zhHant: '啟動頁', en: 'Startup Page');
-  String get visualTheme =>
-      _text(zhCn: '视觉主题', zhHant: '視覺主題', en: 'Theme');
+  String get visualTheme => _text(zhCn: '视觉主题', zhHant: '視覺主題', en: 'Theme');
   String get articleDisplayMode =>
       _text(zhCn: '文章显示', zhHant: '文章顯示', en: 'Article Display');
   String get articleDisplayModeHint => _text(
@@ -330,6 +334,16 @@ class AppStrings {
         zhCn: '三栏模式会把正文固定放在右侧。双栏模式会隐藏右侧阅读栏，点击文章后进入独立阅读页。',
         zhHant: '三欄模式會把正文固定放在右側。雙欄模式會隱藏右側閱讀欄，點擊文章後進入獨立閱讀頁。',
         en: 'Three-pane mode keeps the reader embedded on the right. Two-pane mode hides the reader pane and opens a dedicated reader page when an article is selected.',
+      );
+  String get desktopContentSurface => _text(
+        zhCn: '桌面内容层级',
+        zhHant: '桌面內容層級',
+        en: 'Desktop Content Layers',
+      );
+  String get desktopContentSurfaceHint => _text(
+        zhCn: '扁平模式会去掉内容区里作为背景板的大框，但保留文章、订阅源和控件本身的卡片层次。',
+        zhHant: '扁平模式會去掉內容區裡作為背景板的大框，但保留文章、訂閱源和控制項本身的卡片層次。',
+        en: 'Flat mode removes large background panels while keeping cards for articles, sources, and controls.',
       );
   String get autoRefreshSettings => _text(
         zhCn: '自动更新订阅',
@@ -376,6 +390,7 @@ class AppStrings {
         return _text(zhCn: '全部开启', zhHant: '全部開啟', en: 'All On');
     }
   }
+
   String get autoRefreshSourceEnabled => _text(
         zhCn: '更新这个订阅源',
         zhHant: '更新這個訂閱源',
@@ -495,8 +510,8 @@ class AppStrings {
       );
   String get addSourceTitle =>
       _text(zhCn: '添加订阅源', zhHant: '添加訂閱源', en: 'Add Source');
-  String get feedUrlLabel =>
-      _text(zhCn: 'RSS / Atom 地址', zhHant: 'RSS / Atom 位址', en: 'RSS / Atom URL');
+  String get feedUrlLabel => _text(
+      zhCn: 'RSS / Atom 地址', zhHant: 'RSS / Atom 位址', en: 'RSS / Atom URL');
   String get feedUrlHint => 'https://example.com/feed.xml';
   String get enterFeedAddress => _text(
         zhCn: '请输入订阅地址',
@@ -510,8 +525,7 @@ class AppStrings {
         zhHant: '留空時自動使用訂閱標題',
         en: 'Leave empty to use the feed title automatically',
       );
-  String get addNow =>
-      _text(zhCn: '立即添加', zhHant: '立即添加', en: 'Add Now');
+  String get addNow => _text(zhCn: '立即添加', zhHant: '立即添加', en: 'Add Now');
   String get currentSubscriptions => _text(
         zhCn: '当前已有订阅',
         zhHant: '目前已有訂閱',
@@ -544,8 +558,7 @@ class AppStrings {
       );
   String get refreshAll =>
       _text(zhCn: '刷新全部', zhHant: '重新整理全部', en: 'Refresh All');
-  String get unreadOnly =>
-      _text(zhCn: '仅未读', zhHant: '僅未讀', en: 'Unread Only');
+  String get unreadOnly => _text(zhCn: '仅未读', zhHant: '僅未讀', en: 'Unread Only');
   String get allSources =>
       _text(zhCn: '全部来源', zhHant: '全部來源', en: 'All Sources');
   String get editSource =>

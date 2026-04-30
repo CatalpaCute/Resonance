@@ -42,15 +42,22 @@ class ParsedFeedResult {
   final List<ParsedArticleDraft> articles;
 }
 
+class _FetchedResponse {
+  const _FetchedResponse({
+    required this.statusCode,
+    required this.headers,
+    required this.bodyBytes,
+  });
+
+  final int statusCode;
+  final Map<String, String> headers;
+  final List<int> bodyBytes;
+}
+
 class RssService {
   Future<ParsedFeedResult> fetchFeed(String rawUrl) async {
     final Uri uri = _normalizeUri(rawUrl);
-    final http.Response response =
-        await http.get(uri, headers: <String, String>{
-      HttpHeaders.userAgentHeader: 'Resonance/0.3',
-      HttpHeaders.acceptHeader:
-          'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8',
-    });
+    final _FetchedResponse response = await _fetchResponse(uri);
     if (response.statusCode >= 400) {
       throw HttpException('拉取订阅失败，状态码 ${response.statusCode}', uri: uri);
     }
@@ -59,6 +66,224 @@ class RssService {
       sourceUrl: uri.toString(),
       contentTypeHeader: response.headers[HttpHeaders.contentTypeHeader],
     );
+  }
+
+  Future<_FetchedResponse> _fetchResponse(
+    Uri uri, {
+    int redirectCount = 0,
+  }) async {
+    if (redirectCount > 5) {
+      throw HttpException('订阅请求重定向次数过多', uri: uri);
+    }
+
+    final Map<String, String> headers = <String, String>{
+      HttpHeaders.userAgentHeader: 'Resonance/0.3',
+      HttpHeaders.acceptHeader:
+          'application/rss+xml, application/atom+xml, application/xml, text/xml;q=0.9, */*;q=0.8',
+      HttpHeaders.acceptEncodingHeader: 'identity',
+    };
+
+    try {
+      final http.Response response = await http.get(uri, headers: headers);
+      return _followRedirectIfNeeded(
+        _FetchedResponse(
+          statusCode: response.statusCode,
+          headers: response.headers,
+          bodyBytes: response.bodyBytes,
+        ),
+        uri,
+        redirectCount,
+      );
+    } catch (error) {
+      if (!_shouldRetryWithLooseHttp(error)) {
+        rethrow;
+      }
+      final _FetchedResponse response = await _fetchResponseViaRawSocket(
+        uri,
+        headers: headers,
+      );
+      return _followRedirectIfNeeded(response, uri, redirectCount);
+    }
+  }
+
+  Future<_FetchedResponse> _followRedirectIfNeeded(
+    _FetchedResponse response,
+    Uri uri,
+    int redirectCount,
+  ) async {
+    if (response.statusCode < 300 || response.statusCode >= 400) {
+      return response;
+    }
+    final String? location = response.headers['location'];
+    if (location == null || location.trim().isEmpty) {
+      return response;
+    }
+    return _fetchResponse(
+      uri.resolve(location.trim()),
+      redirectCount: redirectCount + 1,
+    );
+  }
+
+  bool _shouldRetryWithLooseHttp(Object error) {
+    final String message = error.toString().toLowerCase();
+    return message.contains('invalid http date') ||
+        message.contains('invalid header') ||
+        message.contains('http parser');
+  }
+
+  Future<_FetchedResponse> _fetchResponseViaRawSocket(
+    Uri uri, {
+    required Map<String, String> headers,
+  }) async {
+    final String host = uri.host;
+    final int port = uri.hasPort
+        ? uri.port
+        : (uri.scheme == 'https' ? 443 : 80);
+    final String path = uri.path.isEmpty ? '/' : uri.path;
+    final String requestTarget =
+        uri.hasQuery ? '$path?${uri.query}' : path;
+
+    final Socket socket = uri.scheme == 'https'
+        ? await SecureSocket.connect(
+            host,
+            port,
+            timeout: const Duration(seconds: 15),
+          )
+        : await Socket.connect(
+            host,
+            port,
+            timeout: const Duration(seconds: 15),
+          );
+
+    try {
+      final StringBuffer request = StringBuffer()
+        ..write('GET $requestTarget HTTP/1.1\r\n')
+        ..write('Host: $host\r\n')
+        ..write('Connection: close\r\n');
+      headers.forEach((String key, String value) {
+        request.write('$key: $value\r\n');
+      });
+      request.write('\r\n');
+
+      socket.add(ascii.encode(request.toString()));
+      await socket.flush();
+
+      final List<int> bytes = await _collectSocketBytes(socket);
+      return _parseRawHttpResponse(bytes);
+    } finally {
+      await socket.close();
+    }
+  }
+
+  Future<List<int>> _collectSocketBytes(Socket socket) async {
+    final List<int> bytes = <int>[];
+    await for (final List<int> chunk in socket) {
+      bytes.addAll(chunk);
+    }
+    return bytes;
+  }
+
+  _FetchedResponse _parseRawHttpResponse(List<int> bytes) {
+    final int headerEnd = _indexOfSublist(bytes, const <int>[13, 10, 13, 10]);
+    if (headerEnd == -1) {
+      throw const FormatException('未找到 HTTP 响应头');
+    }
+
+    final String headerText = latin1.decode(bytes.sublist(0, headerEnd));
+    final List<String> lines = headerText.split('\r\n');
+    if (lines.isEmpty) {
+      throw const FormatException('HTTP 响应头为空');
+    }
+
+    final List<String> statusParts = lines.first.split(' ');
+    if (statusParts.length < 2) {
+      throw FormatException('无法解析 HTTP 状态行: ${lines.first}');
+    }
+    final int statusCode = int.tryParse(statusParts[1]) ?? 0;
+
+    final Map<String, String> headers = <String, String>{};
+    for (final String line in lines.skip(1)) {
+      final int separator = line.indexOf(':');
+      if (separator <= 0) {
+        continue;
+      }
+      final String key = line.substring(0, separator).trim().toLowerCase();
+      final String value = line.substring(separator + 1).trim();
+      headers[key] = value;
+    }
+
+    List<int> body = bytes.sublist(headerEnd + 4);
+    final String transferEncoding =
+        headers[HttpHeaders.transferEncodingHeader]?.toLowerCase() ?? '';
+    if (transferEncoding.contains('chunked')) {
+      body = _decodeChunkedBody(body);
+    } else {
+      final int? contentLength = int.tryParse(
+        headers[HttpHeaders.contentLengthHeader] ?? '',
+      );
+      if (contentLength != null &&
+          contentLength >= 0 &&
+          body.length > contentLength) {
+        body = body.sublist(0, contentLength);
+      }
+    }
+
+    return _FetchedResponse(
+      statusCode: statusCode,
+      headers: headers,
+      bodyBytes: body,
+    );
+  }
+
+  List<int> _decodeChunkedBody(List<int> body) {
+    final List<int> decoded = <int>[];
+    int index = 0;
+
+    while (index < body.length) {
+      final int lineEnd =
+          _indexOfSublist(body, const <int>[13, 10], start: index);
+      if (lineEnd == -1) {
+        break;
+      }
+      final String lengthLine =
+          ascii.decode(body.sublist(index, lineEnd)).split(';').first.trim();
+      final int chunkLength = int.tryParse(lengthLine, radix: 16) ?? 0;
+      index = lineEnd + 2;
+      if (chunkLength == 0) {
+        break;
+      }
+      final int nextIndex = index + chunkLength;
+      if (nextIndex > body.length) {
+        throw const FormatException('Chunked HTTP body 不完整');
+      }
+      decoded.addAll(body.sublist(index, nextIndex));
+      index = nextIndex + 2;
+    }
+
+    return decoded;
+  }
+
+  int _indexOfSublist(
+    List<int> source,
+    List<int> pattern, {
+    int start = 0,
+  }) {
+    if (pattern.isEmpty || source.length < pattern.length) {
+      return -1;
+    }
+    for (int i = start; i <= source.length - pattern.length; i += 1) {
+      bool matched = true;
+      for (int j = 0; j < pattern.length; j += 1) {
+        if (source[i + j] != pattern[j]) {
+          matched = false;
+          break;
+        }
+      }
+      if (matched) {
+        return i;
+      }
+    }
+    return -1;
   }
 
   ParsedFeedResult parseFeedXml(String xmlText, {required String sourceUrl}) {
