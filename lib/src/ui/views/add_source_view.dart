@@ -625,7 +625,8 @@ class _AutoRefreshModeSlider extends StatelessWidget {
                           style: theme.textTheme.labelLarge?.copyWith(
                             color: selected
                                 ? theme.colorScheme.onPrimary
-                                : palette.primaryText,
+                                : theme.textTheme.labelLarge?.color ??
+                                    theme.colorScheme.onSurface,
                             fontWeight:
                                 selected ? FontWeight.w700 : FontWeight.w600,
                           ),
