@@ -14,6 +14,23 @@ import 'src/ui/reader_app.dart';
 WindowsAutoRefreshService? _windowsAutoRefreshService;
 AndroidAutoRefreshService? _androidAutoRefreshService;
 
+Future<void> _initializePlatformServices(ReaderController controller) async {
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
+    _windowsAutoRefreshService = WindowsAutoRefreshService(
+      controller: controller,
+    );
+    await _windowsAutoRefreshService!.initialize();
+    return;
+  }
+
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
+    _androidAutoRefreshService = AndroidAutoRefreshService(
+      controller: controller,
+    );
+    await _androidAutoRefreshService!.initialize();
+  }
+}
+
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -48,17 +65,9 @@ Future<void> main() async {
   );
   await controller.initialize();
 
-  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.windows) {
-    _windowsAutoRefreshService = WindowsAutoRefreshService(
-      controller: controller,
-    );
-    await _windowsAutoRefreshService!.initialize();
-  } else if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
-    _androidAutoRefreshService = AndroidAutoRefreshService(
-      controller: controller,
-    );
-    await _androidAutoRefreshService!.initialize();
-  }
-
   runApp(ReaderApp(controller: controller));
+
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    _initializePlatformServices(controller);
+  });
 }

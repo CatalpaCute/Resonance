@@ -49,7 +49,7 @@ class JsonStore {
     final File file = File(_path(root, _feedsFileName));
     final List<Map<String, dynamic>> payload =
         feeds.map((FeedSource item) => item.toJson()).toList();
-    await file.writeAsString(_prettyJson(payload), flush: true);
+    await _writeAtomically(file, _prettyJson(payload));
   }
 
   Future<void> saveArticles(List<Article> articles) async {
@@ -57,13 +57,13 @@ class JsonStore {
     final File file = File(_path(root, _articlesFileName));
     final List<Map<String, dynamic>> payload =
         articles.map((Article item) => item.toJson()).toList();
-    await file.writeAsString(_prettyJson(payload), flush: true);
+    await _writeAtomically(file, _prettyJson(payload));
   }
 
   Future<void> saveSettings(ReaderSettings settings) async {
     final Directory root = await _ensureRoot();
     final File file = File(_path(root, _settingsFileName));
-    await file.writeAsString(_prettyJson(settings.toJson()), flush: true);
+    await _writeAtomically(file, _prettyJson(settings.toJson()));
   }
 
   Future<Directory> _ensureRoot() async {
@@ -110,6 +110,20 @@ class JsonStore {
 
   String _path(Directory directory, String name) {
     return '${directory.path}${Platform.pathSeparator}$name';
+  }
+
+  Future<void> _writeAtomically(File file, String content) async {
+    // 设计意图：
+    // Android 后台 Worker 和前台恢复流程会共享同一套 JSON 存储。
+    // 直接覆盖正式文件时，前台有机会读到半截内容，进而在恢复阶段卡住。
+    // 这里统一改成“先写临时文件，再原子替换正式文件”，把半写状态隔离掉。
+    final File tempFile = File('${file.path}.tmp');
+    await tempFile.writeAsString(content, flush: true);
+
+    if (await file.exists()) {
+      await file.delete();
+    }
+    await tempFile.rename(file.path);
   }
 
   String _prettyJson(Object value) {

@@ -27,7 +27,10 @@ class AndroidAutoRefreshService with WidgetsBindingObserver {
 
     WidgetsBinding.instance.addObserver(this);
     controller.addListener(_handleControllerChanged);
-    await _syncFromController(force: true);
+    await _syncFromController(
+      force: true,
+      allowForegroundRefresh: false,
+    );
   }
 
   Future<void> dispose() async {
@@ -70,7 +73,10 @@ class AndroidAutoRefreshService with WidgetsBindingObserver {
     }
   }
 
-  Future<void> _syncFromController({bool force = false}) async {
+  Future<void> _syncFromController({
+    bool force = false,
+    bool allowForegroundRefresh = true,
+  }) async {
     if (_disposed || !_isSupported) {
       return;
     }
@@ -92,7 +98,9 @@ class AndroidAutoRefreshService with WidgetsBindingObserver {
 
     final bool isForeground =
         WidgetsBinding.instance.lifecycleState == AppLifecycleState.resumed;
-    if (isForeground && controller.dueAutoRefreshFeeds().isNotEmpty) {
+    if (allowForegroundRefresh &&
+        isForeground &&
+        controller.dueAutoRefreshFeeds().isNotEmpty) {
       await _runForegroundDueRefreshes();
       return;
     }
