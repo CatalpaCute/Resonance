@@ -27,7 +27,6 @@ class _AddSourceViewState extends State<AddSourceView> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   late final TextEditingController _urlController;
   late final TextEditingController _titleController;
-  bool _autoRefreshPanelExpanded = false;
 
   @override
   void initState() {
@@ -168,6 +167,11 @@ class _AddSourceViewState extends State<AddSourceView> {
                         ),
                       ),
                       const SizedBox(height: 12),
+                      _AutoRefreshSubscriptionsPanel(
+                        compact: compact,
+                        controller: widget.controller,
+                      ),
+                      const SizedBox(height: 12),
                       if (widget.controller.feeds.isEmpty)
                         Text(
                           strings.noSubscriptionsYet,
@@ -231,17 +235,6 @@ class _AddSourceViewState extends State<AddSourceView> {
                             },
                           ),
                         ),
-                      const SizedBox(height: 14),
-                      _AutoRefreshSubscriptionsPanel(
-                        compact: compact,
-                        expanded: _autoRefreshPanelExpanded,
-                        controller: widget.controller,
-                        onExpandedChanged: (bool value) {
-                          setState(() {
-                            _autoRefreshPanelExpanded = value;
-                          });
-                        },
-                      ),
                     ],
                   ),
                 ),
@@ -336,18 +329,23 @@ class _AddSourceViewState extends State<AddSourceView> {
   }
 }
 
-class _AutoRefreshSubscriptionsPanel extends StatelessWidget {
+class _AutoRefreshSubscriptionsPanel extends StatefulWidget {
   const _AutoRefreshSubscriptionsPanel({
     required this.compact,
-    required this.expanded,
     required this.controller,
-    required this.onExpandedChanged,
   });
 
   final bool compact;
-  final bool expanded;
   final ReaderController controller;
-  final ValueChanged<bool> onExpandedChanged;
+
+  @override
+  State<_AutoRefreshSubscriptionsPanel> createState() =>
+      _AutoRefreshSubscriptionsPanelState();
+}
+
+class _AutoRefreshSubscriptionsPanelState
+    extends State<_AutoRefreshSubscriptionsPanel> {
+  bool _expanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -355,72 +353,128 @@ class _AutoRefreshSubscriptionsPanel extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
     final bool useMobileWheel =
-        compact && MediaQuery.orientationOf(context) == Orientation.portrait;
+        widget.compact &&
+        MediaQuery.orientationOf(context) == Orientation.portrait;
 
-    return DecoratedBox(
+    final Widget body = _expanded
+        ? Padding(
+            padding: EdgeInsets.fromLTRB(
+              widget.compact ? 12 : 14,
+              0,
+              widget.compact ? 12 : 14,
+              widget.compact ? 12 : 14,
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                _AutoRefreshModeSlider(
+                  mode: widget.controller.settings.autoRefreshMode,
+                  onChanged: (AutoRefreshMode mode) {
+                    widget.controller.setAutoRefreshMode(mode);
+                  },
+                ),
+                if (widget.controller.settings.autoRefreshMode ==
+                    AutoRefreshMode.allOn)
+                  ...<Widget>[
+                    const SizedBox(height: 14),
+                    Text(
+                      strings.autoRefreshGlobalInterval,
+                      style: theme.textTheme.titleSmall,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      strings.autoRefreshGlobalIntervalHint,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: palette.secondaryText,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    AutoRefreshIntervalPicker(
+                      selectedMinutes:
+                          widget.controller.settings
+                              .globalAutoRefreshIntervalMinutes,
+                      enabled: true,
+                      mobileWheel: useMobileWheel,
+                      onChanged: (int minutes) {
+                        widget.controller
+                            .setGlobalAutoRefreshIntervalMinutes(minutes);
+                      },
+                    ),
+                  ],
+              ],
+            ),
+          )
+        : const SizedBox.shrink();
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeOutCubic,
       decoration: BoxDecoration(
         color: palette.panelBackground,
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: palette.border),
       ),
-      child: ExpansionTile(
-        key: const PageStorageKey<String>('subscription-auto-refresh-panel'),
-        initiallyExpanded: expanded,
-        onExpansionChanged: onExpandedChanged,
-        tilePadding: EdgeInsets.symmetric(
-          horizontal: compact ? 12 : 14,
-          vertical: compact ? 2 : 4,
-        ),
-        childrenPadding: EdgeInsets.fromLTRB(
-          compact ? 12 : 14,
-          0,
-          compact ? 12 : 14,
-          compact ? 12 : 14,
-        ),
-        title: Text(
-          strings.autoRefreshSettings,
-          style: theme.textTheme.titleMedium,
-        ),
-        subtitle: Text(
-          strings.autoRefreshPanelHint,
-          style: theme.textTheme.bodySmall?.copyWith(
-            color: palette.secondaryText,
-          ),
-        ),
-        children: <Widget>[
-          _AutoRefreshModeSlider(
-            mode: controller.settings.autoRefreshMode,
-            onChanged: (AutoRefreshMode mode) {
-              controller.setAutoRefreshMode(mode);
-            },
-          ),
-          if (controller.settings.autoRefreshMode == AutoRefreshMode.allOn) ...<
-              Widget>[
-            const SizedBox(height: 14),
-            Text(
-              strings.autoRefreshGlobalInterval,
-              style: theme.textTheme.titleSmall,
-            ),
-            const SizedBox(height: 6),
-            Text(
-              strings.autoRefreshGlobalIntervalHint,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: palette.secondaryText,
-                height: 1.4,
+      child: Material(
+        color: Colors.transparent,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () {
+                setState(() {
+                  _expanded = !_expanded;
+                });
+              },
+              child: Padding(
+                padding: EdgeInsets.symmetric(
+                  horizontal: widget.compact ? 12 : 14,
+                  vertical: widget.compact ? 12 : 14,
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            strings.autoRefreshSettings,
+                            style: theme.textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            strings.autoRefreshPanelHint,
+                            style: theme.textTheme.bodySmall?.copyWith(
+                              color: palette.secondaryText,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    AnimatedRotation(
+                      duration: const Duration(milliseconds: 220),
+                      curve: Curves.easeOutCubic,
+                      turns: _expanded ? 0.5 : 0,
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: palette.secondaryText,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
-            const SizedBox(height: 10),
-            AutoRefreshIntervalPicker(
-              selectedMinutes:
-                  controller.settings.globalAutoRefreshIntervalMinutes,
-              enabled: true,
-              mobileWheel: useMobileWheel,
-              onChanged: (int minutes) {
-                controller.setGlobalAutoRefreshIntervalMinutes(minutes);
-              },
+            ClipRect(
+              child: AnimatedSize(
+                duration: const Duration(milliseconds: 220),
+                curve: Curves.easeOutCubic,
+                alignment: Alignment.topCenter,
+                child: body,
+              ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -571,10 +625,12 @@ class _AutoRefreshModeSlider extends StatelessWidget {
         final double width = constraints.maxWidth;
         const double horizontalInset = 6;
         final double segmentWidth = (width - horizontalInset * 2) / 3;
-        const double thumbSize = 40;
+        final double thumbWidth =
+            (segmentWidth - 8).clamp(74.0, 220.0).toDouble();
+        const double thumbHeight = 40;
         final double thumbLeft = horizontalInset +
             mode.index * segmentWidth +
-            ((segmentWidth - thumbSize) / 2);
+            ((segmentWidth - thumbWidth) / 2);
 
         AutoRefreshMode modeForDx(double dx) {
           final double clamped = dx.clamp(0, width).toDouble();
@@ -607,8 +663,8 @@ class _AutoRefreshModeSlider extends StatelessWidget {
                   left: thumbLeft,
                   top: 6,
                   child: Container(
-                    width: thumbSize,
-                    height: thumbSize,
+                    width: thumbWidth,
+                    height: thumbHeight,
                     decoration: BoxDecoration(
                       color: theme.colorScheme.primary,
                       borderRadius: BorderRadius.circular(16),

@@ -26,18 +26,9 @@ final bool _isNativeMobilePlatform =
         defaultTargetPlatform == TargetPlatform.iOS);
 const Duration _shellMotionDuration = Duration(milliseconds: 280);
 const Curve _shellMotionCurve = Cubic(0.18, 0.92, 0.28, 1.0);
-const Color _mobilePageBackground = Color(0xFFFEFCF8);
 
 Color _mobilePageBackgroundOf(BuildContext context) {
-  final ThemeData theme = Theme.of(context);
-  final ReaderPalette palette = AppTheme.paletteOf(context);
-  // The portrait mobile shell has a lighter custom background in light themes,
-  // but dark themes must stay on the theme palette or cards and chrome split
-  // into the black/white layers seen on Android.
-  if (theme.brightness == Brightness.dark) {
-    return palette.shellBackground;
-  }
-  return _mobilePageBackground;
+  return AppTheme.paletteOf(context).shellBackground;
 }
 
 class ReaderApp extends StatelessWidget {
