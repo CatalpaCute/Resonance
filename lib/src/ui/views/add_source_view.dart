@@ -50,12 +50,19 @@ class _AddSourceViewState extends State<AddSourceView> {
     final bool compact = MediaQuery.sizeOf(context).width < 900;
     final GlassCardSurface surface =
         desktopContentSurface(widget.controller.settings, compact: compact);
+    final bool flatDesktop = surface == GlassCardSurface.flat;
+    final EdgeInsets pagePadding =
+        EdgeInsets.all(flatDesktop ? 16 : (compact ? 14 : 22));
+    final EdgeInsets contentPadding =
+        EdgeInsets.all(flatDesktop ? 0 : (compact ? 16 : 20));
+    final EdgeInsets managementPadding =
+        EdgeInsets.all(flatDesktop ? 0 : (compact ? 14 : 16));
 
     return ListView(
-      padding: EdgeInsets.all(compact ? 14 : 22),
+      padding: pagePadding,
       children: <Widget>[
         GlassCard(
-          padding: EdgeInsets.all(compact ? 16 : 20),
+          padding: contentPadding,
           radius: compact ? 16 : 18,
           surface: surface,
           child: LayoutBuilder(
@@ -147,7 +154,7 @@ class _AddSourceViewState extends State<AddSourceView> {
               );
 
               final Widget managementContent = Padding(
-                padding: EdgeInsets.all(compact ? 14 : 16),
+                padding: managementPadding,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[

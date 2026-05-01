@@ -154,6 +154,9 @@ class _ReaderHomeState extends State<ReaderHome> {
             final bool usePortraitMobileHome =
                 _usePortraitMobileHome(context, constraints);
             final Color mobilePageBackground = _mobilePageBackgroundOf(context);
+            final bool useFlatDesktopContentSurface = !compact &&
+                controller.settings.desktopContentSurfaceMode ==
+                    DesktopContentSurfaceMode.flat;
             final bool useDrawer = _useDrawer(constraints.maxWidth);
             final bool useRail = compact && !useDrawer;
             final double topInset =
@@ -283,6 +286,8 @@ class _ReaderHomeState extends State<ReaderHome> {
                                 child: _MainCanvas(
                                   compact: compact,
                                   mobileRestyled: usePortraitMobileHome,
+                                  flatDesktopSurface:
+                                      useFlatDesktopContentSurface,
                                   child: Column(
                                     children: <Widget>[
                                       if (controller.errorMessage != null)
@@ -1183,11 +1188,13 @@ class _MainCanvas extends StatelessWidget {
   const _MainCanvas({
     required this.compact,
     required this.mobileRestyled,
+    required this.flatDesktopSurface,
     required this.child,
   });
 
   final bool compact;
   final bool mobileRestyled;
+  final bool flatDesktopSurface;
   final Widget child;
 
   @override
@@ -1199,6 +1206,10 @@ class _MainCanvas extends StatelessWidget {
         color: _mobilePageBackgroundOf(context),
         child: child,
       );
+    }
+
+    if (flatDesktopSurface) {
+      return child;
     }
 
     return Container(

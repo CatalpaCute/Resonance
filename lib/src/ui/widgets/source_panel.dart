@@ -978,26 +978,40 @@ class _PanelHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final double actionSlotSize = compact ? 40 : 48;
 
-    return Row(
-      children: <Widget>[
-        Expanded(
-          child: Text(
-            title,
-            style: compact
-                ? theme.textTheme.titleMedium
-                : theme.textTheme.titleLarge,
+    return SizedBox(
+      height: actionSlotSize,
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Text(
+              title,
+              style: compact
+                  ? theme.textTheme.titleMedium
+                  : theme.textTheme.titleLarge,
+            ),
           ),
-        ),
-        if (actionIcon != null)
-          IconButton(
-            visualDensity:
-                compact ? VisualDensity.compact : VisualDensity.standard,
-            onPressed: onAction,
-            tooltip: actionTooltip,
-            icon: Icon(actionIcon),
+          SizedBox.square(
+            dimension: actionSlotSize,
+            child: actionIcon == null
+                ? const SizedBox.shrink()
+                : IconButton(
+                    visualDensity: compact
+                        ? VisualDensity.compact
+                        : VisualDensity.standard,
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints.tightFor(
+                      width: actionSlotSize,
+                      height: actionSlotSize,
+                    ),
+                    onPressed: onAction,
+                    tooltip: actionTooltip,
+                    icon: Icon(actionIcon),
+                  ),
           ),
-      ],
+        ],
+      ),
     );
   }
 }

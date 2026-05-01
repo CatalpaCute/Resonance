@@ -24,12 +24,17 @@ class SettingsView extends StatelessWidget {
     final bool compact = MediaQuery.sizeOf(context).width < 900;
     final GlassCardSurface surface =
         desktopContentSurface(controller.settings, compact: compact);
+    final bool flatDesktop = surface == GlassCardSurface.flat;
+    final EdgeInsets pagePadding =
+        EdgeInsets.all(flatDesktop ? 16 : (compact ? 14 : 22));
+    final EdgeInsets sectionPadding =
+        EdgeInsets.all(flatDesktop ? 0 : (compact ? 16 : 18));
 
     return ListView(
-      padding: EdgeInsets.all(compact ? 14 : 22),
+      padding: pagePadding,
       children: <Widget>[
         GlassCard(
-          padding: EdgeInsets.all(compact ? 16 : 18),
+          padding: sectionPadding,
           surface: surface,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -54,6 +59,7 @@ class SettingsView extends StatelessWidget {
         _SettingsSection(
           compact: compact,
           surface: surface,
+          padding: sectionPadding,
           title: strings.startupPage,
           child: RadioGroup<StartupHomeMode>(
             groupValue: controller.settings.startupHomeMode,
@@ -85,6 +91,7 @@ class SettingsView extends StatelessWidget {
         _SettingsSection(
           compact: compact,
           surface: surface,
+          padding: sectionPadding,
           title: strings.visualTheme,
           child: Wrap(
             spacing: 10,
@@ -105,6 +112,7 @@ class SettingsView extends StatelessWidget {
         _SettingsSection(
           compact: compact,
           surface: surface,
+          padding: sectionPadding,
           title: strings.autoRefreshSettings,
           subtitle: !kIsWeb && defaultTargetPlatform == TargetPlatform.windows
               ? strings.autoRefreshSettingsHintWindows
@@ -123,6 +131,7 @@ class SettingsView extends StatelessWidget {
         _SettingsSection(
           compact: compact,
           surface: surface,
+          padding: sectionPadding,
           title: strings.articleDisplayMode,
           subtitle: strings.articleDisplayModeHint,
           child: SegmentedButton<ArticleContentMode>(
@@ -153,6 +162,7 @@ class SettingsView extends StatelessWidget {
         _SettingsSection(
           compact: compact,
           surface: surface,
+          padding: sectionPadding,
           title: strings.mobileSidebar,
           child: RadioGroup<MobileSidebarMode>(
             groupValue: controller.settings.mobileSidebarMode,
@@ -181,6 +191,7 @@ class SettingsView extends StatelessWidget {
         _SettingsSection(
           compact: compact,
           surface: surface,
+          padding: sectionPadding,
           title: strings.mobileWorkspaceLayout,
           subtitle: strings.mobileWorkspaceLayoutHint,
           child: SegmentedButton<MobileWorkspaceMode>(
@@ -215,6 +226,7 @@ class SettingsView extends StatelessWidget {
         _SettingsSection(
           compact: compact,
           surface: surface,
+          padding: sectionPadding,
           title: strings.desktopWorkspaceLayout,
           subtitle: strings.desktopWorkspaceLayoutHint,
           child: SegmentedButton<DesktopWorkspaceMode>(
@@ -249,6 +261,7 @@ class SettingsView extends StatelessWidget {
         _SettingsSection(
           compact: compact,
           surface: surface,
+          padding: sectionPadding,
           title: strings.desktopContentSurface,
           subtitle: strings.desktopContentSurfaceHint,
           child: SegmentedButton<DesktopContentSurfaceMode>(
@@ -274,6 +287,7 @@ class SettingsView extends StatelessWidget {
         _SettingsSection(
           compact: compact,
           surface: surface,
+          padding: sectionPadding,
           title: strings.interfaceLanguage,
           subtitle: strings.interfaceLanguageHint,
           child: DropdownButtonFormField<AppLanguageMode>(
@@ -298,6 +312,7 @@ class SettingsView extends StatelessWidget {
         _SettingsSection(
           compact: compact,
           surface: surface,
+          padding: sectionPadding,
           title: strings.readingDensity,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -352,6 +367,7 @@ class _SettingsSection extends StatelessWidget {
   const _SettingsSection({
     required this.compact,
     required this.surface,
+    required this.padding,
     required this.title,
     required this.child,
     this.subtitle,
@@ -359,6 +375,7 @@ class _SettingsSection extends StatelessWidget {
 
   final bool compact;
   final GlassCardSurface surface;
+  final EdgeInsetsGeometry padding;
   final String title;
   final String? subtitle;
   final Widget child;
@@ -368,7 +385,7 @@ class _SettingsSection extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
 
     return GlassCard(
-      padding: EdgeInsets.all(compact ? 16 : 18),
+      padding: padding,
       surface: surface,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
