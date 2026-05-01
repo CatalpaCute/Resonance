@@ -45,6 +45,12 @@ enum AutoRefreshMode {
   allOn,
 }
 
+enum SubscriptionNotificationMode {
+  sourceSummary,
+  perArticle,
+  minimal,
+}
+
 class ReaderSettings {
   const ReaderSettings({
     required this.startupHomeMode,
@@ -55,6 +61,8 @@ class ReaderSettings {
     required this.desktopContentSurfaceMode,
     required this.autoRefreshMode,
     required this.globalAutoRefreshIntervalMinutes,
+    required this.subscriptionNotificationMode,
+    required this.sourceFilterHintDismissed,
     required this.desktopSidebarCollapsed,
     required this.articleListDensity,
     required this.articleContentMode,
@@ -69,6 +77,8 @@ class ReaderSettings {
   final DesktopContentSurfaceMode desktopContentSurfaceMode;
   final AutoRefreshMode autoRefreshMode;
   final int globalAutoRefreshIntervalMinutes;
+  final SubscriptionNotificationMode subscriptionNotificationMode;
+  final bool sourceFilterHintDismissed;
   final bool desktopSidebarCollapsed;
   final ArticleListDensity articleListDensity;
   final ArticleContentMode articleContentMode;
@@ -86,6 +96,8 @@ class ReaderSettings {
     desktopContentSurfaceMode: DesktopContentSurfaceMode.flat,
     autoRefreshMode: AutoRefreshMode.allOff,
     globalAutoRefreshIntervalMinutes: 1440,
+    subscriptionNotificationMode: SubscriptionNotificationMode.sourceSummary,
+    sourceFilterHintDismissed: false,
     desktopSidebarCollapsed: false,
     articleListDensity: ArticleListDensity.comfortable,
     articleContentMode: ArticleContentMode.rich,
@@ -112,6 +124,8 @@ class ReaderSettings {
     DesktopContentSurfaceMode? desktopContentSurfaceMode,
     AutoRefreshMode? autoRefreshMode,
     int? globalAutoRefreshIntervalMinutes,
+    SubscriptionNotificationMode? subscriptionNotificationMode,
+    bool? sourceFilterHintDismissed,
     bool? desktopSidebarCollapsed,
     ArticleListDensity? articleListDensity,
     ArticleContentMode? articleContentMode,
@@ -132,6 +146,10 @@ class ReaderSettings {
             globalAutoRefreshIntervalMinutes ??
                 this.globalAutoRefreshIntervalMinutes,
           ),
+      subscriptionNotificationMode:
+          subscriptionNotificationMode ?? this.subscriptionNotificationMode,
+      sourceFilterHintDismissed:
+          sourceFilterHintDismissed ?? this.sourceFilterHintDismissed,
       desktopSidebarCollapsed:
           desktopSidebarCollapsed ?? this.desktopSidebarCollapsed,
       articleListDensity: articleListDensity ?? this.articleListDensity,
@@ -150,6 +168,8 @@ class ReaderSettings {
       'desktopContentSurfaceMode': desktopContentSurfaceMode.name,
       'autoRefreshMode': autoRefreshMode.name,
       'globalAutoRefreshIntervalMinutes': globalAutoRefreshIntervalMinutes,
+      'subscriptionNotificationMode': subscriptionNotificationMode.name,
+      'sourceFilterHintDismissed': sourceFilterHintDismissed,
       'desktopSidebarCollapsed': desktopSidebarCollapsed,
       'articleListDensity': articleListDensity.name,
       'articleContentMode': articleContentMode.name,
@@ -194,6 +214,15 @@ class ReaderSettings {
         json['globalAutoRefreshIntervalMinutes'] as int? ??
             defaults.globalAutoRefreshIntervalMinutes,
       ),
+      subscriptionNotificationMode:
+          SubscriptionNotificationMode.values.firstWhere(
+        (SubscriptionNotificationMode value) =>
+            value.name == json['subscriptionNotificationMode'],
+        orElse: () => defaults.subscriptionNotificationMode,
+      ),
+      sourceFilterHintDismissed:
+          json['sourceFilterHintDismissed'] as bool? ??
+          defaults.sourceFilterHintDismissed,
       desktopSidebarCollapsed: json['desktopSidebarCollapsed'] as bool? ??
           defaults.desktopSidebarCollapsed,
       articleListDensity: ArticleListDensity.values.firstWhere(

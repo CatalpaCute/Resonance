@@ -9,12 +9,14 @@ class FeedEditorResult {
     required this.url,
     required this.title,
     required this.autoRefreshEnabled,
+    required this.notificationEnabled,
     required this.autoRefreshIntervalMinutes,
   });
 
   final String url;
   final String title;
   final bool autoRefreshEnabled;
+  final bool notificationEnabled;
   final int autoRefreshIntervalMinutes;
 }
 
@@ -24,9 +26,12 @@ class FeedEditorDialog extends StatefulWidget {
     this.initialTitle,
     this.initialUrl,
     this.initialAutoRefreshEnabled = false,
+    this.initialNotificationEnabled = false,
     this.initialAutoRefreshIntervalMinutes = kDefaultAutoRefreshIntervalMinutes,
     this.lockAutoRefreshControls = false,
+    this.enableNotificationControls = false,
     this.autoRefreshLockHint,
+    this.notificationLockHint,
     this.dialogTitle = '',
     this.confirmText = '',
   });
@@ -34,9 +39,12 @@ class FeedEditorDialog extends StatefulWidget {
   final String? initialTitle;
   final String? initialUrl;
   final bool initialAutoRefreshEnabled;
+  final bool initialNotificationEnabled;
   final int initialAutoRefreshIntervalMinutes;
   final bool lockAutoRefreshControls;
+  final bool enableNotificationControls;
   final String? autoRefreshLockHint;
+  final String? notificationLockHint;
   final String dialogTitle;
   final String confirmText;
 
@@ -49,6 +57,7 @@ class _FeedEditorDialogState extends State<FeedEditorDialog> {
   late final TextEditingController _urlController;
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   late bool _autoRefreshEnabled;
+  late bool _notificationEnabled;
   late int _autoRefreshIntervalMinutes;
 
   @override
@@ -57,6 +66,7 @@ class _FeedEditorDialogState extends State<FeedEditorDialog> {
     _titleController = TextEditingController(text: widget.initialTitle ?? '');
     _urlController = TextEditingController(text: widget.initialUrl ?? '');
     _autoRefreshEnabled = widget.initialAutoRefreshEnabled;
+    _notificationEnabled = widget.initialNotificationEnabled;
     _autoRefreshIntervalMinutes = normalizeAutoRefreshInterval(
       widget.initialAutoRefreshIntervalMinutes,
     );
@@ -141,6 +151,32 @@ class _FeedEditorDialogState extends State<FeedEditorDialog> {
                 ),
               ],
               const SizedBox(height: 10),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                dense: compact,
+                value: _notificationEnabled,
+                onChanged: widget.enableNotificationControls
+                    ? (bool value) {
+                        setState(() {
+                          _notificationEnabled = value;
+                        });
+                      }
+                    : null,
+                title: const Text('订阅通知'),
+                subtitle: const Text('自动更新带来新文章时，通过系统通知提醒你。'),
+              ),
+              if (!widget.enableNotificationControls &&
+                  widget.notificationLockHint != null) ...<Widget>[
+                const SizedBox(height: 8),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    widget.notificationLockHint!,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
+                ),
+              ],
+              const SizedBox(height: 10),
               Align(
                 alignment: Alignment.centerLeft,
                 child: Text(
@@ -179,6 +215,7 @@ class _FeedEditorDialogState extends State<FeedEditorDialog> {
                 url: _urlController.text.trim(),
                 title: _titleController.text.trim(),
                 autoRefreshEnabled: _autoRefreshEnabled,
+                notificationEnabled: _notificationEnabled,
                 autoRefreshIntervalMinutes: _autoRefreshIntervalMinutes,
               ),
             );

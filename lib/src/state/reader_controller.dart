@@ -414,6 +414,21 @@ class ReaderController extends ChangeNotifier {
     await _persistSettings();
   }
 
+  Future<void> setSubscriptionNotificationMode(
+    SubscriptionNotificationMode mode,
+  ) async {
+    _setSettings(_settings.copyWith(subscriptionNotificationMode: mode));
+    await _persistSettings();
+  }
+
+  Future<void> dismissSourceFilterHint() async {
+    if (_settings.sourceFilterHintDismissed) {
+      return;
+    }
+    _setSettings(_settings.copyWith(sourceFilterHintDismissed: true));
+    await _persistSettings();
+  }
+
   Future<void> setStartupHomeMode(StartupHomeMode mode) async {
     _setSettings(_settings.copyWith(startupHomeMode: mode));
     await _persistSettings();
@@ -448,6 +463,7 @@ class ReaderController extends ChangeNotifier {
     required String url,
     String? title,
     bool autoRefreshEnabled = false,
+    bool notificationEnabled = false,
     int autoRefreshIntervalMinutes = kDefaultAutoRefreshIntervalMinutes,
   }) async {
     final String normalizedUrl = _normalizeInputUrl(url);
@@ -474,6 +490,7 @@ class ReaderController extends ChangeNotifier {
           iconUrl: parsed.iconUrl,
           enabled: true,
           autoRefreshEnabled: autoRefreshEnabled,
+          notificationEnabled: notificationEnabled,
           autoRefreshIntervalMinutes: normalizeAutoRefreshInterval(
             autoRefreshIntervalMinutes,
           ),
@@ -494,6 +511,7 @@ class ReaderController extends ChangeNotifier {
     required String url,
     required String title,
     required bool autoRefreshEnabled,
+    required bool notificationEnabled,
     required int autoRefreshIntervalMinutes,
   }) async {
     final String normalizedUrl = _normalizeInputUrl(url);
@@ -514,6 +532,7 @@ class ReaderController extends ChangeNotifier {
           title: title.trim().isEmpty ? original.title : title.trim(),
           url: normalizedUrl,
           autoRefreshEnabled: autoRefreshEnabled,
+          notificationEnabled: notificationEnabled,
           autoRefreshIntervalMinutes: normalizeAutoRefreshInterval(
             autoRefreshIntervalMinutes,
           ),
@@ -636,19 +655,23 @@ class ReaderController extends ChangeNotifier {
     );
   }
 
-  Future<int> refreshDueAutoRefreshFeeds({DateTime? now}) async {
+  Future<AutoRefreshRunResult> refreshDueAutoRefreshFeeds({DateTime? now}) async {
     if (_isBusy) {
-      return 0;
+      return const AutoRefreshRunResult(
+        attemptedCount: 0,
+        refreshedCount: 0,
+        sourceUpdates: <AutoRefreshSourceUpdate>[],
+      );
     }
 
     final AutoRefreshRunResult result =
         await _autoRefreshEngine.refreshPersistedDueFeeds(now: now);
     if (result.attemptedCount == 0) {
-      return 0;
+      return result;
     }
 
     await reloadPersistedState();
-    return result.attemptedCount;
+    return result;
   }
 
   bool isFeedRefreshing(String sourceId) =>
@@ -663,6 +686,17 @@ class ReaderController extends ChangeNotifier {
       case AutoRefreshMode.allOn:
         return source.enabled;
     }
+  }
+
+  bool isFeedNotificationConfigurable(FeedSource source) {
+    if (_settings.autoRefreshMode == AutoRefreshMode.allOn) {
+      return source.enabled;
+    }
+    return source.enabled && source.autoRefreshEnabled;
+  }
+
+  bool isFeedEffectivelyNotificationEnabled(FeedSource source) {
+    return isFeedNotificationConfigurable(source) && source.notificationEnabled;
   }
 
   int effectiveAutoRefreshIntervalMinutesForFeed(FeedSource source) {
@@ -690,6 +724,10 @@ class ReaderController extends ChangeNotifier {
     return _feedById(article.sourceId)?.title ?? _strings.unknownSource;
   }
 
+  Article? articleForId(String articleId) => _articleById(articleId);
+
+  FeedSource? feedForId(String feedId) => _feedById(feedId);
+
   String? sourceIconForArticle(Article article) {
     return _feedById(article.sourceId)?.iconUrl;
   }
@@ -715,6 +753,44 @@ class ReaderController extends ChangeNotifier {
   void clearStatus() {
     _statusMessage = null;
     notifyListeners();
+  }
+
+  Future<void> navigateToHomeFromNotification() async {
+    _currentRoute = AppRouteId.allArticles;
+    _lastWorkspaceRoute = AppRouteId.allArticles;
+    _activeSourceId = null;
+    _selectedArticleId = null;
+    _compactReaderOpen = false;
+    notifyListeners();
+  }
+
+  Future<void> navigateToSourceFromNotification(String sourceId) async {
+    final FeedSource? source = _feedById(sourceId);
+    if (source == null) {
+      await navigateToHomeFromNotification();
+      return;
+    }
+    _currentRoute = AppRouteId.allArticles;
+    _lastWorkspaceRoute = AppRouteId.allArticles;
+    _activeSourceId = source.id;
+    _selectedArticleId = null;
+    _compactReaderOpen = false;
+    notifyListeners();
+  }
+
+  Future<void> navigateToArticleFromNotification(String articleId) async {
+    final Article? article = _articleById(articleId);
+    if (article == null) {
+      await navigateToHomeFromNotification();
+      return;
+    }
+    _currentRoute = AppRouteId.allArticles;
+    _lastWorkspaceRoute = AppRouteId.allArticles;
+    final FeedSource? source = _feedById(article.sourceId);
+    if (source != null) {
+      _activeSourceId = source.id;
+    }
+    await selectArticle(article, openInReaderRoute: true);
   }
 
   // Keep read-heavy indexes in sync at mutation boundaries so UI getters stay cheap.

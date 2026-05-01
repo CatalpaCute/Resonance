@@ -10,10 +10,42 @@ class AutoRefreshRunResult {
   const AutoRefreshRunResult({
     required this.attemptedCount,
     required this.refreshedCount,
+    required this.sourceUpdates,
   });
 
   final int attemptedCount;
   final int refreshedCount;
+  final List<AutoRefreshSourceUpdate> sourceUpdates;
+}
+
+class AutoRefreshSourceUpdate {
+  const AutoRefreshSourceUpdate({
+    required this.sourceId,
+    required this.sourceTitle,
+    required this.notificationEnabled,
+    required this.newArticles,
+  });
+
+  final String sourceId;
+  final String sourceTitle;
+  final bool notificationEnabled;
+  final List<AutoRefreshNewArticle> newArticles;
+}
+
+class AutoRefreshNewArticle {
+  const AutoRefreshNewArticle({
+    required this.articleId,
+    required this.sourceId,
+    required this.sourceTitle,
+    required this.title,
+    required this.publishedAt,
+  });
+
+  final String articleId;
+  final String sourceId;
+  final String sourceTitle;
+  final String title;
+  final DateTime publishedAt;
 }
 
 /// 设计意图：
@@ -150,6 +182,7 @@ class AutoRefreshEngine {
       return const AutoRefreshRunResult(
         attemptedCount: 0,
         refreshedCount: 0,
+        sourceUpdates: <AutoRefreshSourceUpdate>[],
       );
     }
 
@@ -157,6 +190,8 @@ class AutoRefreshEngine {
     List<Article> articles = List<Article>.from(state.articles);
     int attemptedCount = 0;
     int refreshedCount = 0;
+    final List<AutoRefreshSourceUpdate> sourceUpdates =
+        <AutoRefreshSourceUpdate>[];
 
     for (final FeedSource original in due) {
       final int index = feeds.indexWhere((FeedSource item) => item.id == original.id);
@@ -192,11 +227,32 @@ class AutoRefreshEngine {
           lastFetchedAt: DateTime.now(),
         );
         feeds[index] = refreshedSource;
-        articles = _mergeArticlesForSource(
+        final _MergeArticlesResult mergeResult = _mergeArticlesForSource(
           source: refreshedSource,
           drafts: parsed.articles,
           currentArticles: articles,
         );
+        articles = mergeResult.articles;
+        if (mergeResult.newArticles.isNotEmpty) {
+          sourceUpdates.add(
+            AutoRefreshSourceUpdate(
+              sourceId: refreshedSource.id,
+              sourceTitle: refreshedSource.title,
+              notificationEnabled: refreshedSource.notificationEnabled,
+              newArticles: mergeResult.newArticles
+                  .map(
+                    (Article article) => AutoRefreshNewArticle(
+                      articleId: article.id,
+                      sourceId: article.sourceId,
+                      sourceTitle: refreshedSource.title,
+                      title: article.title,
+                      publishedAt: article.publishedAt,
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+          );
+        }
         refreshedCount += 1;
       } catch (error, stackTrace) {
         developer.log(
@@ -215,10 +271,11 @@ class AutoRefreshEngine {
     return AutoRefreshRunResult(
       attemptedCount: attemptedCount,
       refreshedCount: refreshedCount,
+      sourceUpdates: List<AutoRefreshSourceUpdate>.unmodifiable(sourceUpdates),
     );
   }
 
-  List<Article> _mergeArticlesForSource({
+  _MergeArticlesResult _mergeArticlesForSource({
     required FeedSource source,
     required List<ParsedArticleDraft> drafts,
     required List<Article> currentArticles,
@@ -232,6 +289,8 @@ class AutoRefreshEngine {
           article.url: article,
     };
 
+    final List<Article> newArticles = <Article>[];
+
     for (final ParsedArticleDraft draft in drafts) {
       final String draftUrl = draft.url.trim();
       final String candidateId = _rssService.stableArticleId(source.id, draft);
@@ -243,7 +302,7 @@ class AutoRefreshEngine {
         currentById.remove(existing.id);
       }
 
-      currentById[articleId] = Article(
+      final Article nextArticle = Article(
         id: articleId,
         sourceId: source.id,
         title: draft.title,
@@ -258,6 +317,10 @@ class AutoRefreshEngine {
         starred: existing?.starred ?? false,
         savedForLater: existing?.savedForLater ?? false,
       );
+      currentById[articleId] = nextArticle;
+      if (existing == null) {
+        newArticles.add(nextArticle);
+      }
 
       if (draftUrl.isNotEmpty) {
         currentByUrl[draftUrl] = currentById[articleId]!;
@@ -266,6 +329,20 @@ class AutoRefreshEngine {
 
     final List<Article> merged = currentById.values.toList()
       ..sort((Article a, Article b) => b.publishedAt.compareTo(a.publishedAt));
-    return merged;
+    newArticles.sort((Article a, Article b) => b.publishedAt.compareTo(a.publishedAt));
+    return _MergeArticlesResult(
+      articles: merged,
+      newArticles: List<Article>.unmodifiable(newArticles),
+    );
   }
+}
+
+class _MergeArticlesResult {
+  const _MergeArticlesResult({
+    required this.articles,
+    required this.newArticles,
+  });
+
+  final List<Article> articles;
+  final List<Article> newArticles;
 }

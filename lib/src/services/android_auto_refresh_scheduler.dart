@@ -7,6 +7,7 @@ import 'package:workmanager/workmanager.dart';
 import '../models/feed_source.dart';
 import '../models/reader_settings.dart';
 import 'auto_refresh_engine.dart';
+import 'subscription_notification_service.dart';
 
 const String kAndroidAutoRefreshUniqueWorkName =
     'resonance_auto_refresh_once';
@@ -25,7 +26,13 @@ void resonanceAutoRefreshCallbackDispatcher() {
     final AutoRefreshEngine engine = AutoRefreshEngine.defaultInstance();
 
     try {
-      await engine.refreshPersistedDueFeeds();
+      final AutoRefreshRunResult result =
+          await engine.refreshPersistedDueFeeds();
+      final persistedState = await engine.loadPersistedState();
+      await SubscriptionNotificationService.showBackgroundAutoRefreshNotifications(
+        settings: persistedState.settings,
+        result: result,
+      );
     } catch (error, stackTrace) {
       debugPrint('Auto-refresh worker failed: $error\n$stackTrace');
     }

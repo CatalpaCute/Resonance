@@ -11,6 +11,7 @@ import 'package:window_manager/window_manager.dart';
 import '../localization/app_strings.dart';
 import '../models/feed_source.dart';
 import '../state/reader_controller.dart';
+import 'subscription_notification_service.dart';
 
 class WindowsAutoRefreshService
     with TrayListener, WindowListener, WidgetsBindingObserver {
@@ -243,7 +244,11 @@ class WindowsAutoRefreshService
     _timer = null;
 
     try {
-      await controller.refreshDueAutoRefreshFeeds();
+      final result = await controller.refreshDueAutoRefreshFeeds();
+      await SubscriptionNotificationService.instance.notifyAutoRefreshResult(
+        settings: controller.settings,
+        result: result,
+      );
     } finally {
       _isHandlingDueFeeds = false;
       if (!_disposed) {

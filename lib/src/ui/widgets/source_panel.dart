@@ -76,11 +76,14 @@ class SourcePanel extends StatelessWidget {
               },
             )
           else
-            _HintBlock(
-              compact: compact,
-              title: strings.sourceFilterHintTitle,
-              subtitle: strings.sourceFilterHintBody,
-            ),
+            if (!controller.settings.sourceFilterHintDismissed)
+              _HintBlock(
+                compact: compact,
+                title: strings.sourceFilterHintTitle,
+                subtitle: strings.sourceFilterHintBody,
+                closeTooltip: '关闭提示',
+                onClose: controller.dismissSourceFilterHint,
+              ),
           SizedBox(height: compact ? 10 : 12),
           Wrap(
             spacing: 8,
@@ -1021,11 +1024,15 @@ class _HintBlock extends StatelessWidget {
     required this.compact,
     required this.title,
     required this.subtitle,
+    required this.closeTooltip,
+    required this.onClose,
   });
 
   final bool compact;
   final String title;
   final String subtitle;
+  final String closeTooltip;
+  final Future<void> Function() onClose;
 
   @override
   Widget build(BuildContext context) {
@@ -1042,7 +1049,31 @@ class _HintBlock extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Text(title, style: theme.textTheme.titleSmall),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Expanded(
+                child: Text(title, style: theme.textTheme.titleSmall),
+              ),
+              Tooltip(
+                message: closeTooltip,
+                child: InkWell(
+                  onTap: () {
+                    onClose();
+                  },
+                  borderRadius: BorderRadius.circular(10),
+                  child: Padding(
+                    padding: const EdgeInsets.all(2),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: compact ? 16 : 18,
+                      color: palette.secondaryText,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: 4),
           Text(
             subtitle,

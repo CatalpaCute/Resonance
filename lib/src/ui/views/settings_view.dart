@@ -132,6 +132,37 @@ class SettingsView extends StatelessWidget {
           compact: compact,
           surface: surface,
           padding: sectionPadding,
+          title: '订阅通知方式',
+          subtitle: '只针对自动更新带来的新文章生效。应用在前台时不会弹系统通知。',
+          child: SegmentedButton<SubscriptionNotificationMode>(
+            direction: compact ? Axis.vertical : Axis.horizontal,
+            segments: const <ButtonSegment<SubscriptionNotificationMode>>[
+              ButtonSegment<SubscriptionNotificationMode>(
+                value: SubscriptionNotificationMode.sourceSummary,
+                label: Text('按源汇总'),
+              ),
+              ButtonSegment<SubscriptionNotificationMode>(
+                value: SubscriptionNotificationMode.perArticle,
+                label: Text('逐篇通知'),
+              ),
+              ButtonSegment<SubscriptionNotificationMode>(
+                value: SubscriptionNotificationMode.minimal,
+                label: Text('仅提示有更新'),
+              ),
+            ],
+            selected: <SubscriptionNotificationMode>{
+              controller.settings.subscriptionNotificationMode,
+            },
+            onSelectionChanged: (Set<SubscriptionNotificationMode> values) {
+              controller.setSubscriptionNotificationMode(values.first);
+            },
+          ),
+        ),
+        SizedBox(height: compact ? 12 : 14),
+        _SettingsSection(
+          compact: compact,
+          surface: surface,
+          padding: sectionPadding,
           title: strings.articleDisplayMode,
           subtitle: strings.articleDisplayModeHint,
           child: SegmentedButton<ArticleContentMode>(

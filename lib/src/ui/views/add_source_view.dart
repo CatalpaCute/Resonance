@@ -5,6 +5,7 @@ import '../../localization/app_strings.dart';
 import '../../models/auto_refresh.dart';
 import '../../models/feed_source.dart';
 import '../../models/reader_settings.dart';
+import '../../services/subscription_notification_service.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/auto_refresh_interval_picker.dart';
@@ -211,6 +212,10 @@ class _AddSourceViewState extends State<AddSourceView> {
                           itemBuilder: (BuildContext context, int index) {
                             final FeedSource feed =
                                 widget.controller.feeds[index];
+                            final bool autoRefreshEnabled = widget.controller
+                                .isFeedEffectivelyAutoRefreshEnabled(feed);
+                            final bool notificationEnabled = widget.controller
+                                .isFeedEffectivelyNotificationEnabled(feed);
                             return _ManagedFeedTile(
                               key: ValueKey<String>(feed.id),
                               index: index,
@@ -220,8 +225,8 @@ class _AddSourceViewState extends State<AddSourceView> {
                                   .articleCountForSource(feed.id),
                               unread:
                                   widget.controller.unreadCountForSource(feed.id),
-                              autoRefreshEnabled: widget.controller
-                                  .isFeedEffectivelyAutoRefreshEnabled(feed),
+                              autoRefreshEnabled: autoRefreshEnabled,
+                              notificationEnabled: notificationEnabled,
                               autoRefreshSummary:
                                   widget.controller.settings.autoRefreshMode ==
                                           AutoRefreshMode.allOn
@@ -294,21 +299,31 @@ class _AddSourceViewState extends State<AddSourceView> {
               initialTitle: feed.title,
               initialUrl: feed.url,
               initialAutoRefreshEnabled: feed.autoRefreshEnabled,
+              initialNotificationEnabled: feed.notificationEnabled,
               initialAutoRefreshIntervalMinutes: feed.autoRefreshIntervalMinutes,
               lockAutoRefreshControls:
                   widget.controller.settings.autoRefreshMode ==
                       AutoRefreshMode.allOn,
+              enableNotificationControls:
+                  widget.controller.isFeedNotificationConfigurable(feed),
               autoRefreshLockHint:
                   context.strings.autoRefreshFollowGlobalHint,
+              notificationLockHint:
+                  '当前这个订阅源没有参与自动更新，所以不会自动提醒。',
             );
           },
         );
         if (result != null) {
+          if (result.notificationEnabled && !feed.notificationEnabled) {
+            await SubscriptionNotificationService.instance
+                .ensureNotificationPermissionRequested();
+          }
           await widget.controller.updateFeed(
             original: feed,
             url: result.url,
             title: result.title,
             autoRefreshEnabled: result.autoRefreshEnabled,
+            notificationEnabled: result.notificationEnabled,
             autoRefreshIntervalMinutes: result.autoRefreshIntervalMinutes,
           );
         }
@@ -502,6 +517,7 @@ class _ManagedFeedTile extends StatelessWidget {
     required this.count,
     required this.unread,
     required this.autoRefreshEnabled,
+    required this.notificationEnabled,
     required this.autoRefreshSummary,
     required this.onActionSelected,
   });
@@ -512,6 +528,7 @@ class _ManagedFeedTile extends StatelessWidget {
   final int count;
   final int unread;
   final bool autoRefreshEnabled;
+  final bool notificationEnabled;
   final String autoRefreshSummary;
   final Future<void> Function(String action) onActionSelected;
 
@@ -550,6 +567,15 @@ class _ManagedFeedTile extends StatelessWidget {
                             padding: const EdgeInsets.only(right: 6),
                             child: Icon(
                               Icons.schedule_rounded,
+                              size: 16,
+                              color: theme.colorScheme.primary,
+                            ),
+                          ),
+                        if (notificationEnabled)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 6),
+                            child: Icon(
+                              Icons.notifications_active_rounded,
                               size: 16,
                               color: theme.colorScheme.primary,
                             ),

@@ -10,6 +10,7 @@ class FeedSource {
     this.folderId,
     required this.enabled,
     required this.autoRefreshEnabled,
+    required this.notificationEnabled,
     required this.autoRefreshIntervalMinutes,
     this.lastAutoRefreshAttemptAt,
     this.lastFetchedAt,
@@ -23,6 +24,7 @@ class FeedSource {
   final String? folderId;
   final bool enabled;
   final bool autoRefreshEnabled;
+  final bool notificationEnabled;
   final int autoRefreshIntervalMinutes;
   final DateTime? lastAutoRefreshAttemptAt;
   final DateTime? lastFetchedAt;
@@ -36,6 +38,7 @@ class FeedSource {
     String? folderId,
     bool? enabled,
     bool? autoRefreshEnabled,
+    bool? notificationEnabled,
     int? autoRefreshIntervalMinutes,
     DateTime? lastAutoRefreshAttemptAt,
     DateTime? lastFetchedAt,
@@ -53,6 +56,7 @@ class FeedSource {
       folderId: clearFolderId ? null : (folderId ?? this.folderId),
       enabled: enabled ?? this.enabled,
       autoRefreshEnabled: autoRefreshEnabled ?? this.autoRefreshEnabled,
+      notificationEnabled: notificationEnabled ?? this.notificationEnabled,
       autoRefreshIntervalMinutes: normalizeAutoRefreshInterval(
         autoRefreshIntervalMinutes ?? this.autoRefreshIntervalMinutes,
       ),
@@ -73,6 +77,7 @@ class FeedSource {
       'folderId': folderId,
       'enabled': enabled,
       'autoRefreshEnabled': autoRefreshEnabled,
+      'notificationEnabled': notificationEnabled,
       'autoRefreshIntervalMinutes': autoRefreshIntervalMinutes,
       'lastAutoRefreshAttemptAt': lastAutoRefreshAttemptAt?.toIso8601String(),
       'lastFetchedAt': lastFetchedAt?.toIso8601String(),
@@ -89,6 +94,7 @@ class FeedSource {
       folderId: json['folderId'] as String?,
       enabled: json['enabled'] as bool? ?? true,
       autoRefreshEnabled: json['autoRefreshEnabled'] as bool? ?? false,
+      notificationEnabled: json['notificationEnabled'] as bool? ?? false,
       autoRefreshIntervalMinutes: normalizeAutoRefreshInterval(
         json['autoRefreshIntervalMinutes'] as int? ??
             kDefaultAutoRefreshIntervalMinutes,
