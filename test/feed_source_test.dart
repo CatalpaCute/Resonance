@@ -13,6 +13,7 @@ void main() {
         folderId: null,
         enabled: true,
         autoRefreshEnabled: true,
+        notificationEnabled: true,
         autoRefreshIntervalMinutes: 180,
         lastAutoRefreshAttemptAt: DateTime.parse('2026-04-30T12:00:00Z'),
         lastFetchedAt: DateTime.parse('2026-04-30T09:00:00Z'),
@@ -21,6 +22,7 @@ void main() {
       final FeedSource restored = FeedSource.fromJson(source.toJson());
 
       expect(restored.autoRefreshEnabled, isTrue);
+      expect(restored.notificationEnabled, isTrue);
       expect(restored.autoRefreshIntervalMinutes, 180);
       expect(
         restored.lastAutoRefreshAttemptAt?.toUtc(),
@@ -37,6 +39,7 @@ void main() {
       });
 
       expect(restored.autoRefreshEnabled, isFalse);
+      expect(restored.notificationEnabled, isFalse);
       expect(restored.autoRefreshIntervalMinutes, 1440);
       expect(restored.lastAutoRefreshAttemptAt, isNull);
     });

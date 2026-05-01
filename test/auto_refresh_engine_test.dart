@@ -19,6 +19,7 @@ void main() {
           url: 'https://example.com/a.xml',
           enabled: true,
           autoRefreshEnabled: true,
+          notificationEnabled: false,
           autoRefreshIntervalMinutes: 15,
           lastFetchedAt: DateTime.parse('2026-04-30T11:50:00Z'),
         ),
@@ -28,6 +29,7 @@ void main() {
           url: 'https://example.com/b.xml',
           enabled: true,
           autoRefreshEnabled: true,
+          notificationEnabled: false,
           autoRefreshIntervalMinutes: 180,
           lastFetchedAt: DateTime.parse('2026-04-30T10:00:00Z'),
         ),
@@ -37,6 +39,7 @@ void main() {
           url: 'https://example.com/c.xml',
           enabled: true,
           autoRefreshEnabled: true,
+          notificationEnabled: false,
           autoRefreshIntervalMinutes: 1440,
           lastFetchedAt: DateTime.parse('2026-04-29T12:05:00Z'),
         ),
@@ -68,6 +71,7 @@ void main() {
         url: 'https://example.com/fresh.xml',
         enabled: true,
         autoRefreshEnabled: true,
+        notificationEnabled: false,
         autoRefreshIntervalMinutes: 60,
       );
 
@@ -92,6 +96,7 @@ void main() {
         url: 'https://example.com/locked.xml',
         enabled: true,
         autoRefreshEnabled: false,
+        notificationEnabled: false,
         autoRefreshIntervalMinutes: 4320,
         lastFetchedAt: DateTime.parse('2026-04-30T11:30:00Z'),
       );
