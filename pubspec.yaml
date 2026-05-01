@@ -1,7 +1,7 @@
 name: rsstool
 description: Resonance is a local-first RSS reader built with Flutter.
 publish_to: none
-version: 0.10.0+18
+version: 0.11.0+19
 
 environment:
   sdk: ">=3.4.0 <4.0.0"

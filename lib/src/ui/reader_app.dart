@@ -107,6 +107,9 @@ class ReaderHome extends StatefulWidget {
 class _ReaderHomeState extends State<ReaderHome> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final ScrollController _compactHomeListController = ScrollController();
+  final FocusNode _desktopSearchFocusNode = FocusNode();
+  final TextEditingController _desktopSearchController =
+      TextEditingController();
 
   bool _compactFilterExpanded = false;
   bool _compactRailCollapsed = true;
@@ -138,6 +141,8 @@ class _ReaderHomeState extends State<ReaderHome> {
   void dispose() {
     controller.removeListener(_handleControllerChanged);
     _compactHomeListController.dispose();
+    _desktopSearchFocusNode.dispose();
+    _desktopSearchController.dispose();
     super.dispose();
   }
 
@@ -188,154 +193,185 @@ class _ReaderHomeState extends State<ReaderHome> {
                   await _handleCompactBack();
                 }
               },
-              child: Scaffold(
-                key: _scaffoldKey,
-                backgroundColor:
-                    usePortraitMobileHome
-                        ? mobilePageBackground
-                        : palette.shellBackground,
-                drawer: useDrawer ? mobileDrawer : null,
-                body: Column(
-                  children: <Widget>[
-                    _ShellHeader(
-                      controller: controller,
-                      compact: compact,
-                      mobileRestyled: usePortraitMobileHome,
-                      topInset: topInset,
-                      sidebarCollapsed: compact
-                          ? _compactRailCollapsed
-                          : controller.settings.desktopSidebarCollapsed,
-                      showSidebarToggle: !compact || useRail,
-                      onSidebarToggle: () {
-                        if (compact) {
-                          setState(() {
-                            _compactRailCollapsed = !_compactRailCollapsed;
-                          });
-                        } else {
-                          controller.setDesktopSidebarCollapsed(
-                            !controller.settings.desktopSidebarCollapsed,
-                          );
+              child: Shortcuts(
+                shortcuts: const <ShortcutActivator, Intent>{
+                  SingleActivator(LogicalKeyboardKey.keyK, control: true):
+                      _FocusSearchIntent(),
+                },
+                child: Actions(
+                  actions: <Type, Action<Intent>>{
+                    _FocusSearchIntent: CallbackAction<_FocusSearchIntent>(
+                      onInvoke: (_FocusSearchIntent intent) {
+                        if (!compact) {
+                          _desktopSearchFocusNode.requestFocus();
                         }
+                        return null;
                       },
-                      showMenuButton: compact && useDrawer,
-                      onMenuPressed: () => _scaffoldKey.currentState?.openDrawer(),
                     ),
-                    Expanded(
-                      child: Row(
+                  },
+                  child: Focus(
+                    autofocus: true,
+                    child: Scaffold(
+                      key: _scaffoldKey,
+                      backgroundColor:
+                          usePortraitMobileHome
+                              ? mobilePageBackground
+                              : palette.shellBackground,
+                      drawer: useDrawer ? mobileDrawer : null,
+                      body: Column(
                         children: <Widget>[
-                          if (!compact)
-                            NavigationSidebar(
-                              controller: controller,
-                              collapsed: controller.settings.desktopSidebarCollapsed,
-                              showCollapseToggle: true,
-                              onToggleCollapse: () {
+                          _ShellHeader(
+                            controller: controller,
+                            compact: compact,
+                            mobileRestyled: usePortraitMobileHome,
+                            searchFocusNode: _desktopSearchFocusNode,
+                            searchController: _desktopSearchController,
+                            topInset: topInset,
+                            sidebarCollapsed: compact
+                                ? _compactRailCollapsed
+                                : controller.settings.desktopSidebarCollapsed,
+                            showSidebarToggle: !compact || useRail,
+                            onSidebarToggle: () {
+                              if (compact) {
+                                setState(() {
+                                  _compactRailCollapsed =
+                                      !_compactRailCollapsed;
+                                });
+                              } else {
                                 controller.setDesktopSidebarCollapsed(
-                                  !controller.settings.desktopSidebarCollapsed,
+                                  !controller.settings
+                                      .desktopSidebarCollapsed,
                                 );
-                              },
-                            ),
-                          if (useRail)
-                            NavigationSidebar(
-                              controller: controller,
-                              collapsed: _compactRailCollapsed,
-                              showCollapseToggle: false,
-                            ),
+                              }
+                            },
+                            showMenuButton: compact && useDrawer,
+                            onMenuPressed: () =>
+                                _scaffoldKey.currentState?.openDrawer(),
+                          ),
                           Expanded(
-                            child: AnimatedContainer(
-                              duration: _shellMotionDuration,
-                              curve: _shellMotionCurve,
-                              color: usePortraitMobileHome
-                                  ? mobilePageBackground
-                                  : palette.chromeBackground,
-                              padding: EdgeInsets.fromLTRB(
-                                usePortraitMobileHome
-                                    ? 0
-                                    : compact
-                                        ? 6
-                                        : 10,
-                                usePortraitMobileHome
-                                    ? 0
-                                    : compact
-                                        ? 6
-                                        : 6,
-                                usePortraitMobileHome
-                                    ? 0
-                                    : compact
-                                        ? 6
-                                        : controller
-                                                .settings.desktopSidebarCollapsed
-                                            ? 12
-                                            : 10,
-                                usePortraitMobileHome
-                                    ? 0
-                                    : compact
-                                        ? 6
-                                        : 10,
-                              ),
-                              child: TweenAnimationBuilder<double>(
-                                tween: Tween<double>(
-                                  end: compact
-                                      ? 0
-                                      : controller
-                                              .settings.desktopSidebarCollapsed
-                                          ? 1
-                                          : 0,
-                                ),
-                                duration: _shellMotionDuration,
-                                curve: _shellMotionCurve,
-                                child: _MainCanvas(
-                                  compact: compact,
-                                  mobileRestyled: usePortraitMobileHome,
-                                  flatDesktopSurface:
-                                      useFlatDesktopContentSurface,
-                                  child: Column(
-                                    children: <Widget>[
-                                      if (controller.errorMessage != null)
-                                        _InlineBanner(
-                                          icon: Icons.warning_amber_rounded,
-                                          text: controller.errorMessage!,
-                                          kind: _BannerKind.error,
-                                          compact: compact,
-                                          onClose: controller.clearError,
-                                        ),
-                                      if (controller.statusMessage != null)
-                                        _InlineBanner(
-                                          icon: Icons.sync_rounded,
-                                          text: controller.statusMessage!,
-                                          kind: _BannerKind.info,
-                                          compact: compact,
-                                          onClose: controller.clearStatus,
-                                        ),
-                                      Expanded(
-                                        child: _buildBody(
-                                          context,
-                                          compact: compact,
-                                          mobileRestyled: usePortraitMobileHome,
+                            child: Row(
+                              children: <Widget>[
+                                if (!compact)
+                                  NavigationSidebar(
+                                    controller: controller,
+                                    collapsed: controller
+                                        .settings.desktopSidebarCollapsed,
+                                    showCollapseToggle: true,
+                                    onToggleCollapse: () {
+                                      controller.setDesktopSidebarCollapsed(
+                                        !controller
+                                            .settings.desktopSidebarCollapsed,
+                                      );
+                                    },
+                                  ),
+                                if (useRail)
+                                  NavigationSidebar(
+                                    controller: controller,
+                                    collapsed: _compactRailCollapsed,
+                                    showCollapseToggle: false,
+                                  ),
+                                Expanded(
+                                  child: AnimatedContainer(
+                                    duration: _shellMotionDuration,
+                                    curve: _shellMotionCurve,
+                                    color: usePortraitMobileHome
+                                        ? mobilePageBackground
+                                        : palette.chromeBackground,
+                                    padding: EdgeInsets.fromLTRB(
+                                      usePortraitMobileHome
+                                          ? 0
+                                          : compact
+                                              ? 6
+                                              : 10,
+                                      usePortraitMobileHome
+                                          ? 0
+                                          : compact
+                                              ? 6
+                                              : 6,
+                                      usePortraitMobileHome
+                                          ? 0
+                                          : compact
+                                              ? 6
+                                              : controller.settings
+                                                      .desktopSidebarCollapsed
+                                                  ? 12
+                                                  : 10,
+                                      usePortraitMobileHome
+                                          ? 0
+                                          : compact
+                                              ? 6
+                                              : 10,
+                                    ),
+                                    child: TweenAnimationBuilder<double>(
+                                      tween: Tween<double>(
+                                        end: compact
+                                            ? 0
+                                            : controller.settings
+                                                    .desktopSidebarCollapsed
+                                                ? 1
+                                                : 0,
+                                      ),
+                                      duration: _shellMotionDuration,
+                                      curve: _shellMotionCurve,
+                                      child: _MainCanvas(
+                                        compact: compact,
+                                        mobileRestyled: usePortraitMobileHome,
+                                        flatDesktopSurface:
+                                            useFlatDesktopContentSurface,
+                                        child: Column(
+                                          children: <Widget>[
+                                            if (controller.errorMessage != null)
+                                              _InlineBanner(
+                                                icon:
+                                                    Icons.warning_amber_rounded,
+                                                text: controller.errorMessage!,
+                                                kind: _BannerKind.error,
+                                                compact: compact,
+                                                onClose: controller.clearError,
+                                              ),
+                                            if (controller.statusMessage !=
+                                                null)
+                                              _InlineBanner(
+                                                icon: Icons.sync_rounded,
+                                                text: controller.statusMessage!,
+                                                kind: _BannerKind.info,
+                                                compact: compact,
+                                                onClose: controller.clearStatus,
+                                              ),
+                                            Expanded(
+                                              child: _buildBody(
+                                                context,
+                                                compact: compact,
+                                                mobileRestyled:
+                                                    usePortraitMobileHome,
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ],
+                                      builder: (
+                                        BuildContext context,
+                                        double value,
+                                        Widget? child,
+                                      ) {
+                                        return Transform.translate(
+                                          offset: Offset(
+                                            compact ? 0 : value * 4,
+                                            0,
+                                          ),
+                                          child: child,
+                                        );
+                                      },
+                                    ),
                                   ),
                                 ),
-                                builder: (
-                                  BuildContext context,
-                                  double value,
-                                  Widget? child,
-                                ) {
-                                  return Transform.translate(
-                                    offset: Offset(
-                                      compact ? 0 : value * 4,
-                                      0,
-                                    ),
-                                    child: child,
-                                  );
-                                },
-                              ),
+                              ],
                             ),
                           ),
                         ],
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             );
@@ -716,11 +752,17 @@ class _ReaderHomeState extends State<ReaderHome> {
   }
 }
 
+class _FocusSearchIntent extends Intent {
+  const _FocusSearchIntent();
+}
+
 class _ShellHeader extends StatelessWidget {
   const _ShellHeader({
     required this.controller,
     required this.compact,
     required this.mobileRestyled,
+    required this.searchFocusNode,
+    required this.searchController,
     required this.topInset,
     required this.sidebarCollapsed,
     required this.showSidebarToggle,
@@ -732,6 +774,8 @@ class _ShellHeader extends StatelessWidget {
   final ReaderController controller;
   final bool compact;
   final bool mobileRestyled;
+  final FocusNode searchFocusNode;
+  final TextEditingController searchController;
   final double topInset;
   final bool sidebarCollapsed;
   final bool showSidebarToggle;
@@ -804,28 +848,50 @@ class _ShellHeader extends StatelessWidget {
                     strings: strings,
                     mobileRestyled: mobileRestyled,
                   )
-                : DragToMoveArea(
-                    child: SizedBox.expand(
-                      child: Row(
-                        children: <Widget>[
-                          Text(
-                            strings.appName,
-                            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w600,
+                : Stack(
+                    alignment: Alignment.center,
+                    children: <Widget>[
+                      Positioned.fill(
+                        child: DragToMoveArea(
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: Row(
+                              children: <Widget>[
+                                Text(
+                                  strings.appName,
+                                  style: Theme.of(context)
+                                      .textTheme
+                                      .titleSmall
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                 ),
-                          ),
-                          const SizedBox(width: 16),
-                          Text(
-                            controller.currentRouteTitle,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color: palette.secondaryText,
+                                const SizedBox(width: 16),
+                                Flexible(
+                                  child: Text(
+                                    controller.currentRouteTitle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(
+                                          color: palette.secondaryText,
+                                        ),
+                                  ),
                                 ),
+                              ],
+                            ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                      _DesktopSearchField(
+                        controller: searchController,
+                        focusNode: searchFocusNode,
+                        hintText: strings.searchArticlesOrSources,
+                        shortcutText: strings.keyboardShortcutCtrlK,
+                      ),
+                    ],
                   ),
           ),
           if (compact)
@@ -886,6 +952,93 @@ class _BrandMark extends StatelessWidget {
               fontWeight: FontWeight.w700,
               height: mobileRestyled ? 1 : null,
             ),
+      ),
+    );
+  }
+}
+
+class _DesktopSearchField extends StatelessWidget {
+  const _DesktopSearchField({
+    required this.controller,
+    required this.focusNode,
+    required this.hintText,
+    required this.shortcutText,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final String hintText;
+  final String shortcutText;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final ThemeData theme = Theme.of(context);
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        maxWidth: 420,
+        minWidth: 280,
+      ),
+      child: SizedBox(
+        height: 32,
+        child: TextField(
+          controller: controller,
+          focusNode: focusNode,
+          textInputAction: TextInputAction.search,
+          style: theme.textTheme.bodySmall,
+          decoration: InputDecoration(
+            isDense: true,
+            filled: true,
+            fillColor: palette.panelBackground,
+            hintText: hintText,
+            hintStyle: theme.textTheme.bodySmall?.copyWith(
+              color: palette.tertiaryText,
+            ),
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              size: 17,
+              color: palette.tertiaryText,
+            ),
+            prefixIconConstraints: const BoxConstraints(
+              minWidth: 34,
+              minHeight: 32,
+            ),
+            suffixIcon: Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Center(
+                widthFactor: 1,
+                child: Text(
+                  shortcutText,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: palette.tertiaryText,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+            suffixIconConstraints: const BoxConstraints(
+              minWidth: 58,
+              minHeight: 32,
+            ),
+            contentPadding:
+                const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: palette.border),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: palette.border),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(
+                color: theme.colorScheme.primary.withValues(alpha: 0.45),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

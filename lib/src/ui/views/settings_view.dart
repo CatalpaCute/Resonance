@@ -319,6 +319,23 @@ class SettingsView extends StatelessWidget {
           compact: compact,
           surface: surface,
           padding: sectionPadding,
+          title: strings.blurEffectsTitle,
+          subtitle: strings.blurEffectsHint,
+          child: SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            dense: compact,
+            value: controller.settings.blurEffectsEnabled,
+            onChanged: (bool value) {
+              controller.setBlurEffectsEnabled(value);
+            },
+            title: Text(strings.blurEffectsSwitchLabel),
+          ),
+        ),
+        SizedBox(height: compact ? 12 : 14),
+        _SettingsSection(
+          compact: compact,
+          surface: surface,
+          padding: sectionPadding,
           title: strings.interfaceLanguage,
           subtitle: strings.interfaceLanguageHint,
           child: DropdownButtonFormField<AppLanguageMode>(

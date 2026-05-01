@@ -47,7 +47,7 @@ Resonance 不是“什么都做”的内容平台，而是一个偏个人效率�
 - 文章按发布时间倒序展示
 - 已读 / 未读、收藏、稍后读
 - 未读筛选
-- 桌面端三栏工作区：订阅源、文章列表、阅读面板
+- 桌面端三栏工作区：订阅源、文章列表、阅读面板，阅读面板支持顶部进度栏与模糊效果
 - 移动端适配，支持抽屉 / rail / 自适应侧栏模式
 - 文章支持富文本阅读与纯文本阅读模式
 - 支持换行、图片等媒体适配
@@ -162,7 +162,7 @@ It is a reading-focused product with a few clear priorities:
 - Reverse chronological article list
 - Read / unread, starred, and read-later actions
 - Unread-only filtering
-- Desktop three-pane workspace: sources, article list, and reader panel
+- Desktop three-pane workspace: sources, article list, and reader panel with a progress toolbar and blur effects
 - Mobile adaptation with drawer / rail / adaptive sidebar modes
 - Rich article rendering with a text-only reading mode
 - Better media adaptation, including line breaks and images

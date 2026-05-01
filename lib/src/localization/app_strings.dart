@@ -345,6 +345,12 @@ class AppStrings {
         zhHant: '扁平模式會去掉內容區裡作為背景板的大框，但保留文章、訂閱源和控制項本身的卡片層次。',
         en: 'Flat mode removes large background panels while keeping cards for articles, sources, and controls.',
       );
+  String get searchArticlesOrSources => _text(
+        zhCn: '搜索文章或源',
+        zhHant: '搜尋文章或來源',
+        en: 'Search articles or sources',
+      );
+  String get keyboardShortcutCtrlK => 'Ctrl+K';
   String get autoRefreshSettings => _text(
         zhCn: '自动更新订阅',
         zhHant: '自動更新訂閱',
@@ -450,6 +456,21 @@ class AppStrings {
         zhHant: '讓文章列表和閱讀區獲得更多空間。',
         en: 'Leave more room for the list and reader.',
       );
+  String get blurEffectsTitle => _text(
+        zhCn: '界面模糊效果',
+        zhHant: '介面模糊效果',
+        en: 'Interface Blur Effects',
+      );
+  String get blurEffectsSwitchLabel => _text(
+        zhCn: '开启界面模糊',
+        zhHant: '開啟介面模糊',
+        en: 'Enable interface blur',
+      );
+  String get blurEffectsHint => _text(
+        zhCn: '用于阅读顶栏等半透明区域。关闭后会改用更稳定的实色背景。',
+        zhHant: '用於閱讀頂欄等半透明區域。關閉後會改用更穩定的實色背景。',
+        en: 'Used by translucent areas such as the reader toolbar. Turn it off to use steadier solid surfaces.',
+      );
 
   String visibleArticleCount(int count) => _text(
         zhCn: '$count 篇可见文章',
@@ -498,6 +519,11 @@ class AppStrings {
 
   String get openOriginal =>
       _text(zhCn: '打开原文', zhHant: '打開原文', en: 'Open Original');
+  String estimatedReadingTime(int minutes) => _text(
+        zhCn: '$minutes 分钟阅读',
+        zhHant: '$minutes 分鐘閱讀',
+        en: '$minutes min read',
+      );
   String get noReadableBody => _text(
         zhCn: '这篇文章没有可直接显示的正文或摘要，可以打开原文继续阅读。',
         zhHant: '這篇文章沒有可直接顯示的正文或摘要，可以打開原文繼續閱讀。',

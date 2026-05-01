@@ -449,6 +449,11 @@ class ReaderController extends ChangeNotifier {
     await _persistSettings();
   }
 
+  Future<void> setBlurEffectsEnabled(bool value) async {
+    _setSettings(_settings.copyWith(blurEffectsEnabled: value));
+    await _persistSettings();
+  }
+
   Future<void> setAppLanguageMode(AppLanguageMode mode) async {
     _setSettings(_settings.copyWith(appLanguageMode: mode));
     await _persistSettings();

@@ -66,6 +66,7 @@ class ReaderSettings {
     required this.desktopSidebarCollapsed,
     required this.articleListDensity,
     required this.articleContentMode,
+    required this.blurEffectsEnabled,
     required this.appLanguageMode,
   });
 
@@ -82,6 +83,7 @@ class ReaderSettings {
   final bool desktopSidebarCollapsed;
   final ArticleListDensity articleListDensity;
   final ArticleContentMode articleContentMode;
+  final bool blurEffectsEnabled;
   final AppLanguageMode appLanguageMode;
 
   bool get autoRefreshEnabled => autoRefreshMode != AutoRefreshMode.allOff;
@@ -101,6 +103,7 @@ class ReaderSettings {
     desktopSidebarCollapsed: false,
     articleListDensity: ArticleListDensity.comfortable,
     articleContentMode: ArticleContentMode.rich,
+    blurEffectsEnabled: true,
     appLanguageMode: AppLanguageMode.system,
   );
 
@@ -129,6 +132,7 @@ class ReaderSettings {
     bool? desktopSidebarCollapsed,
     ArticleListDensity? articleListDensity,
     ArticleContentMode? articleContentMode,
+    bool? blurEffectsEnabled,
     AppLanguageMode? appLanguageMode,
   }) {
     return ReaderSettings(
@@ -154,6 +158,7 @@ class ReaderSettings {
           desktopSidebarCollapsed ?? this.desktopSidebarCollapsed,
       articleListDensity: articleListDensity ?? this.articleListDensity,
       articleContentMode: articleContentMode ?? this.articleContentMode,
+      blurEffectsEnabled: blurEffectsEnabled ?? this.blurEffectsEnabled,
       appLanguageMode: appLanguageMode ?? this.appLanguageMode,
     );
   }
@@ -173,6 +178,7 @@ class ReaderSettings {
       'desktopSidebarCollapsed': desktopSidebarCollapsed,
       'articleListDensity': articleListDensity.name,
       'articleContentMode': articleContentMode.name,
+      'blurEffectsEnabled': blurEffectsEnabled,
       'appLanguageMode': appLanguageMode.storageValue,
     };
   }
@@ -233,6 +239,8 @@ class ReaderSettings {
         (ArticleContentMode value) => value.name == json['articleContentMode'],
         orElse: () => defaults.articleContentMode,
       ),
+      blurEffectsEnabled:
+          json['blurEffectsEnabled'] as bool? ?? defaults.blurEffectsEnabled,
       appLanguageMode:
           AppLanguageModeX.fromStorageValue(json['appLanguageMode'] as String?),
     );
