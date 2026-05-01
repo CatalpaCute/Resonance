@@ -31,7 +31,7 @@ Color _mobilePageBackgroundOf(BuildContext context) {
   return AppTheme.paletteOf(context).shellBackground;
 }
 
-class ReaderApp extends StatelessWidget {
+class ReaderApp extends StatefulWidget {
   const ReaderApp({
     super.key,
     required this.controller,
@@ -40,23 +40,36 @@ class ReaderApp extends StatelessWidget {
   final ReaderController controller;
 
   @override
+  State<ReaderApp> createState() => _ReaderAppState();
+}
+
+class _ReaderAppState extends State<ReaderApp> {
+  Brightness? _lastSystemOverlayBrightness;
+
+  ReaderController get controller => widget.controller;
+
+  @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
       animation: controller,
       builder: (BuildContext context, _) {
         final ThemeData theme = AppTheme.themeFor(controller.settings.themeId);
         final bool isDark = theme.brightness == Brightness.dark;
+        final Brightness overlayBrightness =
+            isDark ? Brightness.light : Brightness.dark;
 
-        SystemChrome.setSystemUIOverlayStyle(
-          SystemUiOverlayStyle(
-            statusBarColor: Colors.transparent,
-            systemNavigationBarColor: Colors.transparent,
-            statusBarIconBrightness: isDark ? Brightness.light : Brightness.dark,
-            systemNavigationBarIconBrightness:
-                isDark ? Brightness.light : Brightness.dark,
-            systemNavigationBarContrastEnforced: false,
-          ),
-        );
+        if (_lastSystemOverlayBrightness != overlayBrightness) {
+          _lastSystemOverlayBrightness = overlayBrightness;
+          SystemChrome.setSystemUIOverlayStyle(
+            SystemUiOverlayStyle(
+              statusBarColor: Colors.transparent,
+              systemNavigationBarColor: Colors.transparent,
+              statusBarIconBrightness: overlayBrightness,
+              systemNavigationBarIconBrightness: overlayBrightness,
+              systemNavigationBarContrastEnforced: false,
+            ),
+          );
+        }
 
         return MaterialApp(
           debugShowCheckedModeBanner: false,
@@ -65,7 +78,7 @@ class ReaderApp extends StatelessWidget {
           supportedLocales: supportedAppLocales,
           localeListResolutionCallback: AppStrings.resolveLocaleList,
           localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          theme: AppTheme.themeFor(controller.settings.themeId),
+          theme: theme,
           builder: (BuildContext context, Widget? child) {
             if (_useWindowsWindowChrome && child != null) {
               return VirtualWindowFrame(child: child);

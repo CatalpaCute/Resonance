@@ -13,6 +13,16 @@ import '../services/auto_refresh_engine.dart';
 import '../services/json_store.dart';
 import '../services/rss_service.dart';
 
+class _SourceStats {
+  const _SourceStats({
+    required this.articleCount,
+    required this.unreadCount,
+  });
+
+  final int articleCount;
+  final int unreadCount;
+}
+
 class ReaderController extends ChangeNotifier {
   ReaderController({
     required JsonStore store,
@@ -29,6 +39,20 @@ class ReaderController extends ChangeNotifier {
 
   List<FeedSource> _feeds = <FeedSource>[];
   List<Article> _articles = <Article>[];
+  List<FeedSource> _readonlyFeeds = const <FeedSource>[];
+  List<Article> _readonlyArticles = const <Article>[];
+  Map<String, FeedSource> _feedsById = <String, FeedSource>{};
+  Map<String, Article> _articlesById = <String, Article>{};
+  Set<String> _enabledFeedIds = <String>{};
+  Map<String, _SourceStats> _sourceStatsById = <String, _SourceStats>{};
+  int _totalUnreadCount = 0;
+  int _feedsVersion = 0;
+  int _articlesVersion = 0;
+  bool _feedsDirty = false;
+  bool _articlesDirty = false;
+  bool _settingsDirty = false;
+  String? _visibleArticlesCacheKey;
+  List<Article> _visibleArticlesCache = const <Article>[];
   ReaderSettings _settings = ReaderSettings.defaults;
   AppRouteId _currentRoute = ReaderSettings.defaults.startupRoute;
   BookmarkFilter _bookmarkFilter = BookmarkFilter.starred;
@@ -44,8 +68,8 @@ class ReaderController extends ChangeNotifier {
   String? _statusMessage;
   final Set<String> _refreshingFeedIds = <String>{};
 
-  List<FeedSource> get feeds => List<FeedSource>.unmodifiable(_feeds);
-  List<Article> get articles => List<Article>.unmodifiable(_articles);
+  List<FeedSource> get feeds => _readonlyFeeds;
+  List<Article> get articles => _readonlyArticles;
   ReaderSettings get settings => _settings;
   AppRouteId get currentRoute => _currentRoute;
   BookmarkFilter get bookmarkFilter => _bookmarkFilter;
@@ -81,8 +105,7 @@ class ReaderController extends ChangeNotifier {
         _currentRoute == AppRouteId.readerDetail;
   }
 
-  int get totalUnreadCount =>
-      _articles.where((Article item) => !item.isRead).length;
+  int get totalUnreadCount => _totalUnreadCount;
 
   String get currentRouteTitle => _strings.routeTitle(
         _currentRoute,
@@ -95,6 +118,11 @@ class ReaderController extends ChangeNotifier {
       _strings.startupSummary(_settings.startupHomeMode);
 
   List<Article> get visibleArticles {
+    final String cacheKey = _visibleArticlesCacheSignature();
+    if (_visibleArticlesCacheKey == cacheKey) {
+      return _visibleArticlesCache;
+    }
+
     Iterable<Article> items = _articles;
 
     switch (_currentRoute) {
@@ -102,7 +130,7 @@ class ReaderController extends ChangeNotifier {
       case AppRouteId.sources:
       case AppRouteId.sourceDetail:
         items = items.where((Article article) {
-          if (!_feedEnabled(article.sourceId)) {
+          if (!_enabledFeedIds.contains(article.sourceId)) {
             return false;
           }
           if (_activeSourceId == null) {
@@ -141,15 +169,18 @@ class ReaderController extends ChangeNotifier {
 
     final List<Article> sorted = items.toList()
       ..sort((Article a, Article b) => b.publishedAt.compareTo(a.publishedAt));
-    return sorted;
+    _visibleArticlesCacheKey = cacheKey;
+    _visibleArticlesCache = List<Article>.unmodifiable(sorted);
+    return _visibleArticlesCache;
   }
 
   Future<void> initialize() async {
     try {
       final PersistedReaderState persisted = await _store.load();
-      _feeds = persisted.feeds;
-      _articles = persisted.articles;
-      _settings = persisted.settings;
+      _setFeeds(persisted.feeds, dirty: false);
+      _setArticles(persisted.articles, dirty: false);
+      _setSettings(persisted.settings, dirty: false);
+      _clearDirtyFlags();
       _currentRoute = _settings.startupRoute;
       _lastWorkspaceRoute = _currentRoute;
       _activeSourceId = null;
@@ -207,9 +238,10 @@ class ReaderController extends ChangeNotifier {
   /// 应用恢复到前台时，需要从持久化状态重新对账，而不是继续使用过期内存。
   Future<void> reloadPersistedState({bool notify = true}) async {
     final PersistedReaderState persisted = await _store.load();
-    _feeds = persisted.feeds;
-    _articles = persisted.articles;
-    _settings = persisted.settings;
+    _setFeeds(persisted.feeds, dirty: false);
+    _setArticles(persisted.articles, dirty: false);
+    _setSettings(persisted.settings, dirty: false);
+    _clearDirtyFlags();
 
     if (_activeSourceId != null && _feedById(_activeSourceId) == null) {
       _activeSourceId = null;
@@ -288,7 +320,8 @@ class ReaderController extends ChangeNotifier {
 
   Future<void> toggleSavedForLater(Article article) async {
     await _replaceArticle(
-        article.copyWith(savedForLater: !article.savedForLater));
+      article.copyWith(savedForLater: !article.savedForLater),
+    );
   }
 
   Future<void> completeReadLaterArticle(Article article) async {
@@ -304,17 +337,17 @@ class ReaderController extends ChangeNotifier {
   }
 
   Future<void> setDesktopSidebarCollapsed(bool value) async {
-    _settings = _settings.copyWith(desktopSidebarCollapsed: value);
+    _setSettings(_settings.copyWith(desktopSidebarCollapsed: value));
     await _persistSettings();
   }
 
   Future<void> setMobileSidebarMode(MobileSidebarMode mode) async {
-    _settings = _settings.copyWith(mobileSidebarMode: mode);
+    _setSettings(_settings.copyWith(mobileSidebarMode: mode));
     await _persistSettings();
   }
 
   Future<void> setMobileWorkspaceMode(MobileWorkspaceMode mode) async {
-    _settings = _settings.copyWith(mobileWorkspaceMode: mode);
+    _setSettings(_settings.copyWith(mobileWorkspaceMode: mode));
 
     // When compact mode switches to the desktop-like multi-pane workspace,
     // the reader should fold back into the main workspace instead of
@@ -331,7 +364,7 @@ class ReaderController extends ChangeNotifier {
   }
 
   Future<void> setDesktopWorkspaceMode(DesktopWorkspaceMode mode) async {
-    _settings = _settings.copyWith(desktopWorkspaceMode: mode);
+    _setSettings(_settings.copyWith(desktopWorkspaceMode: mode));
 
     // If desktop switches back to the embedded three-pane reader while a
     // standalone reader page is open, fold back into the workspace so the
@@ -350,55 +383,59 @@ class ReaderController extends ChangeNotifier {
   Future<void> setDesktopContentSurfaceMode(
     DesktopContentSurfaceMode mode,
   ) async {
-    _settings = _settings.copyWith(desktopContentSurfaceMode: mode);
+    _setSettings(_settings.copyWith(desktopContentSurfaceMode: mode));
     await _persistSettings();
   }
 
   Future<void> setAutoRefreshEnabled(bool value) async {
-    _settings = _settings.copyWith(
-      autoRefreshMode: value
-          ? (_settings.autoRefreshMode == AutoRefreshMode.allOn
-              ? AutoRefreshMode.allOn
-              : AutoRefreshMode.partial)
-          : AutoRefreshMode.allOff,
+    _setSettings(
+      _settings.copyWith(
+        autoRefreshMode: value
+            ? (_settings.autoRefreshMode == AutoRefreshMode.allOn
+                ? AutoRefreshMode.allOn
+                : AutoRefreshMode.partial)
+            : AutoRefreshMode.allOff,
+      ),
     );
     await _persistSettings();
   }
 
   Future<void> setAutoRefreshMode(AutoRefreshMode mode) async {
-    _settings = _settings.copyWith(autoRefreshMode: mode);
+    _setSettings(_settings.copyWith(autoRefreshMode: mode));
     await _persistSettings();
   }
 
   Future<void> setGlobalAutoRefreshIntervalMinutes(int minutes) async {
-    _settings = _settings.copyWith(
-      globalAutoRefreshIntervalMinutes: normalizeAutoRefreshInterval(minutes),
+    _setSettings(
+      _settings.copyWith(
+        globalAutoRefreshIntervalMinutes: normalizeAutoRefreshInterval(minutes),
+      ),
     );
     await _persistSettings();
   }
 
   Future<void> setStartupHomeMode(StartupHomeMode mode) async {
-    _settings = _settings.copyWith(startupHomeMode: mode);
+    _setSettings(_settings.copyWith(startupHomeMode: mode));
     await _persistSettings();
   }
 
   Future<void> setThemeId(String themeId) async {
-    _settings = _settings.copyWith(themeId: themeId);
+    _setSettings(_settings.copyWith(themeId: themeId));
     await _persistSettings();
   }
 
   Future<void> setArticleListDensity(ArticleListDensity density) async {
-    _settings = _settings.copyWith(articleListDensity: density);
+    _setSettings(_settings.copyWith(articleListDensity: density));
     await _persistSettings();
   }
 
   Future<void> setArticleContentMode(ArticleContentMode mode) async {
-    _settings = _settings.copyWith(articleContentMode: mode);
+    _setSettings(_settings.copyWith(articleContentMode: mode));
     await _persistSettings();
   }
 
   Future<void> setAppLanguageMode(AppLanguageMode mode) async {
-    _settings = _settings.copyWith(appLanguageMode: mode);
+    _setSettings(_settings.copyWith(appLanguageMode: mode));
     await _persistSettings();
   }
 
@@ -442,7 +479,7 @@ class ReaderController extends ChangeNotifier {
           ),
           lastFetchedAt: DateTime.now(),
         );
-        _feeds = <FeedSource>[source, ..._feeds];
+        _setFeeds(<FeedSource>[source, ..._feeds]);
         _mergeArticlesForSource(source, parsed.articles);
         _activeSourceId = source.id;
         _currentRoute = AppRouteId.discoverAddSource;
@@ -494,9 +531,9 @@ class ReaderController extends ChangeNotifier {
           _mergeArticlesForSource(nextSource, parsed.articles);
         }
 
-        _feeds = _feeds.map((FeedSource item) {
+        _setFeeds(_feeds.map((FeedSource item) {
           return item.id == original.id ? nextSource : item;
-        }).toList();
+        }).toList());
         await _persistAll();
         _statusMessage = _strings.updatedFeed(nextSource.title);
       },
@@ -508,10 +545,12 @@ class ReaderController extends ChangeNotifier {
     if (source == null) {
       return;
     }
-    _feeds = _feeds.where((FeedSource item) => item.id != sourceId).toList();
-    _articles = _articles
+    _setFeeds(
+      _feeds.where((FeedSource item) => item.id != sourceId).toList(),
+    );
+    _setArticles(_articles
         .where((Article article) => article.sourceId != sourceId)
-        .toList();
+        .toList());
     if (_activeSourceId == sourceId) {
       _activeSourceId = _feeds.isNotEmpty ? _feeds.first.id : null;
     }
@@ -542,9 +581,8 @@ class ReaderController extends ChangeNotifier {
     final List<FeedSource> nextFeeds = List<FeedSource>.from(_feeds);
     final FeedSource source = nextFeeds.removeAt(oldIndex);
     nextFeeds.insert(newIndex, source);
-    _feeds = nextFeeds;
-    await _store.saveFeeds(_feeds);
-    notifyListeners();
+    _setFeeds(nextFeeds);
+    await _persistAll();
   }
 
   Future<void> refreshAllFeeds() async {
@@ -635,17 +673,17 @@ class ReaderController extends ChangeNotifier {
   }
 
   int unreadCountForSource(String? sourceId) {
-    return _articles.where((Article article) {
-      final bool matchesSource =
-          sourceId == null ? true : article.sourceId == sourceId;
-      return matchesSource && !article.isRead;
-    }).length;
+    if (sourceId == null) {
+      return _totalUnreadCount;
+    }
+    return _sourceStatsById[sourceId]?.unreadCount ?? 0;
   }
 
   int articleCountForSource(String? sourceId) {
-    return _articles.where((Article article) {
-      return sourceId == null ? true : article.sourceId == sourceId;
-    }).length;
+    if (sourceId == null) {
+      return _articles.length;
+    }
+    return _sourceStatsById[sourceId]?.articleCount ?? 0;
   }
 
   String sourceTitleForArticle(Article article) {
@@ -679,41 +717,96 @@ class ReaderController extends ChangeNotifier {
     notifyListeners();
   }
 
+  // Keep read-heavy indexes in sync at mutation boundaries so UI getters stay cheap.
+  void _setFeeds(List<FeedSource> feeds, {bool dirty = true}) {
+    _feeds = feeds;
+    _feedsVersion += 1;
+    _feedsDirty = _feedsDirty || dirty;
+    _rebuildDerivedState();
+  }
+
+  void _setArticles(List<Article> articles, {bool dirty = true}) {
+    _articles = articles;
+    _articlesVersion += 1;
+    _articlesDirty = _articlesDirty || dirty;
+    _rebuildDerivedState();
+  }
+
+  void _setSettings(ReaderSettings settings, {bool dirty = true}) {
+    _settings = settings;
+    _settingsDirty = _settingsDirty || dirty;
+  }
+
+  void _clearDirtyFlags() {
+    _feedsDirty = false;
+    _articlesDirty = false;
+    _settingsDirty = false;
+  }
+
+  void _rebuildDerivedState() {
+    _readonlyFeeds = List<FeedSource>.unmodifiable(_feeds);
+    _readonlyArticles = List<Article>.unmodifiable(_articles);
+    _feedsById = Map<String, FeedSource>.unmodifiable(<String, FeedSource>{
+      for (final FeedSource source in _feeds) source.id: source,
+    });
+    _enabledFeedIds = Set<String>.unmodifiable(<String>{
+      for (final FeedSource source in _feeds)
+        if (source.enabled) source.id,
+    });
+    _articlesById = Map<String, Article>.unmodifiable(<String, Article>{
+      for (final Article article in _articles) article.id: article,
+    });
+
+    final Map<String, _SourceStats> stats = <String, _SourceStats>{
+      for (final FeedSource source in _feeds)
+        source.id: const _SourceStats(articleCount: 0, unreadCount: 0),
+    };
+    int totalUnreadCount = 0;
+    for (final Article article in _articles) {
+      final _SourceStats previous = stats[article.sourceId] ??
+          const _SourceStats(articleCount: 0, unreadCount: 0);
+      final int nextUnreadCount =
+          previous.unreadCount + (article.isRead ? 0 : 1);
+      stats[article.sourceId] = _SourceStats(
+        articleCount: previous.articleCount + 1,
+        unreadCount: nextUnreadCount,
+      );
+      if (!article.isRead) {
+        totalUnreadCount += 1;
+      }
+    }
+    _sourceStatsById = Map<String, _SourceStats>.unmodifiable(stats);
+    _totalUnreadCount = totalUnreadCount;
+    _visibleArticlesCacheKey = null;
+    _visibleArticlesCache = const <Article>[];
+  }
+
+  String _visibleArticlesCacheSignature() {
+    return '${_currentRoute.name}|${_bookmarkFilter.name}|'
+        '${_activeSourceId ?? ''}|${_selectedArticleId ?? ''}|'
+        '$_showOnlyUnread|$_feedsVersion|$_articlesVersion';
+  }
+
   FeedSource? _feedById(String? id) {
     if (id == null) {
       return null;
     }
-    for (final FeedSource source in _feeds) {
-      if (source.id == id) {
-        return source;
-      }
-    }
-    return null;
+    return _feedsById[id];
   }
 
   Article? _articleById(String? id) {
     if (id == null) {
       return null;
     }
-    for (final Article article in _articles) {
-      if (article.id == id) {
-        return article;
-      }
-    }
-    return null;
-  }
-
-  bool _feedEnabled(String sourceId) {
-    return _feedById(sourceId)?.enabled ?? false;
+    return _articlesById[id];
   }
 
   Future<void> _replaceArticle(Article nextArticle) async {
-    _articles = _articles.map((Article item) {
+    _setArticles(_articles.map((Article item) {
       return item.id == nextArticle.id ? nextArticle : item;
     }).toList()
-      ..sort((Article a, Article b) => b.publishedAt.compareTo(a.publishedAt));
-    await _store.saveArticles(_articles);
-    notifyListeners();
+      ..sort((Article a, Article b) => b.publishedAt.compareTo(a.publishedAt)));
+    await _persistAll();
   }
 
   Future<void> _refreshFeed(FeedSource source) async {
@@ -727,9 +820,9 @@ class ReaderController extends ChangeNotifier {
         iconUrl: parsed.iconUrl,
         lastFetchedAt: DateTime.now(),
       );
-      _feeds = _feeds.map((FeedSource item) {
+      _setFeeds(_feeds.map((FeedSource item) {
         return item.id == source.id ? updatedSource : item;
-      }).toList();
+      }).toList());
       _mergeArticlesForSource(updatedSource, parsed.articles);
     } finally {
       _refreshingFeedIds.remove(source.id);
@@ -782,19 +875,31 @@ class ReaderController extends ChangeNotifier {
       }
     }
 
-    _articles = currentById.values.toList()
-      ..sort((Article a, Article b) => b.publishedAt.compareTo(a.publishedAt));
+    _setArticles(currentById.values.toList()
+      ..sort((Article a, Article b) => b.publishedAt.compareTo(a.publishedAt)));
   }
 
   Future<void> _persistSettings() async {
-    await _store.saveSettings(_settings);
+    if (_settingsDirty) {
+      await _store.saveSettings(_settings);
+      _settingsDirty = false;
+    }
     notifyListeners();
   }
 
   Future<void> _persistAll() async {
-    await _store.saveFeeds(_feeds);
-    await _store.saveArticles(_articles);
-    await _store.saveSettings(_settings);
+    if (_feedsDirty) {
+      await _store.saveFeeds(_feeds);
+      _feedsDirty = false;
+    }
+    if (_articlesDirty) {
+      await _store.saveArticles(_articles);
+      _articlesDirty = false;
+    }
+    if (_settingsDirty) {
+      await _store.saveSettings(_settings);
+      _settingsDirty = false;
+    }
     notifyListeners();
   }
 

@@ -55,6 +55,107 @@ class _FetchedResponse {
 }
 
 class RssService {
+  static final RegExp _charsetPattern = RegExp(
+    r'''charset\s*=\s*["']?([^;"'\s]+)''',
+    caseSensitive: false,
+  );
+  static final RegExp _xmlEncodingPattern = RegExp(
+    r'''encoding\s*=\s*["']([^"']+)["']''',
+    caseSensitive: false,
+  );
+  static final RegExp _htmlCommentPattern = RegExp(r'<!--[\s\S]*?-->');
+  static final RegExp _scriptPattern = RegExp(
+    r'<script[\s\S]*?</script>',
+    caseSensitive: false,
+  );
+  static final RegExp _stylePattern = RegExp(
+    r'<style[\s\S]*?</style>',
+    caseSensitive: false,
+  );
+  static final RegExp _brPattern = RegExp(
+    r'<br\s*/?>',
+    caseSensitive: false,
+  );
+  static final RegExp _paragraphClosePattern = RegExp(
+    r'</p\s*>',
+    caseSensitive: false,
+  );
+  static final RegExp _divClosePattern = RegExp(
+    r'</div\s*>',
+    caseSensitive: false,
+  );
+  static final RegExp _headingClosePattern = RegExp(
+    r'</h[1-6]\s*>',
+    caseSensitive: false,
+  );
+  static final RegExp _blockquoteClosePattern = RegExp(
+    r'</blockquote\s*>',
+    caseSensitive: false,
+  );
+  static final RegExp _listItemClosePattern = RegExp(
+    r'</li\s*>',
+    caseSensitive: false,
+  );
+  static final RegExp _listItemOpenPattern = RegExp(
+    r'<li[^>]*>',
+    caseSensitive: false,
+  );
+  static final RegExp _htmlTagPattern = RegExp(r'<[^>]+>');
+  static final RegExp _spaceBeforeLineBreakPattern = RegExp(r'[ \t]+\n');
+  static final RegExp _spaceAfterLineBreakPattern = RegExp(r'\n[ \t]+');
+  static final RegExp _multiSpacePattern = RegExp(r'[ \t]{2,}');
+  static final RegExp _multiLineBreakPattern = RegExp(r'\n{3,}');
+  static final Map<String, RegExp> _mediaPairPatterns = <String, RegExp>{
+    'iframe': RegExp(
+      r'<iframe\b([^>]*)>([\s\S]*?)</iframe>',
+      caseSensitive: false,
+    ),
+    'video': RegExp(
+      r'<video\b([^>]*)>([\s\S]*?)</video>',
+      caseSensitive: false,
+    ),
+  };
+  static final Map<String, RegExp> _mediaSelfClosingPatterns =
+      <String, RegExp>{
+    'iframe': RegExp(r'<iframe\b([^>]*)/?>', caseSensitive: false),
+    'video': RegExp(r'<video\b([^>]*)/?>', caseSensitive: false),
+  };
+  static final RegExp _lazyMediaPattern = RegExp(
+    r'<(img|source)\b([^>]*)>',
+    caseSensitive: false,
+  );
+  static final RegExp _nestedVideoSourcePattern = RegExp(
+    r"""<source\b[^>]*\bsrc\s*=\s*["']([^"']+)["']""",
+    caseSensitive: false,
+  );
+  static final RegExp _htmlAssetUrlPattern = RegExp(
+    r'''(src|href|poster)\s*=\s*["']([^"']+)["']''',
+    caseSensitive: false,
+  );
+  static final Map<String, RegExp> _attributePatterns = <String, RegExp>{};
+  static final Map<String, RegExp> _booleanAttributePatterns =
+      <String, RegExp>{};
+
+  static RegExp _attributePatternFor(String name) {
+    return _attributePatterns.putIfAbsent(
+      name,
+      () => RegExp(
+        '${RegExp.escape(name)}\\s*=\\s*["\']([^"\']*)["\']',
+        caseSensitive: false,
+      ),
+    );
+  }
+
+  static RegExp _booleanAttributePatternFor(String name) {
+    return _booleanAttributePatterns.putIfAbsent(
+      name,
+      () => RegExp(
+        '(?:^|\\s)${RegExp.escape(name)}(?:\\s|\$)',
+        caseSensitive: false,
+      ),
+    );
+  }
+
   Future<ParsedFeedResult> fetchFeed(String rawUrl) async {
     final Uri uri = _normalizeUri(rawUrl);
     final _FetchedResponse response = await _fetchResponse(uri);
@@ -513,18 +614,14 @@ class RssService {
     if (contentTypeHeader == null || contentTypeHeader.isEmpty) {
       return null;
     }
-    final RegExpMatch? match =
-        RegExp(r'''charset\s*=\s*["']?([^;"'\s]+)''', caseSensitive: false)
-            .firstMatch(contentTypeHeader);
+    final RegExpMatch? match = _charsetPattern.firstMatch(contentTypeHeader);
     return match == null ? null : _normalizeEncodingName(match.group(1)!);
   }
 
   String? _xmlDeclaredEncoding(List<int> bytes) {
     final int sampleLength = bytes.length > 256 ? 256 : bytes.length;
     final String sample = latin1.decode(bytes.take(sampleLength).toList());
-    final RegExpMatch? match =
-        RegExp(r'''encoding\s*=\s*["']([^"']+)["']''', caseSensitive: false)
-            .firstMatch(sample);
+    final RegExpMatch? match = _xmlEncodingPattern.firstMatch(sample);
     return match == null ? null : _normalizeEncodingName(match.group(1)!);
   }
 
@@ -689,15 +786,9 @@ class RssService {
 
     String html = raw.trim();
     html = html
-        .replaceAll(RegExp(r'<!--[\s\S]*?-->'), '')
-        .replaceAll(
-          RegExp(r'<script[\s\S]*?</script>', caseSensitive: false),
-          '',
-        )
-        .replaceAll(
-          RegExp(r'<style[\s\S]*?</style>', caseSensitive: false),
-          '',
-        );
+        .replaceAll(_htmlCommentPattern, '')
+        .replaceAll(_scriptPattern, '')
+        .replaceAll(_stylePattern, '');
 
     // Normalize lazy media markup before further HTML rewriting so the reader
     // can handle common blog-engine patterns consistently.
@@ -715,34 +806,37 @@ class RssService {
     }
 
     final String normalized = rawHtml
-        .replaceAll(RegExp(r'<br\s*/?>', caseSensitive: false), '\n')
-        .replaceAll(RegExp(r'</p\s*>', caseSensitive: false), '\n\n')
-        .replaceAll(RegExp(r'</div\s*>', caseSensitive: false), '\n\n')
-        .replaceAll(RegExp(r'</h[1-6]\s*>', caseSensitive: false), '\n\n')
-        .replaceAll(RegExp(r'</blockquote\s*>', caseSensitive: false), '\n\n')
-        .replaceAll(RegExp(r'</li\s*>', caseSensitive: false), '\n')
-        .replaceAll(RegExp(r'<li[^>]*>', caseSensitive: false), '• ')
-        .replaceAll(RegExp(r'<[^>]+>'), ' ');
+        .replaceAll(_brPattern, '\n')
+        .replaceAll(_paragraphClosePattern, '\n\n')
+        .replaceAll(_divClosePattern, '\n\n')
+        .replaceAll(_headingClosePattern, '\n\n')
+        .replaceAll(_blockquoteClosePattern, '\n\n')
+        .replaceAll(_listItemClosePattern, '\n')
+        .replaceAll(_listItemOpenPattern, '• ')
+        .replaceAll(_htmlTagPattern, ' ');
 
     final String withoutEntities = _decodeBasicHtmlEntities(normalized)
-        .replaceAll(RegExp(r'[ \t]+\n'), '\n')
-        .replaceAll(RegExp(r'\n[ \t]+'), '\n')
-        .replaceAll(RegExp(r'[ \t]{2,}'), ' ')
-        .replaceAll(RegExp(r'\n{3,}'), '\n\n')
+        .replaceAll(_spaceBeforeLineBreakPattern, '\n')
+        .replaceAll(_spaceAfterLineBreakPattern, '\n')
+        .replaceAll(_multiSpacePattern, ' ')
+        .replaceAll(_multiLineBreakPattern, '\n\n')
         .trim();
 
     return withoutEntities.isEmpty ? null : withoutEntities;
   }
 
   String _replaceMediaEmbedWithLink(String html, {required String tagName}) {
-    final RegExp pair = RegExp(
-      '<$tagName\\b([^>]*)>([\\s\\S]*?)</$tagName>',
-      caseSensitive: false,
-    );
-    final RegExp selfClosing = RegExp(
-      '<$tagName\\b([^>]*)/?>',
-      caseSensitive: false,
-    );
+    final String normalizedTagName = tagName.toLowerCase();
+    final RegExp pair = _mediaPairPatterns[normalizedTagName] ??
+        RegExp(
+          '<$tagName\\b([^>]*)>([\\s\\S]*?)</$tagName>',
+          caseSensitive: false,
+        );
+    final RegExp selfClosing = _mediaSelfClosingPatterns[normalizedTagName] ??
+        RegExp(
+          '<$tagName\\b([^>]*)/?>',
+          caseSensitive: false,
+        );
 
     String replaceMatch(Match match) {
       final String attrs = match.group(1) ?? '';
@@ -772,7 +866,7 @@ class RssService {
 
   String _normalizeLazyMediaAttributes(String html) {
     return html.replaceAllMapped(
-      RegExp(r'<(img|source)\b([^>]*)>', caseSensitive: false),
+      _lazyMediaPattern,
       (Match match) {
         final String tagName = match.group(1) ?? '';
         String attributes = match.group(2) ?? '';
@@ -824,10 +918,8 @@ class RssService {
     }
 
     if (tagName.toLowerCase() == 'video') {
-      final RegExpMatch? nestedSource = RegExp(
-        r"""<source\b[^>]*\bsrc\s*=\s*["']([^"']+)["']""",
-        caseSensitive: false,
-      ).firstMatch(innerHtml);
+      final RegExpMatch? nestedSource =
+          _nestedVideoSourcePattern.firstMatch(innerHtml);
       if (nestedSource != null) {
         return nestedSource.group(1);
       }
@@ -839,10 +931,7 @@ class RssService {
   String _resolveHtmlAssetUrls(String html, {required String baseUrl}) {
     final Uri base = Uri.parse(baseUrl);
     return html.replaceAllMapped(
-      RegExp(
-        r'''(src|href|poster)\s*=\s*["']([^"']+)["']''',
-        caseSensitive: false,
-      ),
+      _htmlAssetUrlPattern,
       (Match match) {
         final String attribute = match.group(1)!;
         final String rawValue = match.group(2)!;
@@ -859,10 +948,8 @@ class RssService {
   }
 
   String? _attributeValue(String attributes, String name) {
-    final RegExpMatch? match = RegExp(
-      '$name\\s*=\\s*["\']([^"\']+)["\']',
-      caseSensitive: false,
-    ).firstMatch(attributes);
+    final RegExpMatch? match =
+        _attributePatternFor(name).firstMatch(attributes);
     return match?.group(1);
   }
 
@@ -877,10 +964,7 @@ class RssService {
   }
 
   String _upsertAttribute(String attributes, String name, String value) {
-    final RegExp pattern = RegExp(
-      '$name\\s*=\\s*["\'][^"\']*["\']',
-      caseSensitive: false,
-    );
+    final RegExp pattern = _attributePatternFor(name);
     if (pattern.hasMatch(attributes)) {
       return attributes.replaceFirst(pattern, '$name="$value"');
     }
@@ -889,10 +973,7 @@ class RssService {
 
   String _removeBooleanAttribute(String attributes, String name) {
     return attributes.replaceAll(
-      RegExp(
-        '(?:^|\\s)${RegExp.escape(name)}(?:\\s|\$)',
-        caseSensitive: false,
-      ),
+      _booleanAttributePatternFor(name),
       ' ',
     );
   }

@@ -97,6 +97,8 @@ class ReaderPalette extends ThemeExtension<ReaderPalette> {
 }
 
 class AppTheme {
+  static final Map<String, ThemeData> _themeCache = <String, ThemeData>{};
+
   static const List<String> themeIds = <String>[
     'warm_default',
     'deep_default',
@@ -135,19 +137,21 @@ class AppTheme {
   }
 
   static ThemeData themeFor(String id) {
-    switch (id) {
-      case 'deep_default':
-        return _buildDeepTheme();
-      case 'neutral_minimal':
-        return _buildNeutralTheme();
-      case 'wechat_green':
-        return _buildWechatGreenTheme();
-      case 'ink_black_white':
-        return _buildInkBlackWhiteTheme();
-      case 'warm_default':
-      default:
-        return _buildWarmTheme();
-    }
+    return _themeCache.putIfAbsent(id, () {
+      switch (id) {
+        case 'deep_default':
+          return _buildDeepTheme();
+        case 'neutral_minimal':
+          return _buildNeutralTheme();
+        case 'wechat_green':
+          return _buildWechatGreenTheme();
+        case 'ink_black_white':
+          return _buildInkBlackWhiteTheme();
+        case 'warm_default':
+        default:
+          return _buildWarmTheme();
+      }
+    });
   }
 
   static ReaderPalette paletteOf(BuildContext context) {
