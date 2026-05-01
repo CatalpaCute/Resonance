@@ -7,7 +7,6 @@ import '../../models/article.dart';
 import '../../models/reader_settings.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
-import 'glass_card.dart';
 
 class ArticleReaderPanel extends StatelessWidget {
   const ArticleReaderPanel({
@@ -157,15 +156,7 @@ class ArticleReaderPanel extends StatelessWidget {
             ),
     );
 
-    if (!compact) {
-      return content;
-    }
-
-    return GlassCard(
-      padding: EdgeInsets.zero,
-      radius: 14,
-      child: content,
-    );
+    return content;
   }
 
   Future<void> _openOriginal(String rawUrl) async {

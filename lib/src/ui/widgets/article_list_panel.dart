@@ -6,7 +6,6 @@ import '../../models/article.dart';
 import '../../models/reader_settings.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
-import 'glass_card.dart';
 
 class ArticleListPanel extends StatelessWidget {
   const ArticleListPanel({
@@ -181,19 +180,7 @@ class ArticleListPanel extends StatelessWidget {
       ),
     );
 
-    if (!compact) {
-      return content;
-    }
-
-    if (compactMobileListRoute) {
-      return content;
-    }
-
-    return GlassCard(
-      padding: EdgeInsets.zero,
-      radius: 14,
-      child: content,
-    );
+    return content;
   }
 }
 
