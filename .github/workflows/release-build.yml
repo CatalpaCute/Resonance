@@ -76,24 +76,59 @@ jobs:
           fi
           echo "value=$app_version" >> "$GITHUB_OUTPUT"
 
-      - name: Build Android APK
-        run: flutter build apk --release
+      - name: Build Android APKs
+        run: flutter build apk --release --split-per-abi
 
-      - name: Rename Android artifact
+      - name: Package Android artifacts
         shell: bash
         run: |
-          artifact_name="Resonance-android-${{ steps.app_version.outputs.value }}-${{ github.event.release.tag_name }}.apk"
-          cp build/app/outputs/flutter-apk/app-release.apk "$artifact_name"
-          echo "ANDROID_ARTIFACT_NAME=$artifact_name" >> "$GITHUB_ENV"
+          set -euo pipefail
+
+          artifact_base="Resonance-android-${{ steps.app_version.outputs.value }}-${{ github.event.release.tag_name }}"
+
+          universal_artifact="${artifact_base}-universal.apk"
+          arm64_artifact="${artifact_base}-arm64-v8a.apk"
+          armv7_artifact="${artifact_base}-armeabi-v7a.apk"
+          x64_artifact="${artifact_base}-x86_64.apk"
+
+          flutter build apk --release
+
+          cp build/app/outputs/flutter-apk/app-release.apk "$universal_artifact"
+          cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "$arm64_artifact"
+          cp build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk "$armv7_artifact"
+          cp build/app/outputs/flutter-apk/app-x86_64-release.apk "$x64_artifact"
+
+          {
+            echo "ANDROID_ARTIFACT_UNIVERSAL=$universal_artifact"
+            echo "ANDROID_ARTIFACT_ARM64=$arm64_artifact"
+            echo "ANDROID_ARTIFACT_ARMV7=$armv7_artifact"
+            echo "ANDROID_ARTIFACT_X64=$x64_artifact"
+          } >> "$GITHUB_ENV"
 
       - name: Upload Android artifact to release
         uses: softprops/action-gh-release@v2
         with:
-          files: ${{ env.ANDROID_ARTIFACT_NAME }}
+          files: |
+            ${{ env.ANDROID_ARTIFACT_UNIVERSAL }}
+            ${{ env.ANDROID_ARTIFACT_ARM64 }}
+            ${{ env.ANDROID_ARTIFACT_ARMV7 }}
+            ${{ env.ANDROID_ARTIFACT_X64 }}
 
   build-linux:
-    name: Build Linux Package
-    runs-on: ubuntu-latest
+    name: Build Linux Package (${{ matrix.label }})
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: x64
+            runs_on: ubuntu-latest
+            build_dir: x64
+            artifact_suffix: x64
+          - label: arm64
+            runs_on: ubuntu-24.04-arm
+            build_dir: arm64
+            artifact_suffix: arm64
 
     steps:
       - name: Checkout
@@ -132,12 +167,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          artifact_base="Resonance-linux-${{ steps.app_version.outputs.value }}-${{ github.event.release.tag_name }}"
+          artifact_base="Resonance-linux-${{ steps.app_version.outputs.value }}-${{ github.event.release.tag_name }}-${{ matrix.artifact_suffix }}"
           package_dir="$RUNNER_TEMP/$artifact_base"
           package_path="$RUNNER_TEMP/${artifact_base}.zip"
 
           mkdir -p "$package_dir"
-          cp -R build/linux/x64/release/bundle/. "$package_dir/"
+          cp -R build/linux/${{ matrix.build_dir }}/release/bundle/. "$package_dir/"
 
           cd "$RUNNER_TEMP"
           zip -r "$package_path" "$artifact_base"
@@ -149,8 +184,20 @@ jobs:
           files: ${{ env.LINUX_ARTIFACT_NAME }}
 
   build-windows:
-    name: Build Windows Package
-    runs-on: windows-latest
+    name: Build Windows Package (${{ matrix.label }})
+    runs-on: ${{ matrix.runs_on }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - label: x64
+            runs_on: windows-latest
+            build_dir: x64
+            artifact_suffix: x64
+          - label: arm64
+            runs_on: windows-11-arm
+            build_dir: arm64
+            artifact_suffix: arm64
 
     steps:
       - name: Checkout
@@ -184,11 +231,11 @@ jobs:
         run: |
           $tag = "${{ github.event.release.tag_name }}"
           $appVersion = "${{ steps.app_version.outputs.value }}"
-          $packageName = "Resonance-windows-$appVersion-$tag"
+          $packageName = "Resonance-windows-$appVersion-$tag-${{ matrix.artifact_suffix }}"
           $packageDir = Join-Path $env:RUNNER_TEMP $packageName
 
           New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
-          Copy-Item -Path "build\windows\x64\runner\Release\*" -Destination $packageDir -Recurse -Force
+          Copy-Item -Path "build\windows\${{ matrix.build_dir }}\runner\Release\*" -Destination $packageDir -Recurse -Force
 
           Compress-Archive -Path $packageDir -DestinationPath "$packageName.zip" -Force
           "WINDOWS_ARTIFACT_NAME=$packageName.zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
