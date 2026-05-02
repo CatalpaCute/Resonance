@@ -160,7 +160,7 @@ class _MobileArticleReaderState extends State<_MobileArticleReader> {
                           ?.copyWith(
                             fontSize: 30,
                             height: 1.16,
-                            fontWeight: FontWeight.w800,
+                            fontWeight: FontWeight.w700,
                             letterSpacing: 0,
                           ),
                     ),

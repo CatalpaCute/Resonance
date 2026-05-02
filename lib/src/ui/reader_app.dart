@@ -1098,7 +1098,7 @@ class _MobileHeaderTitle extends StatelessWidget {
                 style: mobileRestyled
                     ? Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontSize: 20,
-                          fontWeight: FontWeight.w700,
+                          fontWeight: FontWeight.w600,
                           height: 1.12,
                         )
                     : Theme.of(context).textTheme.titleMedium,
@@ -1158,7 +1158,7 @@ class _MobileReaderHeaderTitle extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontSize: mobileRestyled ? 18 : null,
-                      fontWeight: FontWeight.w700,
+                      fontWeight: FontWeight.w600,
                       height: 1.08,
                     ),
               ),
