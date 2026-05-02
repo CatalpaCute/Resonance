@@ -287,26 +287,46 @@ class AppTheme {
   }
 
   static ThemeData _buildInkBlackWhiteTheme() {
-    const Color primary = Color(0xFF000000);
-    final ColorScheme scheme = ColorScheme.fromSeed(
-      seedColor: primary,
+    const ColorScheme scheme = ColorScheme(
       brightness: Brightness.light,
-      primary: primary,
+      primary: Colors.black,
       onPrimary: Colors.white,
-      surface: Colors.white,
-    ).copyWith(
       secondary: Colors.black,
       onSecondary: Colors.white,
       tertiary: Colors.black,
       onTertiary: Colors.white,
       primaryContainer: const Color(0xFFC2C2C2),
       onPrimaryContainer: Colors.black,
+      primaryFixed: const Color(0xFFD9D9D9),
+      primaryFixedDim: const Color(0xFFC2C2C2),
+      onPrimaryFixed: Colors.black,
+      onPrimaryFixedVariant: Colors.black,
       secondaryContainer: const Color(0xFFD9D9D9),
       onSecondaryContainer: Colors.black,
+      secondaryFixed: const Color(0xFFD9D9D9),
+      secondaryFixedDim: const Color(0xFFC2C2C2),
+      onSecondaryFixed: Colors.black,
+      onSecondaryFixedVariant: Colors.black,
       tertiaryContainer: const Color(0xFFE0E0E0),
       onTertiaryContainer: Colors.black,
+      tertiaryFixed: const Color(0xFFD9D9D9),
+      tertiaryFixedDim: const Color(0xFFC2C2C2),
+      onTertiaryFixed: Colors.black,
+      onTertiaryFixedVariant: Colors.black,
+      surface: Colors.white,
+      onSurface: Colors.black,
+      surfaceDim: const Color(0xFFE0E0E0),
+      surfaceBright: Colors.white,
+      surfaceContainerLowest: Colors.white,
+      surfaceContainerLow: Colors.white,
+      surfaceContainer: Colors.white,
+      surfaceContainerHigh: const Color(0xFFF2F2F2),
+      surfaceContainerHighest: const Color(0xFFE0E0E0),
+      onSurfaceVariant: Colors.black,
       outline: const Color(0xFF5F5F5F),
       outlineVariant: const Color(0xFF8A8A8A),
+      shadow: Colors.transparent,
+      scrim: Colors.black,
       inverseSurface: Colors.black,
       onInverseSurface: Colors.white,
       inversePrimary: Colors.white,
@@ -352,6 +372,14 @@ class AppTheme {
       textTheme: _baseTextTheme(bodyColor),
       extensions: <ThemeExtension<dynamic>>[palette],
       dividerColor: palette.divider,
+      dialogTheme: DialogThemeData(
+        backgroundColor: palette.panelBackground,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: palette.border),
+        ),
+      ),
       cardTheme: CardThemeData(
         color: palette.panelBackground,
         elevation: 0,
@@ -395,6 +423,46 @@ class AppTheme {
           side: BorderSide(color: palette.border),
           padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
+          if (states.contains(WidgetState.disabled)) {
+            return palette.tertiaryText;
+          }
+          if (states.contains(WidgetState.selected)) {
+            return scheme.onPrimary;
+          }
+          return palette.panelBackground;
+        }),
+        trackColor: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
+          if (states.contains(WidgetState.disabled)) {
+            return palette.panelMutedBackground;
+          }
+          if (states.contains(WidgetState.selected)) {
+            return scheme.primary;
+          }
+          return palette.panelMutedBackground;
+        }),
+        trackOutlineColor: WidgetStateProperty.all(palette.border),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor:
+              WidgetStateProperty.resolveWith((Set<WidgetState> states) {
+            if (states.contains(WidgetState.selected)) {
+              return palette.primarySoft;
+            }
+            return palette.panelBackground;
+          }),
+          foregroundColor:
+              WidgetStateProperty.resolveWith((Set<WidgetState> states) {
+            if (states.contains(WidgetState.selected)) {
+              return bodyColor;
+            }
+            return bodyColor;
+          }),
+          side: WidgetStateProperty.all(BorderSide(color: palette.border)),
         ),
       ),
       chipTheme: ChipThemeData(

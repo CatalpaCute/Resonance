@@ -48,7 +48,32 @@ void main() {
       expect(theme.colorScheme.primaryContainer, const Color(0xFFC2C2C2));
       expect(theme.colorScheme.secondaryContainer, const Color(0xFFD9D9D9));
       expect(theme.colorScheme.tertiaryContainer, const Color(0xFFE0E0E0));
+      expect(theme.colorScheme.primaryFixed, const Color(0xFFD9D9D9));
+      expect(theme.colorScheme.secondaryFixed, const Color(0xFFD9D9D9));
+      expect(theme.colorScheme.tertiaryFixed, const Color(0xFFD9D9D9));
+      expect(theme.colorScheme.surfaceContainerLowest, Colors.white);
+      expect(theme.colorScheme.surfaceContainerLow, Colors.white);
+      expect(theme.colorScheme.surfaceContainer, Colors.white);
+      expect(theme.colorScheme.surfaceContainerHigh, const Color(0xFFF2F2F2));
+      expect(
+        theme.colorScheme.surfaceContainerHighest,
+        const Color(0xFFE0E0E0),
+      );
+      expect(theme.colorScheme.surfaceTint, Colors.transparent);
       expect(theme.scaffoldBackgroundColor, Colors.white);
+      expect(theme.dialogTheme.backgroundColor, Colors.white);
+      expect(theme.dialogTheme.surfaceTintColor, Colors.transparent);
+      expect(
+        theme.switchTheme.trackColor?.resolve(<WidgetState>{
+          WidgetState.selected,
+        }),
+        Colors.black,
+      );
+      expect(
+        theme.segmentedButtonTheme.style?.backgroundColor
+            ?.resolve(<WidgetState>{WidgetState.selected}),
+        const Color(0xFFC2C2C2),
+      );
       expect(palette, isNotNull);
       expect(palette!.shellBackground, Colors.white);
       expect(palette.chromeBackground, Colors.white);
