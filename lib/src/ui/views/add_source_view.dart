@@ -317,10 +317,6 @@ class _AddSourceViewState extends State<AddSourceView> {
           },
         );
         if (result != null) {
-          if (result.notificationEnabled && !feed.notificationEnabled) {
-            await SubscriptionNotificationService.instance
-                .ensureNotificationPermissionRequested();
-          }
           await widget.controller.updateFeed(
             original: feed,
             url: result.url,
@@ -329,6 +325,17 @@ class _AddSourceViewState extends State<AddSourceView> {
             notificationEnabled: result.notificationEnabled,
             autoRefreshIntervalMinutes: result.autoRefreshIntervalMinutes,
           );
+          if (mounted &&
+              widget.controller.errorMessage == null &&
+              result.notificationEnabled &&
+              !feed.notificationEnabled) {
+            try {
+              await SubscriptionNotificationService.instance
+                  .ensureNotificationPermissionRequested();
+            } catch (_) {
+              // 权限申请失败不应回滚本次保存，后续仍可通过系统设置手动开启通知。
+            }
+          }
         }
         return;
       case 'delete':

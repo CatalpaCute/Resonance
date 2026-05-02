@@ -8,9 +8,11 @@ import '../localization/app_language.dart';
 import '../localization/app_strings.dart';
 import '../models/app_route.dart';
 import '../models/article.dart';
+import '../models/feed_source.dart';
 import '../models/reader_settings.dart';
 import '../state/reader_controller.dart';
 import '../theme/app_theme.dart';
+import '../utils/global_search.dart';
 import 'views/add_source_view.dart';
 import 'views/settings_view.dart';
 import 'widgets/article_list_panel.dart';
@@ -107,9 +109,6 @@ class ReaderHome extends StatefulWidget {
 class _ReaderHomeState extends State<ReaderHome> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final ScrollController _compactHomeListController = ScrollController();
-  final FocusNode _desktopSearchFocusNode = FocusNode();
-  final TextEditingController _desktopSearchController =
-      TextEditingController();
 
   bool _compactFilterExpanded = false;
   bool _compactRailCollapsed = true;
@@ -141,8 +140,6 @@ class _ReaderHomeState extends State<ReaderHome> {
   void dispose() {
     controller.removeListener(_handleControllerChanged);
     _compactHomeListController.dispose();
-    _desktopSearchFocusNode.dispose();
-    _desktopSearchController.dispose();
     super.dispose();
   }
 
@@ -204,7 +201,7 @@ class _ReaderHomeState extends State<ReaderHome> {
                     _FocusSearchIntent: CallbackAction<_FocusSearchIntent>(
                       onInvoke: (_FocusSearchIntent intent) {
                         if (!compact) {
-                          _desktopSearchFocusNode.requestFocus();
+                          _showDesktopSearch(context);
                         }
                         return null;
                       },
@@ -225,8 +222,8 @@ class _ReaderHomeState extends State<ReaderHome> {
                               controller: controller,
                               compact: compact,
                               mobileRestyled: usePortraitMobileHome,
-                              searchFocusNode: _desktopSearchFocusNode,
-                              searchController: _desktopSearchController,
+                              onSearchPressed: () =>
+                                  _showDesktopSearch(context),
                               topInset: topInset,
                               sidebarCollapsed: compact
                                   ? _compactRailCollapsed
@@ -400,6 +397,16 @@ class _ReaderHomeState extends State<ReaderHome> {
       case MobileSidebarMode.adaptive:
         return width < 720;
     }
+  }
+
+  Future<void> _showDesktopSearch(BuildContext context) async {
+    await showDialog<void>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.10),
+      builder: (BuildContext dialogContext) {
+        return _DesktopSearchDialog(controller: controller);
+      },
+    );
   }
 
   bool _usePortraitMobileHome(
@@ -771,8 +778,7 @@ class _ShellHeader extends StatelessWidget {
     required this.controller,
     required this.compact,
     required this.mobileRestyled,
-    required this.searchFocusNode,
-    required this.searchController,
+    required this.onSearchPressed,
     required this.topInset,
     required this.sidebarCollapsed,
     required this.showSidebarToggle,
@@ -784,8 +790,7 @@ class _ShellHeader extends StatelessWidget {
   final ReaderController controller;
   final bool compact;
   final bool mobileRestyled;
-  final FocusNode searchFocusNode;
-  final TextEditingController searchController;
+  final VoidCallback onSearchPressed;
   final double topInset;
   final bool sidebarCollapsed;
   final bool showSidebarToggle;
@@ -916,10 +921,8 @@ class _ShellHeader extends StatelessWidget {
                         ),
                       ),
                       _DesktopSearchField(
-                        controller: searchController,
-                        focusNode: searchFocusNode,
                         hintText: strings.searchArticlesOrSources,
-                        shortcutText: strings.keyboardShortcutCtrlK,
+                        onPressed: onSearchPressed,
                       ),
                     ],
                   ),
@@ -991,16 +994,12 @@ class _BrandMark extends StatelessWidget {
 
 class _DesktopSearchField extends StatelessWidget {
   const _DesktopSearchField({
-    required this.controller,
-    required this.focusNode,
     required this.hintText,
-    required this.shortcutText,
+    required this.onPressed,
   });
 
-  final TextEditingController controller;
-  final FocusNode focusNode;
   final String hintText;
-  final String shortcutText;
+  final VoidCallback onPressed;
 
   @override
   Widget build(BuildContext context) {
@@ -1012,61 +1011,208 @@ class _DesktopSearchField extends StatelessWidget {
         maxWidth: 420,
         minWidth: 280,
       ),
-      child: SizedBox(
-        height: 32,
-        child: TextField(
-          controller: controller,
-          focusNode: focusNode,
-          textInputAction: TextInputAction.search,
-          style: theme.textTheme.bodySmall,
-          decoration: InputDecoration(
-            isDense: true,
-            filled: true,
-            fillColor: palette.panelBackground,
-            hintText: hintText,
-            hintStyle: theme.textTheme.bodySmall?.copyWith(
-              color: palette.tertiaryText,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(8),
+          onTap: onPressed,
+          child: Container(
+            height: 32,
+            padding: const EdgeInsets.fromLTRB(9, 0, 8, 0),
+            decoration: BoxDecoration(
+              color: palette.panelBackground,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: palette.border),
             ),
-            prefixIcon: Icon(
-              Icons.search_rounded,
-              size: 17,
-              color: palette.tertiaryText,
-            ),
-            prefixIconConstraints: const BoxConstraints(
-              minWidth: 34,
-              minHeight: 32,
-            ),
-            suffixIcon: Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Center(
-                widthFactor: 1,
-                child: Text(
-                  shortcutText,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: palette.tertiaryText,
-                    fontWeight: FontWeight.w600,
+            child: Row(
+              children: <Widget>[
+                Icon(
+                  Icons.search_rounded,
+                  size: 17,
+                  color: palette.tertiaryText,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    hintText,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: palette.tertiaryText,
+                    ),
                   ),
                 ),
-              ),
+                const SizedBox(width: 8),
+                const _Keycap(label: 'Ctrl'),
+                const SizedBox(width: 4),
+                const _Keycap(label: 'K'),
+              ],
             ),
-            suffixIconConstraints: const BoxConstraints(
-              minWidth: 58,
-              minHeight: 32,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Keycap extends StatelessWidget {
+  const _Keycap({
+    required this.label,
+  });
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Container(
+      height: 23,
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        color: palette.panelMutedBackground.withValues(alpha: 0.62),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: palette.border.withValues(alpha: 0.72)),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: palette.secondaryText,
+              fontWeight: FontWeight.w600,
+              height: 1,
             ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: palette.border),
+      ),
+    );
+  }
+}
+
+class _DesktopSearchDialog extends StatefulWidget {
+  const _DesktopSearchDialog({
+    required this.controller,
+  });
+
+  final ReaderController controller;
+
+  @override
+  State<_DesktopSearchDialog> createState() => _DesktopSearchDialogState();
+}
+
+class _DesktopSearchDialogState extends State<_DesktopSearchDialog> {
+  final TextEditingController _queryController = TextEditingController();
+  final FocusNode _queryFocusNode = FocusNode();
+  int _selectedIndex = -1;
+
+  @override
+  void initState() {
+    super.initState();
+    _queryController.addListener(_handleQueryChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _queryFocusNode.requestFocus();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _queryController.removeListener(_handleQueryChanged);
+    _queryController.dispose();
+    _queryFocusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final GlobalSearchResultSet results = _searchResults;
+    final int itemCount = results.itemCount;
+
+    return Shortcuts(
+      shortcuts: const <ShortcutActivator, Intent>{
+        SingleActivator(LogicalKeyboardKey.escape): _CloseSearchIntent(),
+        SingleActivator(LogicalKeyboardKey.arrowDown): _MoveSearchIntent(1),
+        SingleActivator(LogicalKeyboardKey.arrowUp): _MoveSearchIntent(-1),
+        SingleActivator(LogicalKeyboardKey.enter): _OpenSearchIntent(),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          _CloseSearchIntent: CallbackAction<_CloseSearchIntent>(
+            onInvoke: (_) {
+              Navigator.of(context).pop();
+              return null;
+            },
+          ),
+          _MoveSearchIntent: CallbackAction<_MoveSearchIntent>(
+            onInvoke: (_MoveSearchIntent intent) {
+              _moveSelection(intent.delta, itemCount);
+              return null;
+            },
+          ),
+          _OpenSearchIntent: CallbackAction<_OpenSearchIntent>(
+            onInvoke: (_) {
+              _openSelected(results);
+              return null;
+            },
+          ),
+        },
+        child: Focus(
+          autofocus: true,
+          child: Dialog(
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 28,
+              vertical: 28,
             ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(color: palette.border),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: BorderSide(
-                color: theme.colorScheme.primary.withValues(alpha: 0.45),
+            elevation: 0,
+            backgroundColor: Colors.transparent,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 760),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  _DesktopSearchDialogField(
+                    controller: _queryController,
+                    focusNode: _queryFocusNode,
+                    onSubmitted: () => _openSelected(_searchResults),
+                  ),
+                  const SizedBox(height: 14),
+                  Material(
+                    color: palette.panelBackground,
+                    borderRadius: BorderRadius.circular(18),
+                    clipBehavior: Clip.antiAlias,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(color: palette.border),
+                        boxShadow: <BoxShadow>[
+                          BoxShadow(
+                            color: palette.shadow.withValues(alpha: 0.12),
+                            blurRadius: 24,
+                            offset: const Offset(0, 14),
+                          ),
+                        ],
+                      ),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(maxHeight: 560),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Flexible(
+                              child: _DesktopSearchResults(
+                                controller: widget.controller,
+                                results: results,
+                                selectedIndex: _selectedIndex,
+                                onSourceSelected: _openSource,
+                                onArticleSelected: _openArticle,
+                              ),
+                            ),
+                            _DesktopSearchFooter(),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -1074,6 +1220,511 @@ class _DesktopSearchField extends StatelessWidget {
       ),
     );
   }
+
+  GlobalSearchResultSet get _searchResults {
+    return searchGlobalContent(
+      feeds: widget.controller.feeds,
+      articles: widget.controller.articles,
+      query: _queryController.text,
+      sourceTitleForArticle: widget.controller.sourceTitleForArticle,
+    );
+  }
+
+  void _handleQueryChanged() {
+    final int itemCount = _searchResults.itemCount;
+    setState(() {
+      _selectedIndex = itemCount == 0 ? -1 : 0;
+    });
+  }
+
+  void _moveSelection(int delta, int itemCount) {
+    if (itemCount == 0) {
+      return;
+    }
+    setState(() {
+      if (_selectedIndex < 0) {
+        _selectedIndex = 0;
+        return;
+      }
+      _selectedIndex = (_selectedIndex + delta) % itemCount;
+      if (_selectedIndex < 0) {
+        _selectedIndex += itemCount;
+      }
+    });
+  }
+
+  void _openSelected(GlobalSearchResultSet results) {
+    if (_selectedIndex < 0) {
+      return;
+    }
+    if (results.sourceResult != null && _selectedIndex == 0) {
+      _openSource(results.sourceResult!.source);
+      return;
+    }
+    final int articleIndex =
+        _selectedIndex - (results.sourceResult == null ? 0 : 1);
+    if (articleIndex >= 0 && articleIndex < results.articleResults.length) {
+      _openArticle(results.articleResults[articleIndex].article);
+    }
+  }
+
+  void _openSource(FeedSource source) {
+    Navigator.of(context).pop();
+    widget.controller.selectSource(source, enterSourceDetail: true);
+  }
+
+  void _openArticle(Article article) {
+    Navigator.of(context).pop();
+    widget.controller.setCurrentRoute(AppRouteId.allArticles);
+    widget.controller.selectArticle(
+      article,
+      openInReaderRoute: widget.controller.settings.desktopWorkspaceMode ==
+          DesktopWorkspaceMode.focusedReader,
+    );
+  }
+}
+
+class _CloseSearchIntent extends Intent {
+  const _CloseSearchIntent();
+}
+
+class _OpenSearchIntent extends Intent {
+  const _OpenSearchIntent();
+}
+
+class _MoveSearchIntent extends Intent {
+  const _MoveSearchIntent(this.delta);
+
+  final int delta;
+}
+
+class _DesktopSearchDialogField extends StatelessWidget {
+  const _DesktopSearchDialogField({
+    required this.controller,
+    required this.focusNode,
+    required this.onSubmitted,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final VoidCallback onSubmitted;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final AppStrings strings = context.strings;
+    final ThemeData theme = Theme.of(context);
+
+    return Material(
+      color: palette.panelBackground,
+      borderRadius: BorderRadius.circular(18),
+      child: TextField(
+        controller: controller,
+        focusNode: focusNode,
+        textInputAction: TextInputAction.search,
+        onSubmitted: (_) => onSubmitted(),
+        style: theme.textTheme.headlineSmall?.copyWith(
+          fontWeight: FontWeight.w500,
+          height: 1.1,
+        ),
+        decoration: InputDecoration(
+          hintText: strings.searchArticlesOrSources,
+          hintStyle: theme.textTheme.headlineSmall?.copyWith(
+            color: palette.tertiaryText,
+            fontWeight: FontWeight.w500,
+            height: 1.1,
+          ),
+          prefixIcon: Icon(
+            Icons.search_rounded,
+            size: 34,
+            color: palette.secondaryText,
+          ),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 72,
+            minHeight: 72,
+          ),
+          contentPadding: const EdgeInsets.fromLTRB(0, 20, 24, 20),
+          filled: true,
+          fillColor: palette.panelBackground,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: BorderSide(
+              color: theme.colorScheme.primary.withValues(alpha: 0.52),
+              width: 2,
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: BorderSide(
+              color: palette.border.withValues(alpha: 0.82),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(18),
+            borderSide: BorderSide(
+              color: theme.colorScheme.primary.withValues(alpha: 0.52),
+              width: 2,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopSearchResults extends StatelessWidget {
+  const _DesktopSearchResults({
+    required this.controller,
+    required this.results,
+    required this.selectedIndex,
+    required this.onSourceSelected,
+    required this.onArticleSelected,
+  });
+
+  final ReaderController controller;
+  final GlobalSearchResultSet results;
+  final int selectedIndex;
+  final ValueChanged<FeedSource> onSourceSelected;
+  final ValueChanged<Article> onArticleSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    if (results.isIdle || results.isEmpty) {
+      return _DesktopSearchEmptyState(
+        text: results.isIdle
+            ? context.strings.globalSearchIdleHint
+            : context.strings.globalSearchNoResults,
+      );
+    }
+
+    final List<Widget> children = <Widget>[];
+    int index = 0;
+    if (results.sourceResult != null) {
+      final FeedSource source = results.sourceResult!.source;
+      children.add(
+        _DesktopSearchSourceTile(
+          source: source,
+          articleCount: controller.articleCountForSource(source.id),
+          unreadCount: controller.unreadCountForSource(source.id),
+          selected: selectedIndex == index,
+          onTap: () => onSourceSelected(source),
+        ),
+      );
+      index += 1;
+    }
+
+    for (final GlobalSearchArticleResult result in results.articleResults) {
+      final int itemIndex = index;
+      children.add(
+        _DesktopSearchArticleTile(
+          result: result,
+          selected: selectedIndex == itemIndex,
+          onTap: () => onArticleSelected(result.article),
+        ),
+      );
+      index += 1;
+    }
+
+    return ListView(
+      shrinkWrap: true,
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
+      children: children,
+    );
+  }
+}
+
+class _DesktopSearchEmptyState extends StatelessWidget {
+  const _DesktopSearchEmptyState({
+    required this.text,
+  });
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return SizedBox(
+      height: 260,
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(
+              Icons.search_rounded,
+              size: 58,
+              color: palette.secondaryText,
+            ),
+            const SizedBox(height: 18),
+            Text(
+              text,
+              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                    color: palette.secondaryText,
+                    fontWeight: FontWeight.w500,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopSearchSourceTile extends StatelessWidget {
+  const _DesktopSearchSourceTile({
+    required this.source,
+    required this.articleCount,
+    required this.unreadCount,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final FeedSource source;
+  final int articleCount;
+  final int unreadCount;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 4, 10, 12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          decoration: BoxDecoration(
+            color: selected ? palette.hover : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Row(
+            children: <Widget>[
+              _SearchSourceAvatar(iconUrl: source.iconUrl, size: 48),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      source.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      context.strings.sourceStats(articleCount, unreadCount),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: palette.secondaryText,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: palette.secondaryText,
+                size: 26,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopSearchArticleTile extends StatelessWidget {
+  const _DesktopSearchArticleTile({
+    required this.result,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final GlobalSearchArticleResult result;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final Article article = result.article;
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          decoration: BoxDecoration(
+            color: selected ? palette.hover : palette.panelBackground,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: palette.border.withValues(alpha: 0.70)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Icon(
+                    article.isRead
+                        ? Icons.circle_outlined
+                        : Icons.circle_rounded,
+                    size: 11,
+                    color: article.isRead
+                        ? palette.tertiaryText
+                        : Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      result.sourceTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: palette.secondaryText,
+                            fontWeight: FontWeight.w600,
+                          ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    _formatSearchDate(article.publishedAt),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: palette.secondaryText,
+                        ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                article.title,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      height: 1.26,
+                    ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                article.readerText.isEmpty
+                    ? context.strings.noReadableSummary
+                    : article.readerText,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: palette.secondaryText,
+                      height: 1.45,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchSourceAvatar extends StatelessWidget {
+  const _SearchSourceAvatar({
+    required this.iconUrl,
+    required this.size,
+  });
+
+  final String? iconUrl;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: palette.primarySoft,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: iconUrl == null
+          ? Icon(
+              Icons.rss_feed_rounded,
+              color: Theme.of(context).colorScheme.primary,
+              size: size * 0.46,
+            )
+          : Image.network(
+              iconUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) {
+                return Icon(
+                  Icons.public_rounded,
+                  color: Theme.of(context).colorScheme.primary,
+                  size: size * 0.46,
+                );
+              },
+            ),
+    );
+  }
+}
+
+class _DesktopSearchFooter extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Container(
+      height: 58,
+      padding: const EdgeInsets.symmetric(horizontal: 18),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: palette.divider.withValues(alpha: 0.72)),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.end,
+        children: <Widget>[
+          const _Keycap(label: '\u2191'),
+          const SizedBox(width: 6),
+          const _Keycap(label: '\u2193'),
+          const SizedBox(width: 14),
+          Text(
+            'Navigate',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: palette.secondaryText,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+          const SizedBox(width: 22),
+          const _Keycap(label: 'ESC'),
+          const SizedBox(width: 10),
+          Text(
+            'Close',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: palette.secondaryText,
+                  fontWeight: FontWeight.w600,
+                ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+String _formatSearchDate(DateTime dateTime) {
+  final DateTime local = dateTime.toLocal();
+  final String month = local.month.toString().padLeft(2, '0');
+  final String day = local.day.toString().padLeft(2, '0');
+  final String hour = local.hour.toString().padLeft(2, '0');
+  final String minute = local.minute.toString().padLeft(2, '0');
+  return '$month-$day $hour:$minute';
 }
 
 class _MobileHeaderTitle extends StatelessWidget {

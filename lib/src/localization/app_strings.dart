@@ -350,6 +350,16 @@ class AppStrings {
         zhHant: '搜尋文章或來源',
         en: 'Search articles or sources',
       );
+  String get globalSearchIdleHint => _text(
+        zhCn: '在全部来源和文章中搜寻...',
+        zhHant: '在全部來源和文章中搜尋...',
+        en: 'Search across all sources and articles...',
+      );
+  String get globalSearchNoResults => _text(
+        zhCn: '没有找到匹配内容',
+        zhHant: '沒有找到符合的內容',
+        en: 'No matching results',
+      );
   String get keyboardShortcutCtrlK => 'Ctrl+K';
   String get autoRefreshSettings => _text(
         zhCn: '自动更新订阅',

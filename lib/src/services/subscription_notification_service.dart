@@ -1,7 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:ui';
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -132,6 +130,8 @@ class SubscriptionNotificationService with WidgetsBindingObserver {
       onDidReceiveNotificationResponse: _handleNotificationResponse,
     );
 
+    await _configurePlatformNotificationPrimitives();
+
     if (readLaunchDetails) {
       final NotificationAppLaunchDetails? launchDetails =
           await _plugin.getNotificationAppLaunchDetails();
@@ -141,6 +141,27 @@ class SubscriptionNotificationService with WidgetsBindingObserver {
     }
 
     _initialized = true;
+  }
+
+  Future<void> _configurePlatformNotificationPrimitives() async {
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      return;
+    }
+
+    final AndroidFlutterLocalNotificationsPlugin? androidPlugin = _plugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin == null) {
+      return;
+    }
+
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      _kNotificationChannelId,
+      _kNotificationChannelName,
+      description: _kNotificationChannelDescription,
+      importance: Importance.defaultImportance,
+    );
+    await androidPlugin.createNotificationChannel(channel);
   }
 
   void _attachObserverIfNeeded() {
