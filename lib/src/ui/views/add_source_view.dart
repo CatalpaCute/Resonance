@@ -2,13 +2,13 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../localization/app_strings.dart';
-import '../../models/auto_refresh.dart';
 import '../../models/feed_source.dart';
 import '../../models/reader_settings.dart';
 import '../../services/subscription_notification_service.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/auto_refresh_interval_picker.dart';
+import '../widgets/desktop_smooth_scroll.dart';
 import '../widgets/feed_editor_dialog.dart';
 import '../widgets/glass_card.dart';
 
@@ -59,7 +59,7 @@ class _AddSourceViewState extends State<AddSourceView> {
     final EdgeInsets managementPadding =
         EdgeInsets.all(flatDesktop ? 0 : (compact ? 14 : 16));
 
-    return ListView(
+    return DesktopSmoothListView(
       padding: pagePadding,
       children: <Widget>[
         GlassCard(
@@ -190,7 +190,7 @@ class _AddSourceViewState extends State<AddSourceView> {
                         constraints: BoxConstraints(
                           maxHeight: compact ? 420 : 520,
                         ),
-                        child: ReorderableListView.builder(
+                        child: DesktopSmoothReorderableListViewBuilder(
                           buildDefaultDragHandles: false,
                           itemCount: widget.controller.feeds.length,
                           onReorder: (int oldIndex, int newIndex) async {
@@ -223,8 +223,8 @@ class _AddSourceViewState extends State<AddSourceView> {
                               compact: compact,
                               count: widget.controller
                                   .articleCountForSource(feed.id),
-                              unread:
-                                  widget.controller.unreadCountForSource(feed.id),
+                              unread: widget.controller
+                                  .unreadCountForSource(feed.id),
                               autoRefreshEnabled: autoRefreshEnabled,
                               notificationEnabled: notificationEnabled,
                               autoRefreshSummary:
@@ -300,16 +300,15 @@ class _AddSourceViewState extends State<AddSourceView> {
               initialUrl: feed.url,
               initialAutoRefreshEnabled: feed.autoRefreshEnabled,
               initialNotificationEnabled: feed.notificationEnabled,
-              initialAutoRefreshIntervalMinutes: feed.autoRefreshIntervalMinutes,
+              initialAutoRefreshIntervalMinutes:
+                  feed.autoRefreshIntervalMinutes,
               lockAutoRefreshControls:
                   widget.controller.settings.autoRefreshMode ==
                       AutoRefreshMode.allOn,
               enableNotificationControls:
                   widget.controller.isFeedNotificationConfigurable(feed),
-              autoRefreshLockHint:
-                  context.strings.autoRefreshFollowGlobalHint,
-              notificationLockHint:
-                  '当前这个订阅源没有参与自动更新，所以不会自动提醒。',
+              autoRefreshLockHint: context.strings.autoRefreshFollowGlobalHint,
+              notificationLockHint: '当前这个订阅源没有参与自动更新，所以不会自动提醒。',
             );
           },
         );
@@ -380,8 +379,7 @@ class _AutoRefreshSubscriptionsPanelState
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
-    final bool useMobileWheel =
-        widget.compact &&
+    final bool useMobileWheel = widget.compact &&
         MediaQuery.orientationOf(context) == Orientation.portrait;
 
     final Widget body = _expanded
@@ -402,34 +400,32 @@ class _AutoRefreshSubscriptionsPanelState
                   },
                 ),
                 if (widget.controller.settings.autoRefreshMode ==
-                    AutoRefreshMode.allOn)
-                  ...<Widget>[
-                    const SizedBox(height: 14),
-                    Text(
-                      strings.autoRefreshGlobalInterval,
-                      style: theme.textTheme.titleSmall,
+                    AutoRefreshMode.allOn) ...<Widget>[
+                  const SizedBox(height: 14),
+                  Text(
+                    strings.autoRefreshGlobalInterval,
+                    style: theme.textTheme.titleSmall,
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    strings.autoRefreshGlobalIntervalHint,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: palette.secondaryText,
+                      height: 1.4,
                     ),
-                    const SizedBox(height: 6),
-                    Text(
-                      strings.autoRefreshGlobalIntervalHint,
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: palette.secondaryText,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    AutoRefreshIntervalPicker(
-                      selectedMinutes:
-                          widget.controller.settings
-                              .globalAutoRefreshIntervalMinutes,
-                      enabled: true,
-                      mobileWheel: useMobileWheel,
-                      onChanged: (int minutes) {
-                        widget.controller
-                            .setGlobalAutoRefreshIntervalMinutes(minutes);
-                      },
-                    ),
-                  ],
+                  ),
+                  const SizedBox(height: 10),
+                  AutoRefreshIntervalPicker(
+                    selectedMinutes: widget
+                        .controller.settings.globalAutoRefreshIntervalMinutes,
+                    enabled: true,
+                    mobileWheel: useMobileWheel,
+                    onChanged: (int minutes) {
+                      widget.controller
+                          .setGlobalAutoRefreshIntervalMinutes(minutes);
+                    },
+                  ),
+                ],
               ],
             ),
           )
@@ -673,9 +669,8 @@ class _AutoRefreshModeSlider extends StatelessWidget {
 
         AutoRefreshMode modeForDx(double dx) {
           final double clamped = dx.clamp(0, width).toDouble();
-          final int index = ((clamped - horizontalInset) / segmentWidth)
-              .floor()
-              .clamp(0, 2);
+          final int index =
+              ((clamped - horizontalInset) / segmentWidth).floor().clamp(0, 2);
           return AutoRefreshMode.values[index];
         }
 
@@ -758,8 +753,7 @@ class _FeedDragHandle extends StatelessWidget {
       ),
     );
 
-    final bool useImmediateDrag =
-        kIsWeb ||
+    final bool useImmediateDrag = kIsWeb ||
         defaultTargetPlatform == TargetPlatform.windows ||
         defaultTargetPlatform == TargetPlatform.linux ||
         defaultTargetPlatform == TargetPlatform.macOS;

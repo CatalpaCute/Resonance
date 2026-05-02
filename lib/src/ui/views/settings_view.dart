@@ -6,6 +6,7 @@ import '../../localization/app_strings.dart';
 import '../../models/reader_settings.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
+import '../widgets/desktop_smooth_scroll.dart';
 import '../widgets/glass_card.dart';
 
 class SettingsView extends StatelessWidget {
@@ -30,7 +31,7 @@ class SettingsView extends StatelessWidget {
     final EdgeInsets sectionPadding =
         EdgeInsets.all(flatDesktop ? 0 : (compact ? 16 : 18));
 
-    return ListView(
+    return DesktopSmoothListView(
       padding: pagePadding,
       children: <Widget>[
         GlassCard(

@@ -6,8 +6,9 @@ import '../../models/article.dart';
 import '../../models/reader_settings.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
+import 'desktop_smooth_scroll.dart';
 
-class ArticleListPanel extends StatelessWidget {
+class ArticleListPanel extends StatefulWidget {
   const ArticleListPanel({
     super.key,
     required this.controller,
@@ -24,7 +25,26 @@ class ArticleListPanel extends StatelessWidget {
   final ScrollController? scrollController;
 
   @override
+  State<ArticleListPanel> createState() => _ArticleListPanelState();
+}
+
+class _ArticleListPanelState extends State<ArticleListPanel> {
+  late final ScrollController _ownedScrollController = ScrollController();
+
+  ScrollController get _effectiveScrollController =>
+      widget.scrollController ?? _ownedScrollController;
+
+  @override
+  void dispose() {
+    _ownedScrollController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final ReaderController controller = widget.controller;
+    final bool compact = widget.compact;
+    final bool mobileRestyled = widget.mobileRestyled;
     final List<Article> articles = controller.visibleArticles;
     final AppStrings strings = context.strings;
     final bool compactHome =
@@ -85,8 +105,9 @@ class ArticleListPanel extends StatelessWidget {
                     controller.currentRoute == AppRouteId.sourceDetail ||
                     controller.currentRoute == AppRouteId.sources)
                   IconButton(
-                    visualDensity:
-                        compact ? VisualDensity.compact : VisualDensity.standard,
+                    visualDensity: compact
+                        ? VisualDensity.compact
+                        : VisualDensity.standard,
                     onPressed: () {
                       if (controller.activeSourceId == null) {
                         controller.refreshAllFeeds();
@@ -108,12 +129,11 @@ class ArticleListPanel extends StatelessWidget {
             ),
             SizedBox(height: compact ? 8 : 10),
           ],
-          if (topContent != null) ...<Widget>[
-            topContent!,
+          if (widget.topContent != null) ...<Widget>[
+            widget.topContent!,
             SizedBox(
-              height: mobileHomeRestyled
-                  ? 16
-                  : (compactMobileListRoute ? 14 : 10),
+              height:
+                  mobileHomeRestyled ? 16 : (compactMobileListRoute ? 14 : 10),
             ),
           ],
           if (articles.isEmpty)
@@ -122,58 +142,63 @@ class ArticleListPanel extends StatelessWidget {
             )
           else
             Expanded(
-              child: ListView.separated(
-                padding: EdgeInsets.only(
-                  bottom: compactMobileListRoute ? 18 : 8,
+              child: DesktopSmoothScroll(
+                controller: _effectiveScrollController,
+                child: ListView.separated(
+                  physics: DesktopSmoothScroll.physics,
+                  padding: EdgeInsets.only(
+                    bottom: compactMobileListRoute ? 18 : 8,
+                  ),
+                  key: PageStorageKey<String>(
+                    'article-list-${controller.currentRoute.storageValue}-${compact ? 'compact' : 'desktop'}',
+                  ),
+                  controller: _effectiveScrollController,
+                  itemCount: articles.length,
+                  separatorBuilder: (_, __) {
+                    if (useLayeredCards) {
+                      return SizedBox(height: compactMobileListRoute ? 14 : 10);
+                    }
+                    return Divider(
+                      height: 1,
+                      color: AppTheme.paletteOf(context).divider,
+                    );
+                  },
+                  itemBuilder: (BuildContext context, int index) {
+                    final Article article = articles[index];
+                    final bool active =
+                        controller.selectedArticleId == article.id;
+                    final bool useSeparateReaderRoute = compact
+                        ? controller.settings.mobileWorkspaceMode ==
+                            MobileWorkspaceMode.singlePane
+                        : controller.settings.desktopWorkspaceMode ==
+                            DesktopWorkspaceMode.focusedReader;
+                    return _ArticleTile(
+                      compact: compact,
+                      article: article,
+                      active: active,
+                      sourceTitle: controller.sourceTitleForArticle(article),
+                      density: controller.settings.articleListDensity,
+                      mobileEmphasis: compactMobileListRoute,
+                      hideBottomActions: mobileHomeRestyled,
+                      layered: useLayeredCards,
+                      onOpen: () {
+                        controller.selectArticle(
+                          article,
+                          openInReaderRoute: useSeparateReaderRoute,
+                        );
+                      },
+                      onStarToggle: () {
+                        controller.toggleStarred(article);
+                      },
+                      onSaveToggle: () {
+                        controller.toggleSavedForLater(article);
+                      },
+                      onReadToggle: () {
+                        controller.toggleReadState(article);
+                      },
+                    );
+                  },
                 ),
-                key: PageStorageKey<String>(
-                  'article-list-${controller.currentRoute.storageValue}-${compact ? 'compact' : 'desktop'}',
-                ),
-                controller: scrollController,
-                itemCount: articles.length,
-                separatorBuilder: (_, __) {
-                  if (useLayeredCards) {
-                    return SizedBox(height: compactMobileListRoute ? 14 : 10);
-                  }
-                  return Divider(
-                    height: 1,
-                    color: AppTheme.paletteOf(context).divider,
-                  );
-                },
-                itemBuilder: (BuildContext context, int index) {
-                  final Article article = articles[index];
-                  final bool active = controller.selectedArticleId == article.id;
-                  final bool useSeparateReaderRoute = compact
-                      ? controller.settings.mobileWorkspaceMode ==
-                          MobileWorkspaceMode.singlePane
-                      : controller.settings.desktopWorkspaceMode ==
-                          DesktopWorkspaceMode.focusedReader;
-                  return _ArticleTile(
-                    compact: compact,
-                    article: article,
-                    active: active,
-                    sourceTitle: controller.sourceTitleForArticle(article),
-                    density: controller.settings.articleListDensity,
-                    mobileEmphasis: compactMobileListRoute,
-                    hideBottomActions: mobileHomeRestyled,
-                    layered: useLayeredCards,
-                    onOpen: () {
-                      controller.selectArticle(
-                        article,
-                        openInReaderRoute: useSeparateReaderRoute,
-                      );
-                    },
-                    onStarToggle: () {
-                      controller.toggleStarred(article);
-                    },
-                    onSaveToggle: () {
-                      controller.toggleSavedForLater(article);
-                    },
-                    onReadToggle: () {
-                      controller.toggleReadState(article);
-                    },
-                  );
-                },
               ),
             ),
         ],
@@ -219,9 +244,8 @@ class _ArticleTile extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
     final int titleLines = mobileEmphasis ? 3 : 2;
-    final int summaryLines = mobileEmphasis
-        ? 3
-        : (density == ArticleListDensity.compact ? 2 : 3);
+    final int summaryLines =
+        mobileEmphasis ? 3 : (density == ArticleListDensity.compact ? 2 : 3);
     final double cardRadius = mobileEmphasis ? 18 : (compact ? 16 : 14);
     final bool showBottomActions = !hideBottomActions;
     final Color cardColor = layered
@@ -229,8 +253,8 @@ class _ArticleTile extends StatelessWidget {
         : (active ? palette.hover : Colors.transparent);
     final Color borderColor = layered
         ? (active
-              ? theme.colorScheme.primary.withValues(alpha: 0.20)
-              : palette.border.withValues(alpha: 0.92))
+            ? theme.colorScheme.primary.withValues(alpha: 0.20)
+            : palette.border.withValues(alpha: 0.92))
         : Colors.transparent;
     final double borderWidth = layered ? (active ? 1.15 : 1) : 1;
 
@@ -313,7 +337,11 @@ class _ArticleTile extends StatelessWidget {
                         ? theme.textTheme.titleMedium
                         : theme.textTheme.titleSmall)
                     ?.copyWith(
-                  fontSize: mobileEmphasis ? 18.5 : null,
+                  fontSize: mobileEmphasis
+                      ? 18.5
+                      : compact
+                          ? null
+                          : 15.5,
                   fontWeight: active ? FontWeight.w700 : FontWeight.w600,
                   height: mobileEmphasis ? 1.24 : 1.3,
                 ),
@@ -461,8 +489,9 @@ class _TinyAction extends StatelessWidget {
       constraints: const BoxConstraints.tightFor(width: 28, height: 28),
       onPressed: onTap,
       icon: Icon(icon, size: 16),
-      color:
-          active ? Theme.of(context).colorScheme.primary : palette.secondaryText,
+      color: active
+          ? Theme.of(context).colorScheme.primary
+          : palette.secondaryText,
       tooltip: tooltip,
     );
   }

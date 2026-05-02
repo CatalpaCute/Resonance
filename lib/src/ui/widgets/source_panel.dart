@@ -8,6 +8,7 @@ import '../../models/article.dart';
 import '../../models/feed_source.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
+import 'desktop_smooth_scroll.dart';
 import 'glass_card.dart';
 
 const Duration _compactFilterMotionDuration = Duration(milliseconds: 220);
@@ -75,15 +76,14 @@ class SourcePanel extends StatelessWidget {
                 controller.selectBookmarkFilter(value.first);
               },
             )
-          else
-            if (!controller.settings.sourceFilterHintDismissed)
-              _HintBlock(
-                compact: compact,
-                title: strings.sourceFilterHintTitle,
-                subtitle: strings.sourceFilterHintBody,
-                closeTooltip: '关闭提示',
-                onClose: controller.dismissSourceFilterHint,
-              ),
+          else if (!controller.settings.sourceFilterHintDismissed)
+            _HintBlock(
+              compact: compact,
+              title: strings.sourceFilterHintTitle,
+              subtitle: strings.sourceFilterHintBody,
+              closeTooltip: '关闭提示',
+              onClose: controller.dismissSourceFilterHint,
+            ),
           SizedBox(height: compact ? 10 : 12),
           Wrap(
             spacing: 8,
@@ -116,47 +116,61 @@ class SourcePanel extends StatelessWidget {
           ),
           SizedBox(height: compact ? 10 : 12),
           Expanded(
-            child: ListView(
-              padding: EdgeInsets.zero,
-              children: <Widget>[
-                if (controller.currentRoute == AppRouteId.allArticles ||
-                    controller.currentRoute == AppRouteId.bookmarks)
-                  _SourceTile(
-                    compact: compact,
-                    source: null,
-                    title: strings.allSources,
-                    count: controller.articleCountForSource(null),
-                    unread: controller.unreadCountForSource(null),
-                    active: controller.activeSourceId == null,
-                    onTap: controller.clearSourceFilter,
-                  ),
-                ...controller.feeds.map((FeedSource source) {
-                  return _SourceTile(
-                    compact: compact,
-                    source: source,
-                    title: source.title,
-                    count: controller.articleCountForSource(source.id),
-                    unread: controller.unreadCountForSource(source.id),
-                    active: controller.activeSourceId == source.id,
-                    onTap: () {
-                      controller.selectSource(
-                        source,
-                        enterSourceDetail: false,
+            child: DesktopSmoothScrollBuilder(
+              builder: (
+                BuildContext context,
+                ScrollController scrollController,
+                ScrollPhysics? physics,
+              ) {
+                return ListView(
+                  controller: scrollController,
+                  physics: physics,
+                  padding: EdgeInsets.zero,
+                  children: <Widget>[
+                    if (controller.currentRoute == AppRouteId.allArticles ||
+                        controller.currentRoute == AppRouteId.bookmarks)
+                      _SourceTile(
+                        compact: compact,
+                        source: null,
+                        title: strings.allSources,
+                        count: controller.articleCountForSource(null),
+                        unread: controller.unreadCountForSource(null),
+                        active: controller.activeSourceId == null,
+                        onTap: controller.clearSourceFilter,
+                      ),
+                    ...controller.feeds.map((FeedSource source) {
+                      return _SourceTile(
+                        compact: compact,
+                        source: source,
+                        title: source.title,
+                        count: controller.articleCountForSource(source.id),
+                        unread: controller.unreadCountForSource(source.id),
+                        active: controller.activeSourceId == source.id,
+                        onTap: () {
+                          controller.selectSource(
+                            source,
+                            enterSourceDetail: false,
+                          );
+                        },
                       );
-                    },
-                  );
-                }),
-                if (controller.feeds.isEmpty)
-                  Padding(
-                    padding: EdgeInsets.only(top: compact ? 12 : 16),
-                    child: Text(
-                      strings.emptySourcePanel,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.paletteOf(context).secondaryText,
-                          ),
-                    ),
-                  ),
-              ],
+                    }),
+                    if (controller.feeds.isEmpty)
+                      Padding(
+                        padding: EdgeInsets.only(top: compact ? 12 : 16),
+                        child: Text(
+                          strings.emptySourcePanel,
+                          style: Theme.of(context)
+                              .textTheme
+                              .bodyMedium
+                              ?.copyWith(
+                                color:
+                                    AppTheme.paletteOf(context).secondaryText,
+                              ),
+                        ),
+                      ),
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -333,7 +347,8 @@ class CompactSourceFilterHeader extends StatelessWidget {
       );
     }
 
-    final String sourceLabel = controller.activeSource?.title ?? strings.allSources;
+    final String sourceLabel =
+        controller.activeSource?.title ?? strings.allSources;
     final String summary = controller.showOnlyUnread
         ? '$sourceLabel · ${strings.unreadOnly}'
         : sourceLabel;
@@ -432,7 +447,8 @@ class CompactSourceFilterHeader extends StatelessWidget {
                           ),
                         ),
                         onPressed: () {
-                          controller.setCurrentRoute(AppRouteId.discoverAddSource);
+                          controller
+                              .setCurrentRoute(AppRouteId.discoverAddSource);
                         },
                         icon: const Icon(Icons.tune_rounded, size: 16),
                         label: Text(strings.subscriptionManagement),
@@ -487,9 +503,8 @@ class CompactSourceFilterHeader extends StatelessWidget {
                 ],
               ),
             ),
-            crossFadeState: expanded
-                ? CrossFadeState.showSecond
-                : CrossFadeState.showFirst,
+            crossFadeState:
+                expanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
           ),
         ],
       ),
@@ -624,8 +639,9 @@ class _BookmarkSingleSourceChip extends StatelessWidget {
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color:
-                selected ? theme.colorScheme.primary : palette.panelMutedBackground,
+            color: selected
+                ? theme.colorScheme.primary
+                : palette.panelMutedBackground,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
               color: selected ? theme.colorScheme.primary : palette.border,
@@ -636,7 +652,9 @@ class _BookmarkSingleSourceChip extends StatelessWidget {
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: theme.textTheme.bodySmall?.copyWith(
-              color: selected ? theme.colorScheme.onPrimary : palette.secondaryText,
+              color: selected
+                  ? theme.colorScheme.onPrimary
+                  : palette.secondaryText,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -769,8 +787,9 @@ class _CompactSourceChip extends StatelessWidget {
           curve: _compactFilterMotionCurve,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
-            color:
-                selected ? theme.colorScheme.primary : palette.panelMutedBackground,
+            color: selected
+                ? theme.colorScheme.primary
+                : palette.panelMutedBackground,
             borderRadius: BorderRadius.circular(999),
             border: Border.all(
               color: selected ? theme.colorScheme.primary : palette.border,
@@ -783,8 +802,9 @@ class _CompactSourceChip extends StatelessWidget {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               style: theme.textTheme.bodySmall?.copyWith(
-                color:
-                    selected ? theme.colorScheme.onPrimary : palette.secondaryText,
+                color: selected
+                    ? theme.colorScheme.onPrimary
+                    : palette.secondaryText,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -881,7 +901,8 @@ class _CompactToggleChip extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: active ? theme.colorScheme.primary : palette.panelBackground,
+              color:
+                  active ? theme.colorScheme.primary : palette.panelBackground,
               borderRadius: BorderRadius.circular(999),
               border: Border.all(
                 color: active ? theme.colorScheme.primary : palette.border,
@@ -943,15 +964,17 @@ class _CompactUtilityChip extends StatelessWidget {
               Icon(
                 icon,
                 size: 16,
-                color:
-                    selected ? theme.colorScheme.primary : palette.secondaryText,
+                color: selected
+                    ? theme.colorScheme.primary
+                    : palette.secondaryText,
               ),
               const SizedBox(width: 6),
               Text(
                 label,
                 style: theme.textTheme.bodySmall?.copyWith(
-                  color:
-                      selected ? theme.colorScheme.primary : palette.secondaryText,
+                  color: selected
+                      ? theme.colorScheme.primary
+                      : palette.secondaryText,
                   fontWeight: FontWeight.w600,
                 ),
               ),
