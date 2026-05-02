@@ -117,6 +117,8 @@ class SourcePanel extends StatelessWidget {
           SizedBox(height: compact ? 10 : 12),
           Expanded(
             child: DesktopSmoothScrollBuilder(
+              keyboardScrollId: 'source-panel',
+              keyboardScrollOrder: 0,
               builder: (
                 BuildContext context,
                 ScrollController scrollController,

@@ -144,6 +144,8 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
             Expanded(
               child: DesktopSmoothScroll(
                 controller: _effectiveScrollController,
+                keyboardScrollId: 'article-list',
+                keyboardScrollOrder: 1,
                 child: ListView.separated(
                   physics: DesktopSmoothScroll.physics,
                   padding: EdgeInsets.only(

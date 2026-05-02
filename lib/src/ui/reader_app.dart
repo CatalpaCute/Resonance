@@ -15,13 +15,13 @@ import 'views/add_source_view.dart';
 import 'views/settings_view.dart';
 import 'widgets/article_list_panel.dart';
 import 'widgets/article_reader_panel.dart';
+import 'widgets/desktop_smooth_scroll.dart';
 import 'widgets/navigation_sidebar.dart';
 import 'widgets/source_panel.dart';
 
 final bool _useWindowsWindowChrome =
     !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
-final bool _isNativeMobilePlatform =
-    !kIsWeb &&
+final bool _isNativeMobilePlatform = !kIsWeb &&
     (defaultTargetPlatform == TargetPlatform.android ||
         defaultTargetPlatform == TargetPlatform.iOS);
 const Duration _shellMotionDuration = Duration(milliseconds: 280);
@@ -164,8 +164,9 @@ class _ReaderHomeState extends State<ReaderHome> {
                     DesktopContentSurfaceMode.flat;
             final bool useDrawer = _useDrawer(constraints.maxWidth);
             final bool useRail = compact && !useDrawer;
-            final double topInset =
-                _useWindowsWindowChrome ? 0 : MediaQuery.viewPaddingOf(context).top;
+            final double topInset = _useWindowsWindowChrome
+                ? 0
+                : MediaQuery.viewPaddingOf(context).top;
             final Widget mobileDrawer = Drawer(
               width: 236,
               backgroundColor: palette.sidebarBackground,
@@ -211,164 +212,170 @@ class _ReaderHomeState extends State<ReaderHome> {
                   },
                   child: Focus(
                     autofocus: true,
-                    child: Scaffold(
-                      key: _scaffoldKey,
-                      backgroundColor:
-                          usePortraitMobileHome
-                              ? mobilePageBackground
-                              : palette.shellBackground,
-                      drawer: useDrawer ? mobileDrawer : null,
-                      body: Column(
-                        children: <Widget>[
-                          _ShellHeader(
-                            controller: controller,
-                            compact: compact,
-                            mobileRestyled: usePortraitMobileHome,
-                            searchFocusNode: _desktopSearchFocusNode,
-                            searchController: _desktopSearchController,
-                            topInset: topInset,
-                            sidebarCollapsed: compact
-                                ? _compactRailCollapsed
-                                : controller.settings.desktopSidebarCollapsed,
-                            showSidebarToggle: !compact || useRail,
-                            onSidebarToggle: () {
-                              if (compact) {
-                                setState(() {
-                                  _compactRailCollapsed =
-                                      !_compactRailCollapsed;
-                                });
-                              } else {
-                                controller.setDesktopSidebarCollapsed(
-                                  !controller.settings
-                                      .desktopSidebarCollapsed,
-                                );
-                              }
-                            },
-                            showMenuButton: compact && useDrawer,
-                            onMenuPressed: () =>
-                                _scaffoldKey.currentState?.openDrawer(),
-                          ),
-                          Expanded(
-                            child: Row(
-                              children: <Widget>[
-                                if (!compact)
-                                  NavigationSidebar(
-                                    controller: controller,
-                                    collapsed: controller
+                    child: DesktopKeyboardScrollScope(
+                      child: Scaffold(
+                        key: _scaffoldKey,
+                        backgroundColor: usePortraitMobileHome
+                            ? mobilePageBackground
+                            : palette.shellBackground,
+                        drawer: useDrawer ? mobileDrawer : null,
+                        body: Column(
+                          children: <Widget>[
+                            _ShellHeader(
+                              controller: controller,
+                              compact: compact,
+                              mobileRestyled: usePortraitMobileHome,
+                              searchFocusNode: _desktopSearchFocusNode,
+                              searchController: _desktopSearchController,
+                              topInset: topInset,
+                              sidebarCollapsed: compact
+                                  ? _compactRailCollapsed
+                                  : controller.settings.desktopSidebarCollapsed,
+                              showSidebarToggle: !compact || useRail,
+                              onSidebarToggle: () {
+                                if (compact) {
+                                  setState(() {
+                                    _compactRailCollapsed =
+                                        !_compactRailCollapsed;
+                                  });
+                                } else {
+                                  controller.setDesktopSidebarCollapsed(
+                                    !controller
                                         .settings.desktopSidebarCollapsed,
-                                    showCollapseToggle: true,
-                                    onToggleCollapse: () {
-                                      controller.setDesktopSidebarCollapsed(
-                                        !controller
-                                            .settings.desktopSidebarCollapsed,
-                                      );
-                                    },
-                                  ),
-                                if (useRail)
-                                  NavigationSidebar(
-                                    controller: controller,
-                                    collapsed: _compactRailCollapsed,
-                                    showCollapseToggle: false,
-                                  ),
-                                Expanded(
-                                  child: AnimatedContainer(
-                                    duration: _shellMotionDuration,
-                                    curve: _shellMotionCurve,
-                                    color: usePortraitMobileHome
-                                        ? mobilePageBackground
-                                        : palette.chromeBackground,
-                                    padding: EdgeInsets.fromLTRB(
-                                      usePortraitMobileHome
-                                          ? 0
-                                          : compact
-                                              ? 6
-                                              : 10,
-                                      usePortraitMobileHome
-                                          ? 0
-                                          : compact
-                                              ? 6
-                                              : 6,
-                                      usePortraitMobileHome
-                                          ? 0
-                                          : compact
-                                              ? 6
-                                              : controller.settings
-                                                      .desktopSidebarCollapsed
-                                                  ? 12
-                                                  : 10,
-                                      usePortraitMobileHome
-                                          ? 0
-                                          : compact
-                                              ? 6
-                                              : 10,
-                                    ),
-                                    child: TweenAnimationBuilder<double>(
-                                      tween: Tween<double>(
-                                        end: compact
-                                            ? 0
-                                            : controller.settings
-                                                    .desktopSidebarCollapsed
-                                                ? 1
-                                                : 0,
-                                      ),
-                                      duration: _shellMotionDuration,
-                                      curve: _shellMotionCurve,
-                                      child: _MainCanvas(
-                                        compact: compact,
-                                        mobileRestyled: usePortraitMobileHome,
-                                        flatDesktopSurface:
-                                            useFlatDesktopContentSurface,
-                                        child: Column(
-                                          children: <Widget>[
-                                            if (controller.errorMessage != null)
-                                              _InlineBanner(
-                                                icon:
-                                                    Icons.warning_amber_rounded,
-                                                text: controller.errorMessage!,
-                                                kind: _BannerKind.error,
-                                                compact: compact,
-                                                onClose: controller.clearError,
-                                              ),
-                                            if (controller.statusMessage !=
-                                                null)
-                                              _InlineBanner(
-                                                icon: Icons.sync_rounded,
-                                                text: controller.statusMessage!,
-                                                kind: _BannerKind.info,
-                                                compact: compact,
-                                                onClose: controller.clearStatus,
-                                              ),
-                                            Expanded(
-                                              child: _buildBody(
-                                                context,
-                                                compact: compact,
-                                                mobileRestyled:
-                                                    usePortraitMobileHome,
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                      builder: (
-                                        BuildContext context,
-                                        double value,
-                                        Widget? child,
-                                      ) {
-                                        return Transform.translate(
-                                          offset: Offset(
-                                            compact ? 0 : value * 4,
-                                            0,
-                                          ),
-                                          child: child,
+                                  );
+                                }
+                              },
+                              showMenuButton: compact && useDrawer,
+                              onMenuPressed: () =>
+                                  _scaffoldKey.currentState?.openDrawer(),
+                            ),
+                            Expanded(
+                              child: Row(
+                                children: <Widget>[
+                                  if (!compact)
+                                    NavigationSidebar(
+                                      controller: controller,
+                                      collapsed: controller
+                                          .settings.desktopSidebarCollapsed,
+                                      showCollapseToggle: true,
+                                      onToggleCollapse: () {
+                                        controller.setDesktopSidebarCollapsed(
+                                          !controller
+                                              .settings.desktopSidebarCollapsed,
                                         );
                                       },
                                     ),
+                                  if (useRail)
+                                    NavigationSidebar(
+                                      controller: controller,
+                                      collapsed: _compactRailCollapsed,
+                                      showCollapseToggle: false,
+                                    ),
+                                  Expanded(
+                                    child: AnimatedContainer(
+                                      duration: _shellMotionDuration,
+                                      curve: _shellMotionCurve,
+                                      color: usePortraitMobileHome
+                                          ? mobilePageBackground
+                                          : palette.chromeBackground,
+                                      padding: EdgeInsets.fromLTRB(
+                                        usePortraitMobileHome
+                                            ? 0
+                                            : compact
+                                                ? 6
+                                                : 10,
+                                        usePortraitMobileHome
+                                            ? 0
+                                            : compact
+                                                ? 6
+                                                : 6,
+                                        usePortraitMobileHome
+                                            ? 0
+                                            : compact
+                                                ? 6
+                                                : controller.settings
+                                                        .desktopSidebarCollapsed
+                                                    ? 12
+                                                    : 10,
+                                        usePortraitMobileHome
+                                            ? 0
+                                            : compact
+                                                ? 6
+                                                : 10,
+                                      ),
+                                      child: TweenAnimationBuilder<double>(
+                                        tween: Tween<double>(
+                                          end: compact
+                                              ? 0
+                                              : controller.settings
+                                                      .desktopSidebarCollapsed
+                                                  ? 1
+                                                  : 0,
+                                        ),
+                                        duration: _shellMotionDuration,
+                                        curve: _shellMotionCurve,
+                                        child: _MainCanvas(
+                                          compact: compact,
+                                          mobileRestyled: usePortraitMobileHome,
+                                          flatDesktopSurface:
+                                              useFlatDesktopContentSurface,
+                                          child: Column(
+                                            children: <Widget>[
+                                              if (controller.errorMessage !=
+                                                  null)
+                                                _InlineBanner(
+                                                  icon: Icons
+                                                      .warning_amber_rounded,
+                                                  text:
+                                                      controller.errorMessage!,
+                                                  kind: _BannerKind.error,
+                                                  compact: compact,
+                                                  onClose:
+                                                      controller.clearError,
+                                                ),
+                                              if (controller.statusMessage !=
+                                                  null)
+                                                _InlineBanner(
+                                                  icon: Icons.sync_rounded,
+                                                  text:
+                                                      controller.statusMessage!,
+                                                  kind: _BannerKind.info,
+                                                  compact: compact,
+                                                  onClose:
+                                                      controller.clearStatus,
+                                                ),
+                                              Expanded(
+                                                child: _buildBody(
+                                                  context,
+                                                  compact: compact,
+                                                  mobileRestyled:
+                                                      usePortraitMobileHome,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        builder: (
+                                          BuildContext context,
+                                          double value,
+                                          Widget? child,
+                                        ) {
+                                          return Transform.translate(
+                                            offset: Offset(
+                                              compact ? 0 : value * 4,
+                                              0,
+                                            ),
+                                            child: child,
+                                          );
+                                        },
+                                      ),
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -530,9 +537,10 @@ class _ReaderHomeState extends State<ReaderHome> {
       // Keep the compact home list alive while the reader opens on top of it,
       // so Android back can return to the exact previous scroll position.
       return IndexedStack(
-        index: controller.compactReaderOpen && controller.selectedArticle != null
-            ? 1
-            : 0,
+        index:
+            controller.compactReaderOpen && controller.selectedArticle != null
+                ? 1
+                : 0,
         children: <Widget>[
           ArticleListPanel(
             controller: controller,
@@ -585,9 +593,10 @@ class _ReaderHomeState extends State<ReaderHome> {
             controller.articleListPaneWidth +
             resizeHandleWidth +
             minimumReaderPaneWidth;
-        final double workspaceWidth = constraints.maxWidth < minimumWorkspaceWidth
-            ? minimumWorkspaceWidth
-            : constraints.maxWidth;
+        final double workspaceWidth =
+            constraints.maxWidth < minimumWorkspaceWidth
+                ? minimumWorkspaceWidth
+                : constraints.maxWidth;
 
         // Reuse the desktop workspace as-is, but wrap it in a horizontal
         // canvas so mobile users can opt into the same multi-pane workflow
@@ -609,7 +618,8 @@ class _ReaderHomeState extends State<ReaderHome> {
                   width: controller.articleListPaneWidth,
                   child: _WorkspacePane(
                     showTrailingDivider: true,
-                    child: ArticleListPanel(controller: controller, compact: false),
+                    child: ArticleListPanel(
+                        controller: controller, compact: false),
                   ),
                 ),
                 GestureDetector(
@@ -639,7 +649,6 @@ class _ReaderHomeState extends State<ReaderHome> {
       },
     );
   }
-
 
   bool _shouldInterceptCompactAndroidBack(bool compact) {
     if (!compact || kIsWeb || defaultTargetPlatform != TargetPlatform.android) {
@@ -711,12 +720,13 @@ class _ReaderHomeState extends State<ReaderHome> {
       final bool routeChanged = route != _lastObservedRoute;
       final bool sourceChanged = sourceId != _lastObservedSourceId;
       final bool unreadChanged = unreadOnly != _lastObservedUnreadOnly;
-      final bool bookmarkChanged = bookmarkFilter != _lastObservedBookmarkFilter;
+      final bool bookmarkChanged =
+          bookmarkFilter != _lastObservedBookmarkFilter;
       final bool enteredHomeFromAnotherPage = route == AppRouteId.allArticles &&
           _lastObservedRoute != AppRouteId.allArticles &&
           _lastObservedRoute != AppRouteId.readerDetail;
-      final bool homeFiltersChanged = route == AppRouteId.allArticles &&
-          (sourceChanged || unreadChanged);
+      final bool homeFiltersChanged =
+          route == AppRouteId.allArticles && (sourceChanged || unreadChanged);
 
       // Returning from the reader should preserve position, but switching the
       // article set or re-entering home from another top-level page should
@@ -788,8 +798,7 @@ class _ShellHeader extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
     final Article? selectedArticle = controller.selectedArticle;
-    final bool compactReading =
-        compact &&
+    final bool compactReading = compact &&
         controller.currentRoute == AppRouteId.readerDetail &&
         selectedArticle != null;
     final double headerHeight =
@@ -822,8 +831,8 @@ class _ShellHeader extends StatelessWidget {
                       onPressed: controller.closeCompactReader,
                       icon: const Icon(Icons.arrow_back_rounded),
                       splashRadius: 18,
-                      tooltip: MaterialLocalizations.of(context)
-                          .backButtonTooltip,
+                      tooltip:
+                          MaterialLocalizations.of(context).backButtonTooltip,
                     )
                   : showSidebarToggle
                       ? _HeaderSidebarToggle(
@@ -971,10 +980,10 @@ class _BrandMark extends StatelessWidget {
                 ? theme.textTheme.titleSmall
                 : theme.textTheme.labelSmall)
             ?.copyWith(
-              color: theme.colorScheme.onPrimary,
-              fontWeight: FontWeight.w700,
-              height: mobileRestyled ? 1 : null,
-            ),
+          color: theme.colorScheme.onPrimary,
+          fontWeight: FontWeight.w700,
+          height: mobileRestyled ? 1 : null,
+        ),
       ),
     );
   }
@@ -1498,7 +1507,8 @@ class _MainCanvas extends StatelessWidget {
         gradient: LinearGradient(
           colors: <Color>[
             palette.canvasBackground,
-            palette.panelMutedBackground.withValues(alpha: compact ? 0.55 : 0.80),
+            palette.panelMutedBackground
+                .withValues(alpha: compact ? 0.55 : 0.80),
           ],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -1560,8 +1570,10 @@ class _InlineBanner extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final bool isError = kind == _BannerKind.error;
-    final Color foreground = isError ? theme.colorScheme.error : theme.colorScheme.primary;
-    final Color background = foreground.withValues(alpha: isError ? 0.09 : 0.08);
+    final Color foreground =
+        isError ? theme.colorScheme.error : theme.colorScheme.primary;
+    final Color background =
+        foreground.withValues(alpha: isError ? 0.09 : 0.08);
 
     return Container(
       margin: EdgeInsets.fromLTRB(compact ? 10 : 12, 10, compact ? 10 : 12, 0),

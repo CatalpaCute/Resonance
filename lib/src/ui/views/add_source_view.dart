@@ -60,6 +60,8 @@ class _AddSourceViewState extends State<AddSourceView> {
         EdgeInsets.all(flatDesktop ? 0 : (compact ? 14 : 16));
 
     return DesktopSmoothListView(
+      keyboardScrollId: 'add-source-page',
+      requestKeyboardFocusOnActivate: false,
       padding: pagePadding,
       children: <Widget>[
         GlassCard(
@@ -191,6 +193,8 @@ class _AddSourceViewState extends State<AddSourceView> {
                           maxHeight: compact ? 420 : 520,
                         ),
                         child: DesktopSmoothReorderableListViewBuilder(
+                          keyboardScrollId: 'subscription-list',
+                          keyboardScrollOrder: 1,
                           buildDefaultDragHandles: false,
                           itemCount: widget.controller.feeds.length,
                           onReorder: (int oldIndex, int newIndex) async {

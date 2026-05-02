@@ -32,6 +32,7 @@ class SettingsView extends StatelessWidget {
         EdgeInsets.all(flatDesktop ? 0 : (compact ? 16 : 18));
 
     return DesktopSmoothListView(
+      keyboardScrollId: 'settings-page',
       padding: pagePadding,
       children: <Widget>[
         GlassCard(

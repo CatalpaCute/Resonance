@@ -340,6 +340,8 @@ class _DesktopArticleReaderState extends State<_DesktopArticleReader> {
             thumbColor: palette.secondaryText.withValues(alpha: 0.32),
             child: DesktopSmoothScroll(
               controller: _scrollController,
+              keyboardScrollId: 'article-reader',
+              keyboardScrollOrder: 2,
               child: SingleChildScrollView(
                 physics: DesktopSmoothScroll.physics,
                 controller: _scrollController,

@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 bool get _isDesktopPointerPlatform {
   if (kIsWeb) {
@@ -19,6 +20,9 @@ class DesktopSmoothScroll extends StatefulWidget {
     super.key,
     required this.controller,
     required this.child,
+    this.keyboardScrollId,
+    this.keyboardScrollOrder = 0,
+    this.requestKeyboardFocusOnActivate = true,
     this.duration = const Duration(milliseconds: 170),
     this.curve = Curves.easeOutCubic,
     this.wheelDeltaMultiplier = 1,
@@ -26,6 +30,9 @@ class DesktopSmoothScroll extends StatefulWidget {
 
   final ScrollController controller;
   final Widget child;
+  final String? keyboardScrollId;
+  final int keyboardScrollOrder;
+  final bool requestKeyboardFocusOnActivate;
   final Duration duration;
   final Curve curve;
   final double wheelDeltaMultiplier;
@@ -41,6 +48,19 @@ class DesktopSmoothScroll extends StatefulWidget {
   State<DesktopSmoothScroll> createState() => _DesktopSmoothScrollState();
 }
 
+class DesktopKeyboardScrollScope extends StatefulWidget {
+  const DesktopKeyboardScrollScope({
+    super.key,
+    required this.child,
+  });
+
+  final Widget child;
+
+  @override
+  State<DesktopKeyboardScrollScope> createState() =>
+      _DesktopKeyboardScrollScopeState();
+}
+
 typedef DesktopSmoothScrollBuilderCallback = Widget Function(
   BuildContext context,
   ScrollController controller,
@@ -51,9 +71,15 @@ class DesktopSmoothScrollBuilder extends StatefulWidget {
   const DesktopSmoothScrollBuilder({
     super.key,
     required this.builder,
+    this.keyboardScrollId,
+    this.keyboardScrollOrder = 0,
+    this.requestKeyboardFocusOnActivate = true,
   });
 
   final DesktopSmoothScrollBuilderCallback builder;
+  final String? keyboardScrollId;
+  final int keyboardScrollOrder;
+  final bool requestKeyboardFocusOnActivate;
 
   @override
   State<DesktopSmoothScrollBuilder> createState() =>
@@ -65,10 +91,16 @@ class DesktopSmoothListView extends StatefulWidget {
     super.key,
     required this.children,
     this.padding,
+    this.keyboardScrollId,
+    this.keyboardScrollOrder = 0,
+    this.requestKeyboardFocusOnActivate = true,
   });
 
   final List<Widget> children;
   final EdgeInsetsGeometry? padding;
+  final String? keyboardScrollId;
+  final int keyboardScrollOrder;
+  final bool requestKeyboardFocusOnActivate;
 
   @override
   State<DesktopSmoothListView> createState() => _DesktopSmoothListViewState();
@@ -87,6 +119,9 @@ class _DesktopSmoothListViewState extends State<DesktopSmoothListView> {
   Widget build(BuildContext context) {
     return DesktopSmoothScroll(
       controller: _controller,
+      keyboardScrollId: widget.keyboardScrollId,
+      keyboardScrollOrder: widget.keyboardScrollOrder,
+      requestKeyboardFocusOnActivate: widget.requestKeyboardFocusOnActivate,
       child: ListView(
         controller: _controller,
         physics: DesktopSmoothScroll.physics,
@@ -105,6 +140,9 @@ class DesktopSmoothReorderableListViewBuilder extends StatefulWidget {
     required this.onReorder,
     this.buildDefaultDragHandles = true,
     this.proxyDecorator,
+    this.keyboardScrollId,
+    this.keyboardScrollOrder = 0,
+    this.requestKeyboardFocusOnActivate = true,
   });
 
   final int itemCount;
@@ -112,6 +150,9 @@ class DesktopSmoothReorderableListViewBuilder extends StatefulWidget {
   final ReorderCallback onReorder;
   final bool buildDefaultDragHandles;
   final ReorderItemProxyDecorator? proxyDecorator;
+  final String? keyboardScrollId;
+  final int keyboardScrollOrder;
+  final bool requestKeyboardFocusOnActivate;
 
   @override
   State<DesktopSmoothReorderableListViewBuilder> createState() =>
@@ -132,6 +173,9 @@ class _DesktopSmoothReorderableListViewBuilderState
   Widget build(BuildContext context) {
     return DesktopSmoothScroll(
       controller: _controller,
+      keyboardScrollId: widget.keyboardScrollId,
+      keyboardScrollOrder: widget.keyboardScrollOrder,
+      requestKeyboardFocusOnActivate: widget.requestKeyboardFocusOnActivate,
       child: ReorderableListView.builder(
         scrollController: _controller,
         physics: DesktopSmoothScroll.physics,
@@ -159,6 +203,9 @@ class _DesktopSmoothScrollBuilderState
   Widget build(BuildContext context) {
     return DesktopSmoothScroll(
       controller: _controller,
+      keyboardScrollId: widget.keyboardScrollId,
+      keyboardScrollOrder: widget.keyboardScrollOrder,
+      requestKeyboardFocusOnActivate: widget.requestKeyboardFocusOnActivate,
       child: widget.builder(
         context,
         _controller,
@@ -168,9 +215,252 @@ class _DesktopSmoothScrollBuilderState
   }
 }
 
+class _DesktopKeyboardScrollScopeState
+    extends State<DesktopKeyboardScrollScope> {
+  static const double _arrowScrollDelta = 92;
+  static const Duration _arrowScrollDuration = Duration(milliseconds: 150);
+  static const Curve _arrowScrollCurve = Curves.easeOutCubic;
+
+  final Map<String, _KeyboardScrollableEntry> _entries =
+      <String, _KeyboardScrollableEntry>{};
+  final FocusNode _focusNode = FocusNode(debugLabel: 'Keyboard scroll scope');
+  String? _activeId;
+
+  void register(_KeyboardScrollableEntry entry) {
+    _entries[entry.id] = entry;
+  }
+
+  void unregister(String id) {
+    _entries.remove(id);
+    if (_activeId == id) {
+      _activeId = null;
+    }
+  }
+
+  void activateEntry(String id) {
+    final _KeyboardScrollableEntry? entry = _entries[id];
+    if (entry == null) {
+      return;
+    }
+    if (entry.requestFocusOnActivate) {
+      _focusNode.requestFocus();
+    }
+    if (_activeId == id) {
+      return;
+    }
+    setState(() {
+      _activeId = id;
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isDesktopPointerPlatform) {
+      return widget.child;
+    }
+
+    return Focus(
+      focusNode: _focusNode,
+      autofocus: true,
+      onKeyEvent: _handleKeyEvent,
+      child: _DesktopKeyboardScrollRegistry(
+        state: this,
+        child: widget.child,
+      ),
+    );
+  }
+
+  KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
+    if (event is! KeyDownEvent && event is! KeyRepeatEvent) {
+      return KeyEventResult.ignored;
+    }
+
+    if (_isEditingText()) {
+      return KeyEventResult.ignored;
+    }
+
+    final LogicalKeyboardKey key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowUp) {
+      return _scrollActiveBy(-_arrowScrollDelta);
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      return _scrollActiveBy(_arrowScrollDelta);
+    }
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      return _activateAdjacent(-1);
+    }
+    if (key == LogicalKeyboardKey.arrowRight) {
+      return _activateAdjacent(1);
+    }
+    return KeyEventResult.ignored;
+  }
+
+  bool _isEditingText() {
+    final BuildContext? context = FocusManager.instance.primaryFocus?.context;
+    if (context == null) {
+      return false;
+    }
+    return context.findAncestorWidgetOfExactType<EditableText>() != null;
+  }
+
+  KeyEventResult _scrollActiveBy(double delta) {
+    final _KeyboardScrollableEntry? entry = _activeEntryOrFallback();
+    if (entry == null) {
+      return KeyEventResult.ignored;
+    }
+
+    final ScrollController controller = entry.controller;
+    if (!controller.hasClients) {
+      return KeyEventResult.ignored;
+    }
+
+    final ScrollPosition position = controller.position;
+    if (!position.hasPixels || !position.hasContentDimensions) {
+      return KeyEventResult.ignored;
+    }
+
+    final double nextOffset = (position.pixels + delta)
+        .clamp(position.minScrollExtent, position.maxScrollExtent)
+        .toDouble();
+    if (nextOffset == position.pixels) {
+      return KeyEventResult.handled;
+    }
+
+    controller.animateTo(
+      nextOffset,
+      duration: _arrowScrollDuration,
+      curve: _arrowScrollCurve,
+    );
+    return KeyEventResult.handled;
+  }
+
+  KeyEventResult _activateAdjacent(int direction) {
+    final List<_KeyboardScrollableEntry> entries = _visibleEntries();
+    if (entries.length < 2) {
+      return KeyEventResult.ignored;
+    }
+
+    final int currentIndex =
+        entries.indexWhere((_KeyboardScrollableEntry entry) {
+      return entry.id == _activeId;
+    });
+    final int baseIndex = currentIndex == -1 ? 0 : currentIndex;
+    final int nextIndex =
+        (baseIndex + direction).clamp(0, entries.length - 1).toInt();
+    if (nextIndex == currentIndex) {
+      return KeyEventResult.handled;
+    }
+
+    activateEntry(entries[nextIndex].id);
+    return KeyEventResult.handled;
+  }
+
+  _KeyboardScrollableEntry? _activeEntryOrFallback() {
+    final _KeyboardScrollableEntry? active =
+        _activeId == null ? null : _entries[_activeId];
+    if (active != null && active.canScroll) {
+      return active;
+    }
+    final List<_KeyboardScrollableEntry> entries = _visibleEntries();
+    return entries.isEmpty ? null : entries.first;
+  }
+
+  List<_KeyboardScrollableEntry> _visibleEntries() {
+    final List<_KeyboardScrollableEntry> entries = _entries.values
+        .where((_KeyboardScrollableEntry entry) => entry.canScroll)
+        .toList();
+    entries.sort((_KeyboardScrollableEntry a, _KeyboardScrollableEntry b) {
+      final int order = a.order.compareTo(b.order);
+      return order == 0 ? a.id.compareTo(b.id) : order;
+    });
+    return entries;
+  }
+}
+
+class _KeyboardScrollableEntry {
+  const _KeyboardScrollableEntry({
+    required this.id,
+    required this.order,
+    required this.controller,
+    required this.requestFocusOnActivate,
+  });
+
+  final String id;
+  final int order;
+  final ScrollController controller;
+  final bool requestFocusOnActivate;
+
+  bool get canScroll {
+    if (!controller.hasClients) {
+      return false;
+    }
+    final ScrollPosition position = controller.position;
+    if (!position.hasPixels || !position.hasContentDimensions) {
+      return false;
+    }
+    return position.maxScrollExtent > position.minScrollExtent;
+  }
+}
+
+class _DesktopKeyboardScrollRegistry extends InheritedWidget {
+  const _DesktopKeyboardScrollRegistry({
+    required this.state,
+    required super.child,
+  });
+
+  final _DesktopKeyboardScrollScopeState state;
+
+  static _DesktopKeyboardScrollScopeState? maybeOf(BuildContext context) {
+    return context
+        .dependOnInheritedWidgetOfExactType<_DesktopKeyboardScrollRegistry>()
+        ?.state;
+  }
+
+  @override
+  bool updateShouldNotify(_DesktopKeyboardScrollRegistry oldWidget) {
+    return oldWidget.state != state;
+  }
+}
+
 class _DesktopSmoothScrollState extends State<DesktopSmoothScroll> {
   double? _targetOffset;
   int _animationGeneration = 0;
+  final String _fallbackKeyboardScrollId = UniqueKey().toString();
+  _DesktopKeyboardScrollScopeState? _keyboardScope;
+
+  String get _keyboardScrollId =>
+      widget.keyboardScrollId ?? _fallbackKeyboardScrollId;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _syncKeyboardRegistration();
+  }
+
+  @override
+  void didUpdateWidget(covariant DesktopSmoothScroll oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller != widget.controller ||
+        oldWidget.keyboardScrollId != widget.keyboardScrollId ||
+        oldWidget.keyboardScrollOrder != widget.keyboardScrollOrder) {
+      _keyboardScope?.unregister(
+        oldWidget.keyboardScrollId ?? _fallbackKeyboardScrollId,
+      );
+      _syncKeyboardRegistration();
+    }
+  }
+
+  @override
+  void dispose() {
+    _keyboardScope?.unregister(_keyboardScrollId);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -180,15 +470,41 @@ class _DesktopSmoothScrollState extends State<DesktopSmoothScroll> {
 
     return Listener(
       behavior: HitTestBehavior.translucent,
+      onPointerDown: (_) => _activateKeyboardScroll(),
       onPointerSignal: _handlePointerSignal,
       child: widget.child,
     );
+  }
+
+  void _syncKeyboardRegistration() {
+    if (!_isDesktopPointerPlatform) {
+      return;
+    }
+    final _DesktopKeyboardScrollScopeState? nextScope =
+        _DesktopKeyboardScrollRegistry.maybeOf(context);
+    if (_keyboardScope != null && _keyboardScope != nextScope) {
+      _keyboardScope!.unregister(_keyboardScrollId);
+    }
+    _keyboardScope = nextScope;
+    _keyboardScope?.register(
+      _KeyboardScrollableEntry(
+        id: _keyboardScrollId,
+        order: widget.keyboardScrollOrder,
+        controller: widget.controller,
+        requestFocusOnActivate: widget.requestKeyboardFocusOnActivate,
+      ),
+    );
+  }
+
+  void _activateKeyboardScroll() {
+    _keyboardScope?.activateEntry(_keyboardScrollId);
   }
 
   void _handlePointerSignal(PointerSignalEvent event) {
     if (event is! PointerScrollEvent || !widget.controller.hasClients) {
       return;
     }
+    _activateKeyboardScroll();
 
     GestureBinding.instance.pointerSignalResolver.register(
       event,
