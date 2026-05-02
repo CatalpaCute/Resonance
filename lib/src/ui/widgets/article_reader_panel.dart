@@ -26,7 +26,6 @@ class ArticleReaderPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Article? article = controller.selectedArticle;
-    final AppStrings strings = context.strings;
     final bool showReadLaterDone = controller.shouldShowReadLaterDoneAction;
 
     if (!compact) {
@@ -39,152 +38,208 @@ class ArticleReaderPanel extends StatelessWidget {
       );
     }
 
-    final Widget content = Padding(
-      padding: EdgeInsets.fromLTRB(
-        compact ? 12 : 18,
-        compact ? 12 : 16,
-        compact ? 12 : 18,
-        compact ? 10 : 16,
-      ),
-      child: article == null
-          ? _EmptyReader(compact: compact)
-          : Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    if (onBack != null)
-                      IconButton(
-                        visualDensity: compact
-                            ? VisualDensity.compact
-                            : VisualDensity.standard,
-                        onPressed: onBack,
-                        icon: const Icon(Icons.arrow_back_rounded),
-                      ),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: <Widget>[
-                          Text(
-                            controller.sourceTitleForArticle(article),
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodySmall
-                                ?.copyWith(
-                                  color:
-                                      AppTheme.paletteOf(context).secondaryText,
-                                ),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            article.title,
-                            style: compact
-                                ? Theme.of(context).textTheme.titleLarge
-                                : Theme.of(context).textTheme.headlineSmall,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: compact ? 10 : 12),
-                Wrap(
-                  spacing: compact ? 6 : 8,
-                  runSpacing: compact ? 6 : 8,
-                  children: <Widget>[
-                    _MetaChip(
-                      compact: compact,
-                      icon: Icons.event_rounded,
-                      label: _formatTime(article.publishedAt),
-                    ),
-                    if (article.author != null && article.author!.isNotEmpty)
-                      _MetaChip(
-                        compact: compact,
-                        icon: Icons.edit_note_rounded,
-                        label: article.author!,
-                      ),
-                    _ActionChip(
-                      compact: compact,
-                      icon: article.isRead
-                          ? Icons.mark_email_unread_outlined
-                          : Icons.done_rounded,
-                      label: strings.readStateAction(article.isRead),
-                      onTap: () => controller.toggleReadState(article),
-                    ),
-                    _ActionChip(
-                      compact: compact,
-                      icon: article.starred
-                          ? Icons.star_rounded
-                          : Icons.star_border_rounded,
-                      label: strings.starAction(article.starred),
-                      onTap: () => controller.toggleStarred(article),
-                    ),
-                    _ActionChip(
-                      compact: compact,
-                      icon: article.savedForLater
-                          ? Icons.schedule_rounded
-                          : Icons.schedule_outlined,
-                      label: strings.readLaterAction(article.savedForLater),
-                      onTap: () => controller.toggleSavedForLater(article),
-                    ),
-                    _ActionChip(
-                      compact: compact,
-                      icon: Icons.open_in_new_rounded,
-                      label: strings.openOriginal,
-                      onTap: () => _openOriginal(article.url),
-                    ),
-                  ],
-                ),
-                SizedBox(height: compact ? 12 : 14),
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.fromLTRB(
-                      compact ? 12 : 18,
-                      compact ? 12 : 16,
-                      compact ? 12 : 18,
-                      compact ? 12 : 16,
-                    ),
-                    decoration: BoxDecoration(
-                      color: AppTheme.paletteOf(context).panelMutedBackground,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: AppTheme.paletteOf(context).border,
-                      ),
-                    ),
-                    child: _ReaderBody(
-                      article: article,
-                      compact: compact,
-                      contentMode: controller.settings.articleContentMode,
-                      strings: strings,
-                      onOpenUrl: _openOriginal,
-                      onCompleteReadLater: showReadLaterDone
-                          ? () => controller.completeReadLaterArticle(article)
-                          : null,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+    return _MobileArticleReader(
+      controller: controller,
+      article: article,
+      showReadLaterDone: showReadLaterDone,
+      onOpenOriginal: _openOriginal,
     );
-
-    return content;
   }
 
   Future<void> _openOriginal(String rawUrl) async {
     final Uri uri = Uri.parse(rawUrl);
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
+}
 
-  String _formatTime(DateTime dateTime) {
-    final DateTime local = dateTime.toLocal();
-    final String year = local.year.toString();
-    final String month = local.month.toString().padLeft(2, '0');
-    final String day = local.day.toString().padLeft(2, '0');
-    final String hour = local.hour.toString().padLeft(2, '0');
-    final String minute = local.minute.toString().padLeft(2, '0');
-    return '$year-$month-$day $hour:$minute';
+class _MobileArticleReader extends StatefulWidget {
+  const _MobileArticleReader({
+    required this.controller,
+    required this.article,
+    required this.showReadLaterDone,
+    required this.onOpenOriginal,
+  });
+
+  final ReaderController controller;
+  final Article? article;
+  final bool showReadLaterDone;
+  final Future<void> Function(String rawUrl) onOpenOriginal;
+
+  @override
+  State<_MobileArticleReader> createState() => _MobileArticleReaderState();
+}
+
+class _MobileArticleReaderState extends State<_MobileArticleReader> {
+  static const double _bottomBarBaseHeight = 58;
+
+  final ScrollController _scrollController = ScrollController();
+  ReaderProgressEstimate _progress = const ReaderProgressEstimate(
+    currentCharacters: 0,
+    totalCharacters: 0,
+    percent: 0,
+    ratio: 0,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    _progress = _initialProgressFor(widget.article);
+    _scrollController.addListener(_syncProgress);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _syncProgress();
+      }
+    });
+  }
+
+  @override
+  void didUpdateWidget(covariant _MobileArticleReader oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.article?.id != widget.article?.id) {
+      _progress = _initialProgressFor(widget.article);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) {
+          return;
+        }
+        if (_scrollController.hasClients) {
+          _scrollController.jumpTo(0);
+        }
+        _syncProgress();
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_syncProgress);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final Article? article = widget.article;
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final AppStrings strings = context.strings;
+
+    if (article == null) {
+      return ColoredBox(
+        color: Colors.transparent,
+        child: _EmptyReader(compact: true),
+      );
+    }
+
+    final String sourceTitle = widget.controller.sourceTitleForArticle(article);
+    final int readMinutes = _estimatedReadMinutes(article);
+    final double bottomInset = MediaQuery.viewPaddingOf(context).bottom;
+    final double bottomBarHeight = _bottomBarBaseHeight + bottomInset;
+
+    return Stack(
+      children: <Widget>[
+        Positioned.fill(
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            padding: EdgeInsets.fromLTRB(
+              20,
+              22,
+              20,
+              bottomBarHeight + 28,
+            ),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 680),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      article.title,
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(
+                            fontSize: 30,
+                            height: 1.16,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0,
+                          ),
+                    ),
+                    const SizedBox(height: 14),
+                    _ArticleMetaLine(
+                      sourceTitle: sourceTitle,
+                      iconUrl: widget.controller.sourceIconForArticle(article),
+                      author: article.author,
+                      publishedAt: article.publishedAt,
+                      readingTime: strings.estimatedReadingTime(readMinutes),
+                    ),
+                    const SizedBox(height: 24),
+                    _ReaderContent(
+                      article: article,
+                      compact: true,
+                      contentMode: widget.controller.settings.articleContentMode,
+                      strings: strings,
+                      onOpenUrl: widget.onOpenOriginal,
+                      onCompleteReadLater: widget.showReadLaterDone
+                          ? () => widget.controller
+                              .completeReadLaterArticle(article)
+                          : null,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: bottomBarHeight,
+          child: _MobileReaderBottomBar(
+            article: article,
+            progress: _progress,
+            blurEnabled: widget.controller.settings.blurEffectsEnabled,
+            baseColor: palette.shellBackground,
+            bottomInset: bottomInset,
+            onReadToggle: () => widget.controller.toggleReadState(article),
+            onStarToggle: () => widget.controller.toggleStarred(article),
+            onReadLaterToggle: () =>
+                widget.controller.toggleSavedForLater(article),
+            onOpenOriginal: () => widget.onOpenOriginal(article.url),
+          ),
+        ),
+      ],
+    );
+  }
+
+  ReaderProgressEstimate _initialProgressFor(Article? article) {
+    return estimateReaderProgress(
+      totalCharacters:
+          article == null ? 0 : _readableCharacterCount(article.readerText),
+      scrollOffset: 0,
+      maxScrollExtent: 1,
+    );
+  }
+
+  void _syncProgress() {
+    final Article? article = widget.article;
+    final int totalCharacters =
+        article == null ? 0 : _readableCharacterCount(article.readerText);
+    final double offset =
+        _scrollController.hasClients ? _scrollController.offset : 0;
+    final double maxScrollExtent = _scrollController.hasClients
+        ? _scrollController.position.maxScrollExtent
+        : 1;
+    final ReaderProgressEstimate next = estimateReaderProgress(
+      totalCharacters: totalCharacters,
+      scrollOffset: offset,
+      maxScrollExtent: maxScrollExtent,
+    );
+    if (next != _progress && mounted) {
+      setState(() {
+        _progress = next;
+      });
+    }
   }
 }
 
@@ -278,8 +333,11 @@ class _DesktopArticleReaderState extends State<_DesktopArticleReader> {
     return Stack(
       children: <Widget>[
         Positioned.fill(
-          child: Scrollbar(
+          child: RawScrollbar(
             controller: _scrollController,
+            padding: const EdgeInsets.only(top: _toolbarHeight),
+            radius: const Radius.circular(999),
+            thumbColor: palette.secondaryText.withValues(alpha: 0.32),
             child: SingleChildScrollView(
               controller: _scrollController,
               padding: const EdgeInsets.fromLTRB(
@@ -509,6 +567,146 @@ class _DesktopReaderToolbar extends StatelessWidget {
       child: BackdropFilter(
         filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
         child: surface,
+      ),
+    );
+  }
+}
+
+class _MobileReaderBottomBar extends StatelessWidget {
+  const _MobileReaderBottomBar({
+    required this.article,
+    required this.progress,
+    required this.blurEnabled,
+    required this.baseColor,
+    required this.bottomInset,
+    required this.onReadToggle,
+    required this.onStarToggle,
+    required this.onReadLaterToggle,
+    required this.onOpenOriginal,
+  });
+
+  final Article article;
+  final ReaderProgressEstimate progress;
+  final bool blurEnabled;
+  final Color baseColor;
+  final double bottomInset;
+  final VoidCallback onReadToggle;
+  final VoidCallback onStarToggle;
+  final VoidCallback onReadLaterToggle;
+  final VoidCallback onOpenOriginal;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final AppStrings strings = context.strings;
+    final Color surfaceColor = baseColor.withValues(
+      alpha: blurEnabled ? 0.78 : 0.98,
+    );
+
+    final Widget surface = DecoratedBox(
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        border: Border(
+          top: BorderSide(
+            color: palette.divider.withValues(alpha: blurEnabled ? 0.62 : 1),
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(12, 7, 12, 7 + bottomInset),
+        child: LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final bool tight = constraints.maxWidth < 380;
+            return Row(
+              children: <Widget>[
+                Expanded(
+                  child: _ReaderProgressBar(progress: progress),
+                ),
+                const SizedBox(width: 10),
+                _ReaderToolbarIconButton(
+                  icon: article.isRead
+                      ? Icons.mark_email_unread_outlined
+                      : Icons.done_rounded,
+                  tooltip: strings.readStateAction(article.isRead),
+                  onPressed: onReadToggle,
+                ),
+                _ReaderToolbarIconButton(
+                  icon: article.starred
+                      ? Icons.star_rounded
+                      : Icons.star_border_rounded,
+                  tooltip: strings.starAction(article.starred),
+                  active: article.starred,
+                  onPressed: onStarToggle,
+                ),
+                _ReaderToolbarIconButton(
+                  icon: article.savedForLater
+                      ? Icons.bookmark_rounded
+                      : Icons.bookmark_border_rounded,
+                  tooltip: strings.readLaterAction(article.savedForLater),
+                  active: article.savedForLater,
+                  onPressed: onReadLaterToggle,
+                ),
+                if (!tight)
+                  _ReaderToolbarIconButton(
+                    icon: Icons.open_in_new_rounded,
+                    tooltip: strings.openOriginal,
+                    onPressed: onOpenOriginal,
+                  )
+                else
+                  _MobileReaderMoreButton(onOpenOriginal: onOpenOriginal),
+              ],
+            );
+          },
+        ),
+      ),
+    );
+
+    if (!blurEnabled) {
+      return surface;
+    }
+
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+        child: surface,
+      ),
+    );
+  }
+}
+
+class _MobileReaderMoreButton extends StatelessWidget {
+  const _MobileReaderMoreButton({
+    required this.onOpenOriginal,
+  });
+
+  final VoidCallback onOpenOriginal;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return SizedBox(
+      width: 34,
+      height: 34,
+      child: PopupMenuButton<String>(
+        padding: EdgeInsets.zero,
+        iconSize: 19,
+        tooltip: MaterialLocalizations.of(context).moreButtonTooltip,
+        icon: Icon(
+          Icons.more_horiz_rounded,
+          color: palette.secondaryText,
+        ),
+        onSelected: (String value) {
+          if (value == 'open_original') {
+            onOpenOriginal();
+          }
+        },
+        itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+          PopupMenuItem<String>(
+            value: 'open_original',
+            child: Text(context.strings.openOriginal),
+          ),
+        ],
       ),
     );
   }
@@ -776,40 +974,6 @@ class _InlineMeta extends StatelessWidget {
   }
 }
 
-class _ReaderBody extends StatelessWidget {
-  const _ReaderBody({
-    required this.article,
-    required this.compact,
-    required this.contentMode,
-    required this.strings,
-    required this.onOpenUrl,
-    this.onCompleteReadLater,
-  });
-
-  final Article article;
-  final bool compact;
-  final ArticleContentMode contentMode;
-  final AppStrings strings;
-  final Future<void> Function(String url) onOpenUrl;
-  final Future<void> Function()? onCompleteReadLater;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scrollbar(
-      child: SingleChildScrollView(
-        child: _ReaderContent(
-          article: article,
-          compact: compact,
-          contentMode: contentMode,
-          strings: strings,
-          onOpenUrl: onOpenUrl,
-          onCompleteReadLater: onCompleteReadLater,
-        ),
-      ),
-    );
-  }
-}
-
 class _ReaderContent extends StatelessWidget {
   const _ReaderContent({
     required this.article,
@@ -1070,92 +1234,6 @@ class _ReaderHtmlWidgetFactory extends WidgetFactory {
           ),
         );
       },
-    );
-  }
-}
-
-class _MetaChip extends StatelessWidget {
-  const _MetaChip({
-    required this.compact,
-    required this.icon,
-    required this.label,
-  });
-
-  final bool compact;
-  final IconData icon;
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    final ReaderPalette palette = AppTheme.paletteOf(context);
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 8 : 10,
-        vertical: compact ? 6 : 8,
-      ),
-      decoration: BoxDecoration(
-        color: palette.panelBackground,
-        borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: palette.border),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Icon(icon, size: compact ? 14 : 15, color: palette.secondaryText),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: compact ? Theme.of(context).textTheme.bodySmall : null,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ActionChip extends StatelessWidget {
-  const _ActionChip({
-    required this.compact,
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  final bool compact;
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final ReaderPalette palette = AppTheme.paletteOf(context);
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(999),
-      child: Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: compact ? 8 : 10,
-          vertical: compact ? 6 : 8,
-        ),
-        decoration: BoxDecoration(
-          color:
-              compact ? palette.panelMutedBackground : palette.panelBackground,
-          borderRadius: BorderRadius.circular(999),
-          border: Border.all(color: palette.border),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Icon(icon, size: 15, color: palette.secondaryText),
-            if (!compact) ...<Widget>[
-              const SizedBox(width: 6),
-              Text(label),
-            ],
-          ],
-        ),
-      ),
     );
   }
 }

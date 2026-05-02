@@ -787,7 +787,13 @@ class _ShellHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
-    final double headerHeight = mobileRestyled ? 58 : (compact ? 52 : 40);
+    final Article? selectedArticle = controller.selectedArticle;
+    final bool compactReading =
+        compact &&
+        controller.currentRoute == AppRouteId.readerDetail &&
+        selectedArticle != null;
+    final double headerHeight =
+        mobileRestyled || compactReading ? 58 : (compact ? 52 : 40);
 
     return Container(
       height: headerHeight + topInset,
@@ -808,20 +814,28 @@ class _ShellHeader extends StatelessWidget {
                 left: mobileRestyled ? 10 : 8,
                 right: mobileRestyled ? 6 : 4,
               ),
-              // Compact rail mode should behave like desktop: the sidebar
-              // stays mounted and is controlled by the top toggle instead of
-              // opening a second drawer layer from the left edge.
-              child: showSidebarToggle
-                  ? _HeaderSidebarToggle(
-                      collapsed: sidebarCollapsed,
-                      onTap: onSidebarToggle,
-                    )
-                  : IconButton(
-                      onPressed: showMenuButton ? onMenuPressed : null,
-                      icon: const Icon(Icons.menu_rounded),
+              // In the reader route this slot becomes page back; otherwise the
+              // compact rail keeps behaving like desktop with an in-place
+              // sidebar toggle instead of opening a second drawer layer.
+              child: compactReading
+                  ? IconButton(
+                      onPressed: controller.closeCompactReader,
+                      icon: const Icon(Icons.arrow_back_rounded),
                       splashRadius: 18,
-                      tooltip: strings.subscriptionManagement,
-                    ),
+                      tooltip: MaterialLocalizations.of(context)
+                          .backButtonTooltip,
+                    )
+                  : showSidebarToggle
+                      ? _HeaderSidebarToggle(
+                          collapsed: sidebarCollapsed,
+                          onTap: onSidebarToggle,
+                        )
+                      : IconButton(
+                          onPressed: showMenuButton ? onMenuPressed : null,
+                          icon: const Icon(Icons.menu_rounded),
+                          splashRadius: 18,
+                          tooltip: strings.subscriptionManagement,
+                        ),
             )
           else
             const SizedBox(width: 12),
@@ -843,11 +857,18 @@ class _ShellHeader extends StatelessWidget {
             ),
           Expanded(
             child: compact
-                ? _MobileHeaderTitle(
-                    controller: controller,
-                    strings: strings,
-                    mobileRestyled: mobileRestyled,
-                  )
+                ? compactReading
+                    ? _MobileReaderHeaderTitle(
+                        controller: controller,
+                        article: selectedArticle,
+                        strings: strings,
+                        mobileRestyled: mobileRestyled,
+                      )
+                    : _MobileHeaderTitle(
+                        controller: controller,
+                        strings: strings,
+                        mobileRestyled: mobileRestyled,
+                      )
                 : Stack(
                     alignment: Alignment.center,
                     children: <Widget>[
@@ -894,14 +915,16 @@ class _ShellHeader extends StatelessWidget {
                     ],
                   ),
           ),
-          if (compact)
+          if (compact && !compactReading)
             Padding(
               padding: EdgeInsets.only(right: mobileRestyled ? 12 : 10),
               child: _CompactStat(
                 mobileRestyled: mobileRestyled,
                 text: strings.unreadCountStat(controller.totalUnreadCount),
               ),
-            ),
+            )
+          else if (compact && compactReading)
+            const SizedBox(width: 12),
           if (_useWindowsWindowChrome && !compact)
             _WindowActions(brightness: Theme.of(context).brightness)
           else if (!compact)
@@ -1095,6 +1118,108 @@ class _MobileHeaderTitle extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _MobileReaderHeaderTitle extends StatelessWidget {
+  const _MobileReaderHeaderTitle({
+    required this.controller,
+    required this.article,
+    required this.strings,
+    required this.mobileRestyled,
+  });
+
+  final ReaderController controller;
+  final Article article;
+  final AppStrings strings;
+  final bool mobileRestyled;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final String sourceTitle = controller.sourceTitleForArticle(article);
+
+    return Row(
+      children: <Widget>[
+        _MobileHeaderSourceAvatar(
+          iconUrl: controller.sourceIconForArticle(article),
+          mobileRestyled: mobileRestyled,
+        ),
+        SizedBox(width: mobileRestyled ? 12 : 8),
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                article.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontSize: mobileRestyled ? 18 : null,
+                      fontWeight: FontWeight.w700,
+                      height: 1.08,
+                    ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                '${strings.appName} @ $sourceTitle',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: palette.secondaryText,
+                      fontWeight: FontWeight.w500,
+                      height: 1.1,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _MobileHeaderSourceAvatar extends StatelessWidget {
+  const _MobileHeaderSourceAvatar({
+    required this.iconUrl,
+    required this.mobileRestyled,
+  });
+
+  final String? iconUrl;
+  final bool mobileRestyled;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final double size = mobileRestyled ? 32 : 26;
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: palette.primarySoft,
+        borderRadius: BorderRadius.circular(mobileRestyled ? 12 : 9),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: iconUrl == null
+          ? Icon(
+              Icons.rss_feed_rounded,
+              size: mobileRestyled ? 17 : 15,
+              color: Theme.of(context).colorScheme.primary,
+            )
+          : Image.network(
+              iconUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) {
+                return Icon(
+                  Icons.public_rounded,
+                  size: mobileRestyled ? 17 : 15,
+                  color: Theme.of(context).colorScheme.primary,
+                );
+              },
+            ),
     );
   }
 }
