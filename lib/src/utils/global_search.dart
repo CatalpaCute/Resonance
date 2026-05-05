@@ -26,17 +26,19 @@ class GlobalSearchArticleResult {
 class GlobalSearchResultSet {
   const GlobalSearchResultSet({
     required this.query,
-    required this.sourceResult,
+    required this.sourceResults,
     required this.articleResults,
   });
 
   final String query;
-  final GlobalSearchSourceResult? sourceResult;
+  final List<GlobalSearchSourceResult> sourceResults;
   final List<GlobalSearchArticleResult> articleResults;
 
+  GlobalSearchSourceResult? get sourceResult =>
+      sourceResults.isEmpty ? null : sourceResults.first;
   bool get isIdle => query.isEmpty;
-  bool get isEmpty => sourceResult == null && articleResults.isEmpty;
-  int get itemCount => articleResults.length + (sourceResult == null ? 0 : 1);
+  bool get isEmpty => sourceResults.isEmpty && articleResults.isEmpty;
+  int get itemCount => articleResults.length + sourceResults.length;
 }
 
 GlobalSearchResultSet searchGlobalContent({
@@ -45,26 +47,35 @@ GlobalSearchResultSet searchGlobalContent({
   required String query,
   required String Function(Article article) sourceTitleForArticle,
   int articleLimit = 20,
+  int sourceLimit = 3,
 }) {
   final String normalizedQuery = _normalize(query);
   if (normalizedQuery.isEmpty) {
     return const GlobalSearchResultSet(
       query: '',
-      sourceResult: null,
+      sourceResults: <GlobalSearchSourceResult>[],
       articleResults: <GlobalSearchArticleResult>[],
     );
   }
 
-  GlobalSearchSourceResult? bestSource;
+  final List<GlobalSearchSourceResult> sourceResults =
+      <GlobalSearchSourceResult>[];
   for (final FeedSource source in feeds) {
     final int score = _sourceScore(source, normalizedQuery);
     if (score <= 0) {
       continue;
     }
-    if (bestSource == null || score > bestSource.score) {
-      bestSource = GlobalSearchSourceResult(source: source, score: score);
-    }
+    sourceResults.add(GlobalSearchSourceResult(source: source, score: score));
   }
+  sourceResults.sort((GlobalSearchSourceResult a, GlobalSearchSourceResult b) {
+    final int scoreOrder = b.score.compareTo(a.score);
+    if (scoreOrder != 0) {
+      return scoreOrder;
+    }
+    return a.source.title.compareTo(b.source.title);
+  });
+  final List<GlobalSearchSourceResult> limitedSources =
+      sourceResults.take(sourceLimit).toList(growable: false);
 
   final Map<String, GlobalSearchArticleResult> articleResults =
       <String, GlobalSearchArticleResult>{};
@@ -81,9 +92,9 @@ GlobalSearchResultSet searchGlobalContent({
     );
   }
 
-  if (bestSource != null) {
+  for (final GlobalSearchSourceResult sourceResult in limitedSources) {
     for (final Article article in articles) {
-      if (article.sourceId != bestSource.source.id) {
+      if (article.sourceId != sourceResult.source.id) {
         continue;
       }
       final String sourceTitle = sourceTitleForArticle(article);
@@ -110,7 +121,7 @@ GlobalSearchResultSet searchGlobalContent({
 
   return GlobalSearchResultSet(
     query: normalizedQuery,
-    sourceResult: bestSource,
+    sourceResults: List<GlobalSearchSourceResult>.unmodifiable(limitedSources),
     articleResults: List<GlobalSearchArticleResult>.unmodifiable(
       sorted.take(articleLimit),
     ),

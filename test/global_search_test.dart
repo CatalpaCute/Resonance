@@ -49,11 +49,38 @@ void main() {
       );
 
       expect(result.sourceResult?.source.id, 'it');
+      expect(result.sourceResults.map((GlobalSearchSourceResult item) {
+        return item.source.id;
+      }), <String>['it']);
       expect(
         result.articleResults.map((GlobalSearchArticleResult item) {
           return item.article.id;
         }),
         <String>['newer', 'older'],
+      );
+    });
+
+    test('returns multiple matched sources ordered by score and limit', () {
+      final List<FeedSource> feeds = <FeedSource>[
+        _source(id: 'partial_a', title: 'Tech Alpha'),
+        _source(id: 'exact', title: 'Tech'),
+        _source(id: 'partial_b', title: 'Daily Tech'),
+        _source(id: 'url', title: 'General News'),
+      ];
+
+      final GlobalSearchResultSet result = searchGlobalContent(
+        feeds: feeds,
+        articles: <Article>[],
+        query: 'tech',
+        sourceTitleForArticle: _sourceTitleFor(feeds),
+        sourceLimit: 2,
+      );
+
+      expect(
+        result.sourceResults.map((GlobalSearchSourceResult item) {
+          return item.source.id;
+        }),
+        <String>['exact', 'partial_b'],
       );
     });
 

@@ -1010,20 +1010,25 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
     super.initState();
     widget.focusNode.addListener(_handleFocusChanged);
     _queryController.addListener(_handleQueryChanged);
+    HardwareKeyboard.instance.addHandler(_handleHardwareKey);
   }
 
   @override
   void dispose() {
     widget.focusNode.removeListener(_handleFocusChanged);
     _queryController.removeListener(_handleQueryChanged);
+    HardwareKeyboard.instance.removeHandler(_handleHardwareKey);
     _queryController.dispose();
     _removeOverlay();
     super.dispose();
   }
 
   void _handleFocusChanged() {
+    setState(() {});
     if (widget.focusNode.hasFocus) {
       _showOverlay();
+    } else {
+      _removeOverlay();
     }
   }
 
@@ -1037,15 +1042,39 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
   }
 
   void _handleQueryChanged() {
+    setState(() {});
     if (_overlayEntry != null) {
       final GlobalSearchResultSet currentResults = _searchResults;
-      final int count =
-          currentResults.articleResults.length + (currentResults.sourceResult != null ? 1 : 0);
+      final int count = _desktopSearchEntries(currentResults).length;
       setState(() {
         _selectedIndex = count == 0 ? -1 : 0;
       });
       _overlayEntry?.markNeedsBuild();
     }
+  }
+
+  bool _handleHardwareKey(KeyEvent event) {
+    if (!widget.focusNode.hasFocus || event is! KeyDownEvent) {
+      return false;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      widget.focusNode.unfocus();
+      _removeOverlay();
+      return true;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      _moveSelection(1);
+      return true;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      _moveSelection(-1);
+      return true;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.enter) {
+      _openSelected();
+      return true;
+    }
+    return false;
   }
 
   void _showOverlay() {
@@ -1057,12 +1086,14 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
       builder: (BuildContext context) {
         final ReaderPalette palette = AppTheme.paletteOf(context);
         final GlobalSearchResultSet results = _searchResults;
+        final List<_DesktopSearchEntry> entries =
+            _desktopSearchEntries(results);
         return Positioned(
           width: 420,
           child: CompositedTransformFollower(
             link: _layerLink,
             showWhenUnlinked: false,
-            offset: const Offset(0, 36), // 32 height + 4 margin
+            offset: const Offset(0, 38),
             child: TapRegion(
               groupId: 'desktop_search',
               onTapOutside: (_) {
@@ -1070,15 +1101,22 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
                 _removeOverlay();
               },
               child: Material(
-                color: Theme.of(context).colorScheme.surface,
-                borderRadius: BorderRadius.circular(12),
+                color: palette.panelBackground,
+                borderRadius: BorderRadius.circular(16),
                 clipBehavior: Clip.antiAlias,
-                elevation: 8,
-                shadowColor: palette.shadow.withValues(alpha: 0.15),
+                elevation: 0,
                 child: DecoratedBox(
                   decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(12),
+                    color: palette.panelBackground,
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(color: palette.border),
+                    boxShadow: <BoxShadow>[
+                      BoxShadow(
+                        color: palette.shadow.withValues(alpha: 0.10),
+                        blurRadius: 22,
+                        offset: const Offset(0, 12),
+                      ),
+                    ],
                   ),
                   child: ConstrainedBox(
                     constraints: const BoxConstraints(maxHeight: 560),
@@ -1089,6 +1127,7 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
                           child: _DesktopSearchResults(
                             controller: widget.controller,
                             results: results,
+                            entries: entries,
                             selectedIndex: _selectedIndex,
                             onSourceSelected: _openSource,
                             onArticleSelected: _openArticle,
@@ -1107,7 +1146,7 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
     );
 
     Overlay.of(context).insert(_overlayEntry!);
-    _handleQueryChanged(); // Initialize selection
+    _handleQueryChanged();
   }
 
   void _removeOverlay() {
@@ -1119,8 +1158,7 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
     if (_overlayEntry == null) return;
 
     final GlobalSearchResultSet currentResults = _searchResults;
-    final int count =
-        currentResults.articleResults.length + (currentResults.sourceResult != null ? 1 : 0);
+    final int count = _desktopSearchEntries(currentResults).length;
     if (count == 0) return;
 
     setState(() {
@@ -1139,15 +1177,18 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
   void _openSelected() {
     if (_overlayEntry == null || _selectedIndex < 0) return;
 
-    final GlobalSearchResultSet results = _searchResults;
-    if (results.sourceResult != null && _selectedIndex == 0) {
-      _openSource(results.sourceResult!.source);
+    final List<_DesktopSearchEntry> entries =
+        _desktopSearchEntries(_searchResults);
+    if (_selectedIndex >= entries.length) {
       return;
     }
-    final int articleIndex =
-        _selectedIndex - (results.sourceResult == null ? 0 : 1);
-    if (articleIndex >= 0 && articleIndex < results.articleResults.length) {
-      _openArticle(results.articleResults[articleIndex].article);
+    final _DesktopSearchEntry entry = entries[_selectedIndex];
+    if (entry.source != null) {
+      _openSource(entry.source!);
+      return;
+    }
+    if (entry.article != null) {
+      _openArticle(entry.article!.article);
     }
   }
 
@@ -1172,6 +1213,8 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final ThemeData theme = Theme.of(context);
+    final bool showShortcut =
+        !widget.focusNode.hasFocus && _queryController.text.isEmpty;
 
     return TapRegion(
       groupId: 'desktop_search',
@@ -1185,8 +1228,10 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
           child: Shortcuts(
             shortcuts: const <ShortcutActivator, Intent>{
               SingleActivator(LogicalKeyboardKey.escape): _CloseSearchIntent(),
-              SingleActivator(LogicalKeyboardKey.arrowDown): _MoveSearchIntent(1),
-              SingleActivator(LogicalKeyboardKey.arrowUp): _MoveSearchIntent(-1),
+              SingleActivator(LogicalKeyboardKey.arrowDown):
+                  _MoveSearchIntent(1),
+              SingleActivator(LogicalKeyboardKey.arrowUp):
+                  _MoveSearchIntent(-1),
               SingleActivator(LogicalKeyboardKey.enter): _OpenSearchIntent(),
             },
             child: Actions(
@@ -1214,42 +1259,55 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
               child: Material(
                 color: Colors.transparent,
                 child: Container(
-                  height: 32,
+                  height: 34,
+                  padding: const EdgeInsets.fromLTRB(9, 0, 8, 0),
                   decoration: BoxDecoration(
                     color: palette.panelBackground,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: palette.border),
+                    border: Border.all(
+                      color: widget.focusNode.hasFocus
+                          ? Theme.of(context)
+                              .colorScheme
+                              .primary
+                              .withValues(alpha: 0.52)
+                          : palette.border,
+                      width: widget.focusNode.hasFocus ? 1.5 : 1,
+                    ),
                   ),
                   child: Row(
                     children: <Widget>[
-                      const SizedBox(width: 9),
                       Icon(
                         Icons.search_rounded,
                         size: 17,
-                        color: palette.tertiaryText,
+                        color: widget.focusNode.hasFocus
+                            ? palette.secondaryText
+                            : palette.tertiaryText,
                       ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: TextField(
                           controller: _queryController,
                           focusNode: widget.focusNode,
-                          style: theme.textTheme.bodySmall,
-                          decoration: InputDecoration(
+                          textInputAction: TextInputAction.search,
+                          onSubmitted: (_) => _openSelected(),
+                          cursorColor: Theme.of(context).colorScheme.primary,
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                          decoration: InputDecoration.collapsed(
                             hintText: widget.hintText,
                             hintStyle: theme.textTheme.bodySmall?.copyWith(
                               color: palette.tertiaryText,
                             ),
-                            border: InputBorder.none,
-                            contentPadding: const EdgeInsets.only(bottom: 16),
-                            isDense: true,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8),
-                      const _Keycap(label: 'Ctrl'),
-                      const SizedBox(width: 4),
-                      const _Keycap(label: 'K'),
-                      const SizedBox(width: 8),
+                      if (showShortcut) ...<Widget>[
+                        const SizedBox(width: 8),
+                        const _Keycap(label: 'Ctrl'),
+                        const SizedBox(width: 4),
+                        const _Keycap(label: 'K'),
+                      ],
                     ],
                   ),
                 ),
@@ -1294,11 +1352,49 @@ class _Keycap extends StatelessWidget {
   }
 }
 
+class _DesktopSearchEntry {
+  const _DesktopSearchEntry.source(this.source) : article = null;
+
+  const _DesktopSearchEntry.article(this.article) : source = null;
+
+  final FeedSource? source;
+  final GlobalSearchArticleResult? article;
+}
+
+List<_DesktopSearchEntry> _desktopSearchEntries(
+  GlobalSearchResultSet results,
+) {
+  final List<_DesktopSearchEntry> entries = <_DesktopSearchEntry>[];
+  final Set<String> usedArticleIds = <String>{};
+
+  for (final GlobalSearchSourceResult sourceResult in results.sourceResults) {
+    entries.add(_DesktopSearchEntry.source(sourceResult.source));
+    for (final GlobalSearchArticleResult articleResult
+        in results.articleResults) {
+      if (articleResult.article.sourceId != sourceResult.source.id) {
+        continue;
+      }
+      if (usedArticleIds.add(articleResult.article.id)) {
+        entries.add(_DesktopSearchEntry.article(articleResult));
+      }
+    }
+  }
+
+  for (final GlobalSearchArticleResult articleResult
+      in results.articleResults) {
+    if (usedArticleIds.add(articleResult.article.id)) {
+      entries.add(_DesktopSearchEntry.article(articleResult));
+    }
+  }
+
+  return entries;
+}
 
 class _DesktopSearchResults extends StatelessWidget {
   const _DesktopSearchResults({
     required this.controller,
     required this.results,
+    required this.entries,
     required this.selectedIndex,
     required this.onSourceSelected,
     required this.onArticleSelected,
@@ -1306,6 +1402,7 @@ class _DesktopSearchResults extends StatelessWidget {
 
   final ReaderController controller;
   final GlobalSearchResultSet results;
+  final List<_DesktopSearchEntry> entries;
   final int selectedIndex;
   final ValueChanged<FeedSource> onSourceSelected;
   final ValueChanged<Article> onArticleSelected;
@@ -1321,36 +1418,35 @@ class _DesktopSearchResults extends StatelessWidget {
     }
 
     final List<Widget> children = <Widget>[];
-    int index = 0;
-    if (results.sourceResult != null) {
-      final FeedSource source = results.sourceResult!.source;
-      children.add(
-        _DesktopSearchSourceTile(
-          source: source,
-          articleCount: controller.articleCountForSource(source.id),
-          unreadCount: controller.unreadCountForSource(source.id),
-          selected: selectedIndex == index,
-          onTap: () => onSourceSelected(source),
-        ),
-      );
-      index += 1;
-    }
-
-    for (final GlobalSearchArticleResult result in results.articleResults) {
-      final int itemIndex = index;
-      children.add(
-        _DesktopSearchArticleTile(
-          result: result,
-          selected: selectedIndex == itemIndex,
-          onTap: () => onArticleSelected(result.article),
-        ),
-      );
-      index += 1;
+    for (int index = 0; index < entries.length; index += 1) {
+      final _DesktopSearchEntry entry = entries[index];
+      final FeedSource? source = entry.source;
+      final GlobalSearchArticleResult? article = entry.article;
+      if (source != null) {
+        children.add(
+          _DesktopSearchSourceTile(
+            source: source,
+            articleCount: controller.articleCountForSource(source.id),
+            unreadCount: controller.unreadCountForSource(source.id),
+            selected: selectedIndex == index,
+            onTap: () => onSourceSelected(source),
+          ),
+        );
+      } else if (article != null) {
+        children.add(
+          _DesktopSearchArticleTile(
+            result: article,
+            query: results.query,
+            selected: selectedIndex == index,
+            onTap: () => onArticleSelected(article.article),
+          ),
+        );
+      }
     }
 
     return ListView(
       shrinkWrap: true,
-      padding: const EdgeInsets.fromLTRB(14, 14, 14, 6),
+      padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
       children: children,
     );
   }
@@ -1413,30 +1509,52 @@ class _DesktopSearchSourceTile extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 10, 10, 6),
-      child: Row(
-        children: <Widget>[
-          _SearchSourceAvatar(iconUrl: source.iconUrl, size: 22),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              source.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: FontWeight.w700,
-                    color: palette.secondaryText,
-                  ),
-            ),
+      padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+          decoration: BoxDecoration(
+            color: selected ? palette.hover : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
           ),
-          const SizedBox(width: 12),
-          Text(
-            context.strings.sourceStats(articleCount, unreadCount),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: palette.tertiaryText,
+          child: Row(
+            children: <Widget>[
+              _SearchSourceAvatar(iconUrl: source.iconUrl, size: 48),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      source.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: Theme.of(context).colorScheme.onSurface,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      context.strings.sourceStats(articleCount, unreadCount),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: palette.secondaryText,
+                          ),
+                    ),
+                  ],
                 ),
+              ),
+              const SizedBox(width: 12),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: palette.secondaryText,
+                size: 26,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1445,11 +1563,13 @@ class _DesktopSearchSourceTile extends StatelessWidget {
 class _DesktopSearchArticleTile extends StatelessWidget {
   const _DesktopSearchArticleTile({
     required this.result,
+    required this.query,
     required this.selected,
     required this.onTap,
   });
 
   final GlobalSearchArticleResult result;
+  final String query;
   final bool selected;
   final VoidCallback onTap;
 
@@ -1457,17 +1577,29 @@ class _DesktopSearchArticleTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final Article article = result.article;
+    final TextStyle? snippetStyle = Theme.of(context)
+        .textTheme
+        .bodyMedium
+        ?.copyWith(color: palette.secondaryText, height: 1.45);
+    final String snippet = _searchSnippetForArticle(
+      article: article,
+      query: query,
+      fallback: context.strings.noReadableSummary,
+    );
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 2),
+      padding: const EdgeInsets.only(bottom: 12),
       child: InkWell(
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(14),
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
           decoration: BoxDecoration(
-            color: selected ? palette.hover : Colors.transparent,
-            borderRadius: BorderRadius.circular(8),
+            color: selected
+                ? palette.hover
+                : palette.panelBackground.withValues(alpha: 0.35),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: palette.border.withValues(alpha: 0.76)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1504,27 +1636,28 @@ class _DesktopSearchArticleTile extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 8),
               Text(
                 article.title,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
                       fontWeight: FontWeight.w700,
-                      height: 1.26,
+                      height: 1.28,
                     ),
               ),
-              const SizedBox(height: 4),
-              Text(
-                article.readerText.isEmpty
-                    ? context.strings.noReadableSummary
-                    : article.readerText,
+              const SizedBox(height: 8),
+              RichText(
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: palette.secondaryText,
-                      height: 1.45,
-                    ),
+                text: TextSpan(
+                  style: snippetStyle,
+                  children: _searchHighlightSpans(
+                    text: snippet,
+                    query: query,
+                    highlightColor: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
               ),
             ],
           ),
@@ -1532,6 +1665,83 @@ class _DesktopSearchArticleTile extends StatelessWidget {
       ),
     );
   }
+}
+
+String _searchSnippetForArticle({
+  required Article article,
+  required String query,
+  required String fallback,
+}) {
+  final String text = article.readerText.trim().replaceAll(RegExp(r'\s+'), ' ');
+  if (text.isEmpty) {
+    return fallback;
+  }
+
+  final String normalizedQuery = query.trim().toLowerCase();
+  if (normalizedQuery.isEmpty) {
+    return text;
+  }
+
+  final int matchIndex = text.toLowerCase().indexOf(normalizedQuery);
+  if (matchIndex < 0) {
+    return text;
+  }
+
+  const int targetLength = 96;
+  final int contextLength = targetLength - normalizedQuery.length;
+  int start = matchIndex - (contextLength ~/ 2);
+  if (start < 0) {
+    start = 0;
+  }
+  int end = start + targetLength;
+  if (end > text.length) {
+    end = text.length;
+    start = end - targetLength;
+    if (start < 0) {
+      start = 0;
+    }
+  }
+
+  final String prefix = start > 0 ? '\u2026' : '';
+  final String suffix = end < text.length ? '\u2026' : '';
+  return '$prefix${text.substring(start, end).trim()}$suffix';
+}
+
+List<TextSpan> _searchHighlightSpans({
+  required String text,
+  required String query,
+  required Color highlightColor,
+}) {
+  final String normalizedQuery = query.trim().toLowerCase();
+  if (text.isEmpty || normalizedQuery.isEmpty) {
+    return <TextSpan>[TextSpan(text: text)];
+  }
+
+  final String lowerText = text.toLowerCase();
+  final List<TextSpan> spans = <TextSpan>[];
+  int cursor = 0;
+  while (cursor < text.length) {
+    final int matchIndex = lowerText.indexOf(normalizedQuery, cursor);
+    if (matchIndex < 0) {
+      spans.add(TextSpan(text: text.substring(cursor)));
+      break;
+    }
+    if (matchIndex > cursor) {
+      spans.add(TextSpan(text: text.substring(cursor, matchIndex)));
+    }
+    final int matchEnd = matchIndex + normalizedQuery.length;
+    spans.add(
+      TextSpan(
+        text: text.substring(matchIndex, matchEnd),
+        style: TextStyle(
+          color: highlightColor,
+          fontWeight: FontWeight.w700,
+        ),
+      ),
+    );
+    cursor = matchEnd;
+  }
+  return spans;
 }
 
 class _CloseSearchIntent extends Intent {
@@ -1849,7 +2059,7 @@ class _HeaderSidebarToggle extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
 
     return Tooltip(
-      message: collapsed ? '展开侧栏' : '收起侧栏',
+      message: collapsed ? '灞曞紑渚ф爮' : '鏀惰捣渚ф爮',
       child: Material(
         color: Colors.transparent,
         child: InkWell(
