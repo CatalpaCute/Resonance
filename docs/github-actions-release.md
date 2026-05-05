@@ -63,5 +63,7 @@ Windows 当前输出的是 Flutter `windows` 发布目录压缩包，分别提�
 - 工作流使用 `release.published`，因为 GitHub 对 Draft Release 的 `created/edited/deleted` 事件不会触发 workflow。
 - Linux 构建依赖按 Flutter 官方 Linux 桌面文档安装，并额外补上 `tray_manager` 需要的 `libayatana-appindicator3-dev`：`clang`、`cmake`、`ninja-build`、`pkg-config`、`libgtk-3-dev`、`libstdc++-12-dev`、`libayatana-appindicator3-dev`。
 - Android 构建会同时产出一个 universal APK 和三个按 ABI 拆分的 APK。拆分包体积更小，universal APK 则保留为通用兜底版本。
+- Android 的 4 个 APK 会按顺序逐个上传到 Release，避免在 GitHub Release 侧并发更新资产时出现偶发上传失败。
 - Android 构建优先读取 CI 生成的 `android/key.properties`；本地没配正式签名时，会自动回退到 debug 签名，避免影响日常开发。
+- 为了让 Linux / Windows 的 arm64 runner 稳定拿到 Flutter SDK，工作流现在显式固定使用 Flutter `3.41.9`，不再依赖 `subosito/flutter-action` 去自动推断 `stable` 通道在 arm64 上的最新版本。
 - Linux 与 Windows 现在都通过 GitHub 官方 arm64 hosted runner 额外产出 `arm64` 版本，因此 Release 中会同时看到 `x64` 和 `arm64` 两套桌面包。
