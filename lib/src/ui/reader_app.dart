@@ -113,6 +113,7 @@ class _ReaderHomeState extends State<ReaderHome> {
 
   bool _compactFilterExpanded = false;
   bool _compactRailCollapsed = true;
+  bool _lastCompactLayout = true;
   AppRouteId? _lastObservedRoute;
   String? _lastObservedSourceId;
   bool? _lastObservedUnreadOnly;
@@ -124,6 +125,7 @@ class _ReaderHomeState extends State<ReaderHome> {
   void initState() {
     super.initState();
     controller.addListener(_handleControllerChanged);
+    HardwareKeyboard.instance.addHandler(_handleHomeKeyboard);
     _syncControllerSnapshot();
   }
 
@@ -140,9 +142,21 @@ class _ReaderHomeState extends State<ReaderHome> {
   @override
   void dispose() {
     controller.removeListener(_handleControllerChanged);
+    HardwareKeyboard.instance.removeHandler(_handleHomeKeyboard);
     _compactHomeListController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
+  }
+
+  bool _handleHomeKeyboard(KeyEvent event) {
+    if (event is! KeyDownEvent ||
+        event.logicalKey != LogicalKeyboardKey.keyK ||
+        !HardwareKeyboard.instance.isControlPressed ||
+        _lastCompactLayout) {
+      return false;
+    }
+    _searchFocusNode.requestFocus();
+    return true;
   }
 
   @override
@@ -155,6 +169,7 @@ class _ReaderHomeState extends State<ReaderHome> {
         return LayoutBuilder(
           builder: (BuildContext context, BoxConstraints constraints) {
             final bool compact = constraints.maxWidth < 980;
+            _lastCompactLayout = compact;
             final bool usePortraitMobileHome =
                 _usePortraitMobileHome(context, constraints);
             final Color mobilePageBackground = _mobilePageBackgroundOf(context);
@@ -1004,6 +1019,9 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
   final LayerLink _layerLink = LayerLink();
   OverlayEntry? _overlayEntry;
   int _selectedIndex = -1;
+  bool _pointerInsideSearchSurface = false;
+
+  static const double _searchRadius = 8;
 
   @override
   void initState() {
@@ -1028,8 +1046,19 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
     if (widget.focusNode.hasFocus) {
       _showOverlay();
     } else {
-      _removeOverlay();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted ||
+            widget.focusNode.hasFocus ||
+            _pointerInsideSearchSurface) {
+          return;
+        }
+        _removeOverlay();
+      });
     }
+  }
+
+  void _setPointerInsideSearchSurface(bool value) {
+    _pointerInsideSearchSurface = value;
   }
 
   GlobalSearchResultSet get _searchResults {
@@ -1054,7 +1083,8 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
   }
 
   bool _handleHardwareKey(KeyEvent event) {
-    if (!widget.focusNode.hasFocus || event is! KeyDownEvent) {
+    if (event is! KeyDownEvent ||
+        (!widget.focusNode.hasFocus && _overlayEntry == null)) {
       return false;
     }
     if (event.logicalKey == LogicalKeyboardKey.escape) {
@@ -1094,47 +1124,54 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
             link: _layerLink,
             showWhenUnlinked: false,
             offset: const Offset(0, 38),
-            child: TapRegion(
-              groupId: 'desktop_search',
-              onTapOutside: (_) {
-                widget.focusNode.unfocus();
-                _removeOverlay();
-              },
-              child: Material(
-                color: palette.panelBackground,
-                borderRadius: BorderRadius.circular(16),
-                clipBehavior: Clip.antiAlias,
-                elevation: 0,
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    color: palette.panelBackground,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: palette.border),
-                    boxShadow: <BoxShadow>[
-                      BoxShadow(
-                        color: palette.shadow.withValues(alpha: 0.10),
-                        blurRadius: 22,
-                        offset: const Offset(0, 12),
-                      ),
-                    ],
-                  ),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(maxHeight: 560),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: <Widget>[
-                        Flexible(
-                          child: _DesktopSearchResults(
-                            controller: widget.controller,
-                            results: results,
-                            entries: entries,
-                            selectedIndex: _selectedIndex,
-                            onSourceSelected: _openSource,
-                            onArticleSelected: _openArticle,
-                          ),
+            child: MouseRegion(
+              onEnter: (_) => _setPointerInsideSearchSurface(true),
+              onExit: (_) => _setPointerInsideSearchSurface(false),
+              child: TapRegion(
+                groupId: 'desktop_search',
+                onTapOutside: (_) {
+                  if (_pointerInsideSearchSurface) {
+                    return;
+                  }
+                  widget.focusNode.unfocus();
+                  _removeOverlay();
+                },
+                child: Material(
+                  color: palette.panelBackground,
+                  borderRadius: BorderRadius.circular(_searchRadius),
+                  clipBehavior: Clip.antiAlias,
+                  elevation: 0,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: palette.panelBackground,
+                      borderRadius: BorderRadius.circular(_searchRadius),
+                      border: Border.all(color: palette.border),
+                      boxShadow: <BoxShadow>[
+                        BoxShadow(
+                          color: palette.shadow.withValues(alpha: 0.10),
+                          blurRadius: 22,
+                          offset: const Offset(0, 12),
                         ),
-                        _DesktopSearchFooter(),
                       ],
+                    ),
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 560),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: <Widget>[
+                          Flexible(
+                            child: _DesktopSearchResults(
+                              controller: widget.controller,
+                              results: results,
+                              entries: entries,
+                              selectedIndex: _selectedIndex,
+                              onSourceSelected: _openSource,
+                              onArticleSelected: _openArticle,
+                            ),
+                          ),
+                          _DesktopSearchFooter(),
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -1215,101 +1252,101 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
     final ThemeData theme = Theme.of(context);
     final bool showShortcut =
         !widget.focusNode.hasFocus && _queryController.text.isEmpty;
+    final TextStyle searchTextStyle = theme.textTheme.bodyMedium?.copyWith(
+          color: Theme.of(context).colorScheme.onSurface,
+          fontSize: 14,
+          height: 1.2,
+        ) ??
+        TextStyle(
+          color: Theme.of(context).colorScheme.onSurface,
+          fontSize: 14,
+          height: 1.2,
+        );
+    final TextStyle searchHintStyle = searchTextStyle.copyWith(
+      color: palette.tertiaryText,
+      fontWeight: FontWeight.w400,
+    );
 
-    return TapRegion(
-      groupId: 'desktop_search',
-      child: CompositedTransformTarget(
-        link: _layerLink,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(
-            maxWidth: 420,
-            minWidth: 280,
-          ),
-          child: Shortcuts(
-            shortcuts: const <ShortcutActivator, Intent>{
-              SingleActivator(LogicalKeyboardKey.escape): _CloseSearchIntent(),
-              SingleActivator(LogicalKeyboardKey.arrowDown):
-                  _MoveSearchIntent(1),
-              SingleActivator(LogicalKeyboardKey.arrowUp):
-                  _MoveSearchIntent(-1),
-              SingleActivator(LogicalKeyboardKey.enter): _OpenSearchIntent(),
-            },
-            child: Actions(
-              actions: <Type, Action<Intent>>{
-                _CloseSearchIntent: CallbackAction<_CloseSearchIntent>(
-                  onInvoke: (_) {
-                    widget.focusNode.unfocus();
-                    _removeOverlay();
-                    return null;
-                  },
-                ),
-                _MoveSearchIntent: CallbackAction<_MoveSearchIntent>(
-                  onInvoke: (_MoveSearchIntent intent) {
-                    _moveSelection(intent.delta);
-                    return null;
-                  },
-                ),
-                _OpenSearchIntent: CallbackAction<_OpenSearchIntent>(
-                  onInvoke: (_) {
-                    _openSelected();
-                    return null;
-                  },
-                ),
-              },
-              child: Material(
-                color: Colors.transparent,
-                child: Container(
-                  height: 34,
-                  padding: const EdgeInsets.fromLTRB(9, 0, 8, 0),
-                  decoration: BoxDecoration(
-                    color: palette.panelBackground,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: widget.focusNode.hasFocus
-                          ? Theme.of(context)
-                              .colorScheme
-                              .primary
-                              .withValues(alpha: 0.52)
-                          : palette.border,
-                      width: widget.focusNode.hasFocus ? 1.5 : 1,
-                    ),
+    return MouseRegion(
+      onEnter: (_) => _setPointerInsideSearchSurface(true),
+      onExit: (_) => _setPointerInsideSearchSurface(false),
+      child: TapRegion(
+        groupId: 'desktop_search',
+        child: CompositedTransformTarget(
+          link: _layerLink,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: 420,
+              minWidth: 280,
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                height: 34,
+                padding: const EdgeInsets.fromLTRB(9, 0, 8, 0),
+                decoration: BoxDecoration(
+                  color: palette.panelBackground,
+                  borderRadius: BorderRadius.circular(_searchRadius),
+                  border: Border.all(
+                    color: widget.focusNode.hasFocus
+                        ? Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: 0.52)
+                        : palette.border,
+                    width: widget.focusNode.hasFocus ? 1.5 : 1,
                   ),
-                  child: Row(
-                    children: <Widget>[
-                      Icon(
-                        Icons.search_rounded,
-                        size: 17,
-                        color: widget.focusNode.hasFocus
-                            ? palette.secondaryText
-                            : palette.tertiaryText,
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: _queryController,
-                          focusNode: widget.focusNode,
-                          textInputAction: TextInputAction.search,
-                          onSubmitted: (_) => _openSelected(),
-                          cursorColor: Theme.of(context).colorScheme.primary,
-                          style: theme.textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                          decoration: InputDecoration.collapsed(
-                            hintText: widget.hintText,
-                            hintStyle: theme.textTheme.bodySmall?.copyWith(
-                              color: palette.tertiaryText,
+                ),
+                child: Row(
+                  children: <Widget>[
+                    Icon(
+                      Icons.search_rounded,
+                      size: 17,
+                      color: widget.focusNode.hasFocus
+                          ? palette.secondaryText
+                          : palette.tertiaryText,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: SizedBox(
+                        height: 22,
+                        child: Stack(
+                          alignment: Alignment.centerLeft,
+                          children: <Widget>[
+                            if (_queryController.text.isEmpty)
+                              IgnorePointer(
+                                child: Text(
+                                  widget.hintText,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: searchHintStyle,
+                                ),
+                              ),
+                            EditableText(
+                              controller: _queryController,
+                              focusNode: widget.focusNode,
+                              textInputAction: TextInputAction.search,
+                              onSubmitted: (_) => _openSelected(),
+                              cursorColor:
+                                  Theme.of(context).colorScheme.primary,
+                              backgroundCursorColor: palette.tertiaryText,
+                              cursorHeight: 17,
+                              style: searchTextStyle,
+                              maxLines: 1,
+                              selectionColor:
+                                  palette.primarySoft.withValues(alpha: 0.70),
                             ),
-                          ),
+                          ],
                         ),
                       ),
-                      if (showShortcut) ...<Widget>[
-                        const SizedBox(width: 8),
-                        const _Keycap(label: 'Ctrl'),
-                        const SizedBox(width: 4),
-                        const _Keycap(label: 'K'),
-                      ],
+                    ),
+                    if (showShortcut) ...<Widget>[
+                      const SizedBox(width: 8),
+                      const _Keycap(label: 'Ctrl'),
+                      const SizedBox(width: 4),
+                      const _Keycap(label: 'K'),
                     ],
-                  ),
+                  ],
                 ),
               ),
             ),
@@ -1509,50 +1546,57 @@ class _DesktopSearchSourceTile extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(10, 0, 10, 12),
+      padding: const EdgeInsets.only(bottom: 16),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
-          decoration: BoxDecoration(
-            color: selected ? palette.hover : Colors.transparent,
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Row(
-            children: <Widget>[
-              _SearchSourceAvatar(iconUrl: source.iconUrl, size: 48),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(
-                      source.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w700,
-                            color: Theme.of(context).colorScheme.onSurface,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      context.strings.sourceStats(articleCount, unreadCount),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: palette.secondaryText,
-                          ),
-                    ),
-                  ],
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 96),
+          child: Container(
+            padding: const EdgeInsets.fromLTRB(16, 12, 14, 12),
+            decoration: BoxDecoration(
+              color: selected ? palette.hover : Colors.transparent,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: <Widget>[
+                _SearchSourceAvatar(iconUrl: source.iconUrl, size: 64),
+                const SizedBox(width: 18),
+                Expanded(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        source.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context)
+                            .textTheme
+                            .titleMedium
+                            ?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: Theme.of(context).colorScheme.onSurface,
+                            ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        context.strings.sourceStats(articleCount, unreadCount),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: palette.secondaryText,
+                            ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Icon(
-                Icons.chevron_right_rounded,
-                color: palette.secondaryText,
-                size: 26,
-              ),
-            ],
+                const SizedBox(width: 12),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: palette.secondaryText,
+                  size: 28,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1742,20 +1786,6 @@ List<TextSpan> _searchHighlightSpans({
     cursor = matchEnd;
   }
   return spans;
-}
-
-class _CloseSearchIntent extends Intent {
-  const _CloseSearchIntent();
-}
-
-class _OpenSearchIntent extends Intent {
-  const _OpenSearchIntent();
-}
-
-class _MoveSearchIntent extends Intent {
-  const _MoveSearchIntent(this.delta);
-
-  final int delta;
 }
 
 class _SearchSourceAvatar extends StatelessWidget {
