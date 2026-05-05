@@ -12,9 +12,8 @@ bool get _isDesktopPointerPlatform {
       defaultTargetPlatform == TargetPlatform.linux;
 }
 
-/// Smooths discrete mouse-wheel input on desktop without changing mobile drag
-/// scrolling. The child scrollable should use [physics] so the raw wheel event
-/// is consumed here instead of also being applied by Flutter's default handler.
+/// Adds desktop keyboard scroll focus and optional wheel smoothing without
+/// disabling native scroll interactions such as trackpads or scrollbar drags.
 class DesktopSmoothScroll extends StatefulWidget {
   const DesktopSmoothScroll({
     super.key,
@@ -38,10 +37,7 @@ class DesktopSmoothScroll extends StatefulWidget {
   final double wheelDeltaMultiplier;
 
   static ScrollPhysics? get physics {
-    if (!_isDesktopPointerPlatform) {
-      return null;
-    }
-    return const NeverScrollableScrollPhysics();
+    return null;
   }
 
   @override
