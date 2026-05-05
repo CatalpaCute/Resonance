@@ -18,6 +18,7 @@ import 'views/settings_view.dart';
 import 'widgets/article_list_panel.dart';
 import 'widgets/article_reader_panel.dart';
 import 'widgets/desktop_smooth_scroll.dart';
+import 'widgets/motion.dart';
 import 'widgets/navigation_sidebar.dart';
 import 'widgets/source_panel.dart';
 
@@ -358,11 +359,25 @@ class _ReaderHomeState extends State<ReaderHome> {
                                                       controller.clearStatus,
                                                 ),
                                               Expanded(
-                                                child: _buildBody(
-                                                  context,
-                                                  compact: compact,
-                                                  mobileRestyled:
-                                                      usePortraitMobileHome,
+                                                child: FluidAnimatedSwitcher(
+                                                  slideOffset: compact
+                                                      ? const Offset(0.045, 0)
+                                                      : const Offset(0.025, 0),
+                                                  child: KeyedSubtree(
+                                                    key: ValueKey<String>(
+                                                      _bodyTransitionSignature(
+                                                        compact: compact,
+                                                        mobileRestyled:
+                                                            usePortraitMobileHome,
+                                                      ),
+                                                    ),
+                                                    child: _buildBody(
+                                                      context,
+                                                      compact: compact,
+                                                      mobileRestyled:
+                                                          usePortraitMobileHome,
+                                                    ),
+                                                  ),
                                                 ),
                                               ),
                                             ],
@@ -484,6 +499,26 @@ class _ReaderHomeState extends State<ReaderHome> {
     }
   }
 
+  String _bodyTransitionSignature({
+    required bool compact,
+    required bool mobileRestyled,
+  }) {
+    final String layoutMode = compact
+        ? controller.settings.mobileWorkspaceMode.name
+        : controller.settings.desktopWorkspaceMode.name;
+    final String route = compact &&
+            controller.currentRoute == AppRouteId.readerDetail &&
+            controller.compactReaderOpen
+        ? 'compact_reader_detail'
+        : controller.currentRoute.storageValue;
+    return <String>[
+      route,
+      compact ? 'compact' : 'desktop',
+      mobileRestyled ? 'mobile_portrait' : 'regular',
+      layoutMode,
+    ].join('|');
+  }
+
   Widget _buildDesktopWorkspace() {
     return Row(
       children: <Widget>[
@@ -549,34 +584,30 @@ class _ReaderHomeState extends State<ReaderHome> {
         controller.currentRoute == AppRouteId.readerDetail) {
       // Keep the compact home list alive while the reader opens on top of it,
       // so Android back can return to the exact previous scroll position.
-      return IndexedStack(
-        index:
-            controller.compactReaderOpen && controller.selectedArticle != null
-                ? 1
-                : 0,
-        children: <Widget>[
-          ArticleListPanel(
+      return _CompactReaderDeck(
+        showReader:
+            controller.compactReaderOpen && controller.selectedArticle != null,
+        list: ArticleListPanel(
+          controller: controller,
+          compact: true,
+          mobileRestyled: mobileRestyled,
+          scrollController: _compactHomeListController,
+          topContent: CompactSourceFilterHeader(
             controller: controller,
-            compact: true,
             mobileRestyled: mobileRestyled,
-            scrollController: _compactHomeListController,
-            topContent: CompactSourceFilterHeader(
-              controller: controller,
-              mobileRestyled: mobileRestyled,
-              expanded: _compactFilterExpanded,
-              onExpandedChanged: (bool value) {
-                setState(() {
-                  _compactFilterExpanded = value;
-                });
-              },
-            ),
+            expanded: _compactFilterExpanded,
+            onExpandedChanged: (bool value) {
+              setState(() {
+                _compactFilterExpanded = value;
+              });
+            },
           ),
-          ArticleReaderPanel(
-            controller: controller,
-            compact: true,
-            onBack: controller.closeCompactReader,
-          ),
-        ],
+        ),
+        reader: ArticleReaderPanel(
+          controller: controller,
+          compact: true,
+          onBack: controller.closeCompactReader,
+        ),
       );
     }
     if (controller.currentRoute == AppRouteId.bookmarks) {
@@ -777,6 +808,63 @@ class _ReaderHomeState extends State<ReaderHome> {
 
 class _FocusSearchIntent extends Intent {
   const _FocusSearchIntent();
+}
+
+class _CompactReaderDeck extends StatelessWidget {
+  const _CompactReaderDeck({
+    required this.showReader,
+    required this.list,
+    required this.reader,
+  });
+
+  final bool showReader;
+  final Widget list;
+  final Widget reader;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool disableAnimations =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final Duration duration =
+        disableAnimations ? Duration.zero : kFluidMotionDuration;
+
+    return Stack(
+      children: <Widget>[
+        Positioned.fill(
+          child: AnimatedSlide(
+            duration: duration,
+            curve: kFluidMotionCurve,
+            offset: showReader ? const Offset(-0.025, 0) : Offset.zero,
+            child: AnimatedOpacity(
+              duration: duration,
+              curve: kFluidMotionCurve,
+              opacity: showReader ? 0.84 : 1,
+              child: list,
+            ),
+          ),
+        ),
+        Positioned.fill(
+          child: IgnorePointer(
+            ignoring: !showReader,
+            child: AnimatedSlide(
+              duration: duration,
+              curve: kFluidMotionCurve,
+              offset: showReader ? Offset.zero : const Offset(0.075, 0),
+              child: AnimatedOpacity(
+                duration: duration,
+                curve: kFluidMotionCurve,
+                opacity: showReader ? 1 : 0,
+                child: TickerMode(
+                  enabled: showReader,
+                  child: reader,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _ShellHeader extends StatelessWidget {
