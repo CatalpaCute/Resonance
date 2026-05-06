@@ -142,11 +142,13 @@ jobs:
             build_dir: x64
             artifact_suffix: x64
             flutter_arch: x64
+            flutter_version: "3.41.9"
           - label: arm64
             runs_on: ubuntu-24.04-arm
             build_dir: arm64
             artifact_suffix: arm64
             flutter_arch: arm64
+            flutter_version: "3.41.5"
 
     steps:
       - name: Checkout
@@ -161,7 +163,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          flutter-version: ${{ matrix.flutter_version }}
           architecture: ${{ matrix.flutter_arch }}
           cache: true
 
@@ -215,11 +217,13 @@ jobs:
             build_dir: x64
             artifact_suffix: x64
             flutter_arch: x64
+            flutter_version: "3.41.9"
           - label: arm64
             runs_on: windows-11-arm
             build_dir: arm64
             artifact_suffix: arm64
             flutter_arch: arm64
+            flutter_version: "3.41.5"
 
     steps:
       - name: Checkout
@@ -229,7 +233,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: ${{ env.FLUTTER_VERSION }}
+          flutter-version: ${{ matrix.flutter_version }}
           architecture: ${{ matrix.flutter_arch }}
           cache: true
 
