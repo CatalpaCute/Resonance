@@ -112,7 +112,7 @@ class SubscriptionNotificationService with WidgetsBindingObserver {
     }
 
     final InitializationSettings settings = InitializationSettings(
-      android: const AndroidInitializationSettings('ic_launcher'),
+      android: const AndroidInitializationSettings('notification_icon'),
       iOS: const DarwinInitializationSettings(),
       macOS: const DarwinInitializationSettings(),
       linux: const LinuxInitializationSettings(
@@ -159,7 +159,7 @@ class SubscriptionNotificationService with WidgetsBindingObserver {
       _kNotificationChannelId,
       _kNotificationChannelName,
       description: _kNotificationChannelDescription,
-      importance: Importance.defaultImportance,
+      importance: Importance.high,
     );
     await androidPlugin.createNotificationChannel(channel);
   }
@@ -296,8 +296,9 @@ class SubscriptionNotificationService with WidgetsBindingObserver {
         _kNotificationChannelId,
         _kNotificationChannelName,
         channelDescription: _kNotificationChannelDescription,
-        importance: Importance.defaultImportance,
-        priority: Priority.defaultPriority,
+        icon: 'notification_icon',
+        importance: Importance.high,
+        priority: Priority.high,
         styleInformation: BigTextStyleInformation(body),
       ),
       iOS: DarwinNotificationDetails(

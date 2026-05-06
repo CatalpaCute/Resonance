@@ -34,7 +34,7 @@ jobs:
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          architecture: ${{ matrix.flutter_arch }}
+          architecture: x64
           cache: true
 
       - name: Prepare Android signing files
@@ -162,7 +162,7 @@ jobs:
         with:
           channel: stable
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          architecture: x64
+          architecture: ${{ matrix.flutter_arch }}
           cache: true
 
       - name: Install dependencies
