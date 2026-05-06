@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../localization/app_strings.dart';
 import '../../models/app_route.dart';
@@ -7,6 +8,7 @@ import '../../models/reader_settings.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
 import 'desktop_smooth_scroll.dart';
+import 'motion.dart';
 
 class ArticleListPanel extends StatefulWidget {
   const ArticleListPanel({
@@ -30,6 +32,8 @@ class ArticleListPanel extends StatefulWidget {
 
 class _ArticleListPanelState extends State<ArticleListPanel> {
   late final ScrollController _ownedScrollController = ScrollController();
+  final List<GlobalKey> _articleItemKeys = <GlobalKey>[];
+  String? _keyboardSelectedArticleId;
 
   ScrollController get _effectiveScrollController =>
       widget.scrollController ?? _ownedScrollController;
@@ -38,6 +42,140 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
   void dispose() {
     _ownedScrollController.dispose();
     super.dispose();
+  }
+
+  void _syncArticleItemKeys(int count) {
+    while (_articleItemKeys.length < count) {
+      _articleItemKeys.add(GlobalKey());
+    }
+    if (_articleItemKeys.length > count) {
+      _articleItemKeys.removeRange(count, _articleItemKeys.length);
+    }
+  }
+
+  String? _activeArticleIdForList(List<Article> articles) {
+    if (_keyboardSelectedArticleId != null &&
+        articles.any(
+            (Article article) => article.id == _keyboardSelectedArticleId)) {
+      return _keyboardSelectedArticleId;
+    }
+    if (widget.controller.selectedArticleId != null &&
+        articles.any(
+          (Article article) =>
+              article.id == widget.controller.selectedArticleId,
+        )) {
+      return widget.controller.selectedArticleId;
+    }
+    return null;
+  }
+
+  KeyEventResult _handleArticleListKeyboard(
+    KeyEvent event,
+    List<Article> articles,
+    bool openInReaderRoute,
+  ) {
+    final LogicalKeyboardKey key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowUp) {
+      _moveKeyboardSelection(articles, -1);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.arrowDown) {
+      _moveKeyboardSelection(articles, 1);
+      return KeyEventResult.handled;
+    }
+    if (key == LogicalKeyboardKey.enter ||
+        key == LogicalKeyboardKey.numpadEnter) {
+      final Article? article = _keyboardSelectedArticle(articles);
+      if (article == null) {
+        return KeyEventResult.ignored;
+      }
+      widget.controller.selectArticle(
+        article,
+        openInReaderRoute: openInReaderRoute,
+      );
+      return KeyEventResult.handled;
+    }
+    return KeyEventResult.ignored;
+  }
+
+  Article? _keyboardSelectedArticle(List<Article> articles) {
+    final String? activeId = _activeArticleIdForList(articles);
+    if (activeId == null && articles.isNotEmpty) {
+      return articles[_firstVisibleArticleIndex(articles.length)];
+    }
+    if (activeId == null) {
+      return null;
+    }
+    for (final Article article in articles) {
+      if (article.id == activeId) {
+        return article;
+      }
+    }
+    return null;
+  }
+
+  void _moveKeyboardSelection(List<Article> articles, int delta) {
+    if (articles.isEmpty) {
+      return;
+    }
+
+    final String? activeId = _activeArticleIdForList(articles);
+    int currentIndex = activeId == null
+        ? -1
+        : articles.indexWhere((Article article) => article.id == activeId);
+    if (currentIndex == -1) {
+      currentIndex = _firstVisibleArticleIndex(articles.length);
+    } else {
+      currentIndex += delta;
+    }
+    final int nextIndex = currentIndex.clamp(0, articles.length - 1).toInt();
+    final String nextId = articles[nextIndex].id;
+    setState(() {
+      _keyboardSelectedArticleId = nextId;
+    });
+    _ensureArticleVisible(nextIndex);
+  }
+
+  int _firstVisibleArticleIndex(int articleCount) {
+    for (int index = 0;
+        index < articleCount && index < _articleItemKeys.length;
+        index++) {
+      final BuildContext? context = _articleItemKeys[index].currentContext;
+      if (context == null) {
+        continue;
+      }
+      final RenderObject? object = context.findRenderObject();
+      if (object is! RenderBox || !object.hasSize) {
+        continue;
+      }
+      final Offset topLeft = object.localToGlobal(Offset.zero);
+      final Offset bottomRight = object.localToGlobal(
+        Offset(0, object.size.height),
+      );
+      if (bottomRight.dy > 0 &&
+          topLeft.dy < MediaQuery.sizeOf(context).height) {
+        return index;
+      }
+    }
+    return 0;
+  }
+
+  void _ensureArticleVisible(int index) {
+    if (index < 0 || index >= _articleItemKeys.length) {
+      return;
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final BuildContext? context = _articleItemKeys[index].currentContext;
+      if (!mounted || context == null) {
+        return;
+      }
+      Scrollable.ensureVisible(
+        context,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeOutCubic,
+      );
+    });
   }
 
   @override
@@ -59,6 +197,13 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
     // another large title block.
     final bool showPanelHeader = !compactMobileListRoute;
     final bool useLayeredCards = compactMobileListRoute || !compact;
+    final bool useSeparateReaderRoute = compact
+        ? controller.settings.mobileWorkspaceMode ==
+            MobileWorkspaceMode.singlePane
+        : controller.settings.desktopWorkspaceMode ==
+            DesktopWorkspaceMode.focusedReader;
+    final String? activeArticleId = _activeArticleIdForList(articles);
+    _syncArticleItemKeys(articles.length);
 
     final Widget content = Padding(
       padding: EdgeInsets.fromLTRB(
@@ -146,6 +291,13 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
                 controller: _effectiveScrollController,
                 keyboardScrollId: 'article-list',
                 keyboardScrollOrder: 1,
+                onKeyboardEvent: (KeyEvent event) {
+                  return _handleArticleListKeyboard(
+                    event,
+                    articles,
+                    useSeparateReaderRoute,
+                  );
+                },
                 child: ListView.separated(
                   physics: DesktopSmoothScroll.physics,
                   padding: EdgeInsets.only(
@@ -167,37 +319,37 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
                   },
                   itemBuilder: (BuildContext context, int index) {
                     final Article article = articles[index];
-                    final bool active =
-                        controller.selectedArticleId == article.id;
-                    final bool useSeparateReaderRoute = compact
-                        ? controller.settings.mobileWorkspaceMode ==
-                            MobileWorkspaceMode.singlePane
-                        : controller.settings.desktopWorkspaceMode ==
-                            DesktopWorkspaceMode.focusedReader;
-                    return _ArticleTile(
-                      compact: compact,
-                      article: article,
-                      active: active,
-                      sourceTitle: controller.sourceTitleForArticle(article),
-                      density: controller.settings.articleListDensity,
-                      mobileEmphasis: compactMobileListRoute,
-                      hideBottomActions: mobileHomeRestyled,
-                      layered: useLayeredCards,
-                      onOpen: () {
-                        controller.selectArticle(
-                          article,
-                          openInReaderRoute: useSeparateReaderRoute,
-                        );
-                      },
-                      onStarToggle: () {
-                        controller.toggleStarred(article);
-                      },
-                      onSaveToggle: () {
-                        controller.toggleSavedForLater(article);
-                      },
-                      onReadToggle: () {
-                        controller.toggleReadState(article);
-                      },
+                    final bool active = activeArticleId == article.id;
+                    return KeyedSubtree(
+                      key: _articleItemKeys[index],
+                      child: _ArticleTile(
+                        compact: compact,
+                        article: article,
+                        active: active,
+                        sourceTitle: controller.sourceTitleForArticle(article),
+                        density: controller.settings.articleListDensity,
+                        mobileEmphasis: compactMobileListRoute,
+                        hideBottomActions: mobileHomeRestyled,
+                        layered: useLayeredCards,
+                        onOpen: () {
+                          setState(() {
+                            _keyboardSelectedArticleId = article.id;
+                          });
+                          controller.selectArticle(
+                            article,
+                            openInReaderRoute: useSeparateReaderRoute,
+                          );
+                        },
+                        onStarToggle: () {
+                          controller.toggleStarred(article);
+                        },
+                        onSaveToggle: () {
+                          controller.toggleSavedForLater(article);
+                        },
+                        onReadToggle: () {
+                          controller.toggleReadState(article);
+                        },
+                      ),
                     );
                   },
                 ),
@@ -207,7 +359,18 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
       ),
     );
 
-    return content;
+    return MotionEntrance(
+      signature: <String>[
+        controller.currentRoute.storageValue,
+        controller.activeSourceId ?? 'all',
+        controller.showOnlyUnread ? 'unread' : 'all-read-states',
+        controller.bookmarkFilter.name,
+        compact ? 'compact' : 'desktop',
+        mobileRestyled ? 'mobile-restyled' : 'regular',
+      ].join('|'),
+      offset: compact ? const Offset(0, 0.018) : const Offset(0.018, 0),
+      child: content,
+    );
   }
 }
 
@@ -265,7 +428,9 @@ class _ArticleTile extends StatelessWidget {
       child: InkWell(
         onTap: onOpen,
         borderRadius: BorderRadius.circular(cardRadius),
-        child: Container(
+        child: AnimatedContainer(
+          duration: kFluidMotionFastDuration,
+          curve: kFluidMotionCurve,
           padding: EdgeInsets.fromLTRB(
             layered ? (compact ? 14 : 16) : (compact ? 0 : 2),
             layered ? (mobileEmphasis ? 14 : 12) : (compact ? 9 : 12),

@@ -506,10 +506,13 @@ class _ReaderHomeState extends State<ReaderHome> {
     final String layoutMode = compact
         ? controller.settings.mobileWorkspaceMode.name
         : controller.settings.desktopWorkspaceMode.name;
-    final String route = compact &&
-            controller.currentRoute == AppRouteId.readerDetail &&
-            controller.compactReaderOpen
-        ? 'compact_reader_detail'
+    final bool compactReaderWorkspace = compact &&
+        controller.settings.mobileWorkspaceMode ==
+            MobileWorkspaceMode.singlePane &&
+        (controller.currentRoute == AppRouteId.allArticles ||
+            controller.currentRoute == AppRouteId.readerDetail);
+    final String route = compactReaderWorkspace
+        ? 'compact_reader_workspace'
         : controller.currentRoute.storageValue;
     return <String>[
       route,
@@ -831,15 +834,21 @@ class _CompactReaderDeck extends StatelessWidget {
     return Stack(
       children: <Widget>[
         Positioned.fill(
-          child: AnimatedSlide(
-            duration: duration,
-            curve: kFluidMotionCurve,
-            offset: showReader ? const Offset(-0.025, 0) : Offset.zero,
-            child: AnimatedOpacity(
-              duration: duration,
-              curve: kFluidMotionCurve,
-              opacity: showReader ? 0.84 : 1,
-              child: list,
+          child: IgnorePointer(
+            ignoring: showReader,
+            child: TickerMode(
+              enabled: !showReader,
+              child: AnimatedSlide(
+                duration: duration,
+                curve: kFluidMotionCurve,
+                offset: showReader ? const Offset(-0.025, 0) : Offset.zero,
+                child: AnimatedOpacity(
+                  duration: duration,
+                  curve: kFluidMotionCurve,
+                  opacity: showReader ? 0 : 1,
+                  child: list,
+                ),
+              ),
             ),
           ),
         ),
@@ -854,9 +863,12 @@ class _CompactReaderDeck extends StatelessWidget {
                 duration: duration,
                 curve: kFluidMotionCurve,
                 opacity: showReader ? 1 : 0,
-                child: TickerMode(
-                  enabled: showReader,
-                  child: reader,
+                child: ColoredBox(
+                  color: _mobilePageBackgroundOf(context),
+                  child: TickerMode(
+                    enabled: showReader,
+                    child: reader,
+                  ),
                 ),
               ),
             ),
@@ -1105,6 +1117,8 @@ class _DesktopSearchField extends StatefulWidget {
 class _DesktopSearchFieldState extends State<_DesktopSearchField> {
   final TextEditingController _queryController = TextEditingController();
   final LayerLink _layerLink = LayerLink();
+  final ScrollController _resultsScrollController = ScrollController();
+  final List<GlobalKey> _resultItemKeys = <GlobalKey>[];
   OverlayEntry? _overlayEntry;
   int _selectedIndex = -1;
   bool _pointerInsideSearchSurface = false;
@@ -1125,6 +1139,7 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
     _queryController.removeListener(_handleQueryChanged);
     HardwareKeyboard.instance.removeHandler(_handleHardwareKey);
     _queryController.dispose();
+    _resultsScrollController.dispose();
     _removeOverlay();
     super.dispose();
   }
@@ -1163,11 +1178,48 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
     if (_overlayEntry != null) {
       final GlobalSearchResultSet currentResults = _searchResults;
       final int count = _desktopSearchEntries(currentResults).length;
+      _syncResultItemKeys(count);
       setState(() {
         _selectedIndex = count == 0 ? -1 : 0;
       });
       _overlayEntry?.markNeedsBuild();
+      _ensureSearchSelectionVisible(instant: true);
     }
+  }
+
+  void _syncResultItemKeys(int count) {
+    while (_resultItemKeys.length < count) {
+      _resultItemKeys.add(GlobalKey());
+    }
+    if (_resultItemKeys.length > count) {
+      _resultItemKeys.removeRange(count, _resultItemKeys.length);
+    }
+  }
+
+  void _ensureSearchSelectionVisible(
+      {bool instant = false, int direction = 0}) {
+    if (_selectedIndex < 0 || _selectedIndex >= _resultItemKeys.length) {
+      return;
+    }
+    final GlobalKey itemKey = _resultItemKeys[_selectedIndex];
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final BuildContext? itemContext = itemKey.currentContext;
+      if (!mounted || itemContext == null || _overlayEntry == null) {
+        return;
+      }
+      final ScrollPositionAlignmentPolicy alignmentPolicy = instant
+          ? ScrollPositionAlignmentPolicy.explicit
+          : direction < 0
+              ? ScrollPositionAlignmentPolicy.keepVisibleAtStart
+              : ScrollPositionAlignmentPolicy.keepVisibleAtEnd;
+      Scrollable.ensureVisible(
+        itemContext,
+        alignment: instant ? 0 : 0.5,
+        alignmentPolicy: alignmentPolicy,
+        duration: instant ? Duration.zero : const Duration(milliseconds: 220),
+        curve: Curves.easeOutCubic,
+      );
+    });
   }
 
   bool _handleHardwareKey(KeyEvent event) {
@@ -1206,6 +1258,7 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
         final GlobalSearchResultSet results = _searchResults;
         final List<_DesktopSearchEntry> entries =
             _desktopSearchEntries(results);
+        _syncResultItemKeys(entries.length);
         return Positioned(
           width: 420,
           child: CompositedTransformFollower(
@@ -1252,6 +1305,8 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
                               controller: widget.controller,
                               results: results,
                               entries: entries,
+                              scrollController: _resultsScrollController,
+                              itemKeys: _resultItemKeys,
                               selectedIndex: _selectedIndex,
                               onSourceSelected: _openSource,
                               onArticleSelected: _openArticle,
@@ -1285,6 +1340,7 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
     final GlobalSearchResultSet currentResults = _searchResults;
     final int count = _desktopSearchEntries(currentResults).length;
     if (count == 0) return;
+    _syncResultItemKeys(count);
 
     setState(() {
       if (_selectedIndex < 0) {
@@ -1297,6 +1353,7 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
       }
     });
     _overlayEntry?.markNeedsBuild();
+    _ensureSearchSelectionVisible(direction: delta);
   }
 
   void _openSelected() {
@@ -1520,6 +1577,8 @@ class _DesktopSearchResults extends StatelessWidget {
     required this.controller,
     required this.results,
     required this.entries,
+    required this.scrollController,
+    required this.itemKeys,
     required this.selectedIndex,
     required this.onSourceSelected,
     required this.onArticleSelected,
@@ -1528,6 +1587,8 @@ class _DesktopSearchResults extends StatelessWidget {
   final ReaderController controller;
   final GlobalSearchResultSet results;
   final List<_DesktopSearchEntry> entries;
+  final ScrollController scrollController;
+  final List<GlobalKey> itemKeys;
   final int selectedIndex;
   final ValueChanged<FeedSource> onSourceSelected;
   final ValueChanged<Article> onArticleSelected;
@@ -1549,27 +1610,34 @@ class _DesktopSearchResults extends StatelessWidget {
       final GlobalSearchArticleResult? article = entry.article;
       if (source != null) {
         children.add(
-          _DesktopSearchSourceTile(
-            source: source,
-            articleCount: controller.articleCountForSource(source.id),
-            unreadCount: controller.unreadCountForSource(source.id),
-            selected: selectedIndex == index,
-            onTap: () => onSourceSelected(source),
+          KeyedSubtree(
+            key: itemKeys[index],
+            child: _DesktopSearchSourceTile(
+              source: source,
+              articleCount: controller.articleCountForSource(source.id),
+              unreadCount: controller.unreadCountForSource(source.id),
+              selected: selectedIndex == index,
+              onTap: () => onSourceSelected(source),
+            ),
           ),
         );
       } else if (article != null) {
         children.add(
-          _DesktopSearchArticleTile(
-            result: article,
-            query: results.query,
-            selected: selectedIndex == index,
-            onTap: () => onArticleSelected(article.article),
+          KeyedSubtree(
+            key: itemKeys[index],
+            child: _DesktopSearchArticleTile(
+              result: article,
+              query: results.query,
+              selected: selectedIndex == index,
+              onTap: () => onArticleSelected(article.article),
+            ),
           ),
         );
       }
     }
 
     return ListView(
+      controller: scrollController,
       shrinkWrap: true,
       padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
       children: children,

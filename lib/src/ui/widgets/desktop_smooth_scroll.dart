@@ -22,6 +22,7 @@ class DesktopSmoothScroll extends StatefulWidget {
     this.keyboardScrollId,
     this.keyboardScrollOrder = 0,
     this.requestKeyboardFocusOnActivate = true,
+    this.onKeyboardEvent,
     this.duration = const Duration(milliseconds: 170),
     this.curve = Curves.easeOutCubic,
     this.wheelDeltaMultiplier = 1,
@@ -32,6 +33,7 @@ class DesktopSmoothScroll extends StatefulWidget {
   final String? keyboardScrollId;
   final int keyboardScrollOrder;
   final bool requestKeyboardFocusOnActivate;
+  final DesktopKeyboardScrollKeyHandler? onKeyboardEvent;
   final Duration duration;
   final Curve curve;
   final double wheelDeltaMultiplier;
@@ -63,6 +65,10 @@ typedef DesktopSmoothScrollBuilderCallback = Widget Function(
   ScrollPhysics? physics,
 );
 
+typedef DesktopKeyboardScrollKeyHandler = KeyEventResult Function(
+  KeyEvent event,
+);
+
 class DesktopSmoothScrollBuilder extends StatefulWidget {
   const DesktopSmoothScrollBuilder({
     super.key,
@@ -70,12 +76,14 @@ class DesktopSmoothScrollBuilder extends StatefulWidget {
     this.keyboardScrollId,
     this.keyboardScrollOrder = 0,
     this.requestKeyboardFocusOnActivate = true,
+    this.onKeyboardEvent,
   });
 
   final DesktopSmoothScrollBuilderCallback builder;
   final String? keyboardScrollId;
   final int keyboardScrollOrder;
   final bool requestKeyboardFocusOnActivate;
+  final DesktopKeyboardScrollKeyHandler? onKeyboardEvent;
 
   @override
   State<DesktopSmoothScrollBuilder> createState() =>
@@ -90,6 +98,7 @@ class DesktopSmoothListView extends StatefulWidget {
     this.keyboardScrollId,
     this.keyboardScrollOrder = 0,
     this.requestKeyboardFocusOnActivate = true,
+    this.onKeyboardEvent,
   });
 
   final List<Widget> children;
@@ -97,6 +106,7 @@ class DesktopSmoothListView extends StatefulWidget {
   final String? keyboardScrollId;
   final int keyboardScrollOrder;
   final bool requestKeyboardFocusOnActivate;
+  final DesktopKeyboardScrollKeyHandler? onKeyboardEvent;
 
   @override
   State<DesktopSmoothListView> createState() => _DesktopSmoothListViewState();
@@ -118,6 +128,7 @@ class _DesktopSmoothListViewState extends State<DesktopSmoothListView> {
       keyboardScrollId: widget.keyboardScrollId,
       keyboardScrollOrder: widget.keyboardScrollOrder,
       requestKeyboardFocusOnActivate: widget.requestKeyboardFocusOnActivate,
+      onKeyboardEvent: widget.onKeyboardEvent,
       child: ListView(
         controller: _controller,
         physics: DesktopSmoothScroll.physics,
@@ -139,6 +150,7 @@ class DesktopSmoothReorderableListViewBuilder extends StatefulWidget {
     this.keyboardScrollId,
     this.keyboardScrollOrder = 0,
     this.requestKeyboardFocusOnActivate = true,
+    this.onKeyboardEvent,
   });
 
   final int itemCount;
@@ -149,6 +161,7 @@ class DesktopSmoothReorderableListViewBuilder extends StatefulWidget {
   final String? keyboardScrollId;
   final int keyboardScrollOrder;
   final bool requestKeyboardFocusOnActivate;
+  final DesktopKeyboardScrollKeyHandler? onKeyboardEvent;
 
   @override
   State<DesktopSmoothReorderableListViewBuilder> createState() =>
@@ -172,6 +185,7 @@ class _DesktopSmoothReorderableListViewBuilderState
       keyboardScrollId: widget.keyboardScrollId,
       keyboardScrollOrder: widget.keyboardScrollOrder,
       requestKeyboardFocusOnActivate: widget.requestKeyboardFocusOnActivate,
+      onKeyboardEvent: widget.onKeyboardEvent,
       child: ReorderableListView.builder(
         scrollController: _controller,
         physics: DesktopSmoothScroll.physics,
@@ -202,6 +216,7 @@ class _DesktopSmoothScrollBuilderState
       keyboardScrollId: widget.keyboardScrollId,
       keyboardScrollOrder: widget.keyboardScrollOrder,
       requestKeyboardFocusOnActivate: widget.requestKeyboardFocusOnActivate,
+      onKeyboardEvent: widget.onKeyboardEvent,
       child: widget.builder(
         context,
         _controller,
@@ -282,6 +297,16 @@ class _DesktopKeyboardScrollScopeState
     }
 
     final LogicalKeyboardKey key = event.logicalKey;
+    final _KeyboardScrollableEntry? active = _activeEntryOrFallback();
+    final DesktopKeyboardScrollKeyHandler? activeHandler =
+        active?.onKeyboardEvent;
+    if (activeHandler != null) {
+      final KeyEventResult result = activeHandler(event);
+      if (result != KeyEventResult.ignored) {
+        return result;
+      }
+    }
+
     if (key == LogicalKeyboardKey.arrowUp) {
       return _scrollActiveBy(-_arrowScrollDelta);
     }
@@ -360,7 +385,8 @@ class _DesktopKeyboardScrollScopeState
   _KeyboardScrollableEntry? _activeEntryOrFallback() {
     final _KeyboardScrollableEntry? active =
         _activeId == null ? null : _entries[_activeId];
-    if (active != null && active.canScroll) {
+    if (active != null &&
+        (active.canScroll || active.onKeyboardEvent != null)) {
       return active;
     }
     final List<_KeyboardScrollableEntry> entries = _visibleEntries();
@@ -385,12 +411,14 @@ class _KeyboardScrollableEntry {
     required this.order,
     required this.controller,
     required this.requestFocusOnActivate,
+    this.onKeyboardEvent,
   });
 
   final String id;
   final int order;
   final ScrollController controller;
   final bool requestFocusOnActivate;
+  final DesktopKeyboardScrollKeyHandler? onKeyboardEvent;
 
   bool get canScroll {
     if (!controller.hasClients) {
@@ -488,6 +516,7 @@ class _DesktopSmoothScrollState extends State<DesktopSmoothScroll> {
         order: widget.keyboardScrollOrder,
         controller: widget.controller,
         requestFocusOnActivate: widget.requestKeyboardFocusOnActivate,
+        onKeyboardEvent: widget.onKeyboardEvent,
       ),
     );
   }
