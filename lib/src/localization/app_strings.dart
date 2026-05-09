@@ -11,6 +11,8 @@ class AppBrand {
   static const String nameZhHant = '回響';
   static const String nameEn = 'Resonance';
   static const String fullName = 'Resonance';
+  static const String version = '0.12.0';
+  static const String repoUrl = 'https://github.com/CatalpaCute/Resonance';
 }
 
 enum _AppTextLanguage {
@@ -299,9 +301,74 @@ class AppStrings {
         en: 'Local Reader',
       );
   String get settingsIntro => _text(
-        zhCn: '这里先收好启动页、主题、语言、文章显示方式和移动端导航。',
-        zhHant: '這裡先整理啟動頁、主題、語言、文章顯示方式和移動端導覽。',
-        en: 'Tune startup, theme, language, article display, and mobile navigation here.',
+        zhCn: '按分类管理同步、自动更新、通知、主题和显示方式。',
+        zhHant: '按分類管理同步、自動更新、通知、主題和顯示方式。',
+        en: 'Manage sync, automatic refresh, notifications, theme, and display preferences by category.',
+      );
+  String get settingsBack => _text(
+        zhCn: '返回设置',
+        zhHant: '返回設定',
+        en: 'Back to Settings',
+      );
+  String get settingsAboutApp => _text(
+        zhCn: '关于本应用',
+        zhHant: '關於本應用',
+        en: 'About This App',
+      );
+  String get settingsVersionLabel => _text(
+        zhCn: '版本 ${AppBrand.version}',
+        zhHant: '版本 ${AppBrand.version}',
+        en: 'Version ${AppBrand.version}',
+      );
+  String get settingsAboutLicense => _text(
+        zhCn: 'MIT 许可证',
+        zhHant: 'MIT 許可證',
+        en: 'MIT License',
+      );
+  String get settingsAboutRepo => _text(
+        zhCn: '源代码仓库',
+        zhHant: '原始碼倉庫',
+        en: 'Source Repository',
+      );
+  String get settingsUpdateAvailable => _text(
+        zhCn: '有新版本',
+        zhHant: '有新版本',
+        en: 'Update Available',
+      );
+  String get settingsCategorySyncAccount => _text(
+        zhCn: '同步与账号',
+        zhHant: '同步與帳號',
+        en: 'Sync & Account',
+      );
+  String get settingsCategoryAi => _text(
+        zhCn: 'AI',
+        zhHant: 'AI',
+        en: 'AI',
+      );
+  String get settingsCategoryAutoRefreshNotifications => _text(
+        zhCn: '自动更新与通知',
+        zhHant: '自動更新與通知',
+        en: 'Refresh & Notifications',
+      );
+  String get settingsCategoryThemeDisplay => _text(
+        zhCn: '主题与显示',
+        zhHant: '主題與顯示',
+        en: 'Theme & Display',
+      );
+  String get settingsCategoryAbout => _text(
+        zhCn: '关于',
+        zhHant: '關於',
+        en: 'About',
+      );
+  String get settingsCategoryComingSoonTitle => _text(
+        zhCn: '暂未开放',
+        zhHant: '暫未開放',
+        en: 'Not Available Yet',
+      );
+  String settingsCategoryComingSoonBody(String category) => _text(
+        zhCn: '$category 入口已预留，后续版本再接入具体功能。',
+        zhHant: '$category 入口已預留，後續版本再接入具體功能。',
+        en: '$category is reserved for a future version.',
       );
   String get startupPage =>
       _text(zhCn: '启动页', zhHant: '啟動頁', en: 'Startup Page');
@@ -313,6 +380,29 @@ class AppStrings {
         zhHant: '完整版保留圖片與媒體佔位，純文字只顯示段落與換行。',
         en: 'Rich mode keeps images and media placeholders. Text-only mode shows paragraphs and line breaks only.',
       );
+  String get subscriptionNotificationModeTitle => _text(
+        zhCn: '订阅通知方式',
+        zhHant: '訂閱通知方式',
+        en: 'Subscription Notifications',
+      );
+  String get subscriptionNotificationModeHint => _text(
+        zhCn: '只针对自动更新带来的新文章生效。应用在前台时不会弹系统通知。',
+        zhHant: '只針對自動更新帶來的新文章生效。應用在前景時不會彈出系統通知。',
+        en: 'Only applies to new articles found by automatic refresh. System notifications are not shown while the app is in the foreground.',
+      );
+  String subscriptionNotificationModeLabel(
+    SubscriptionNotificationMode mode,
+  ) {
+    switch (mode) {
+      case SubscriptionNotificationMode.sourceSummary:
+        return _text(zhCn: '按源汇总', zhHant: '按來源彙總', en: 'Group by Source');
+      case SubscriptionNotificationMode.perArticle:
+        return _text(zhCn: '逐篇通知', zhHant: '逐篇通知', en: 'Per Article');
+      case SubscriptionNotificationMode.minimal:
+        return _text(zhCn: '仅提示有更新', zhHant: '僅提示有更新', en: 'Update Only');
+    }
+  }
+
   String get mobileSidebar =>
       _text(zhCn: '移动端侧栏', zhHant: '移動端側欄', en: 'Mobile Sidebar');
   String get mobileWorkspaceLayout => _text(
@@ -380,6 +470,16 @@ class AppStrings {
         zhCn: 'Android 会使用系统后台任务自动刷新，不显示常驻通知，实际执行时间可能会延后。',
         zhHant: 'Android 會使用系統背景任務自動刷新，不顯示常駐通知，實際執行時間可能延後。',
         en: 'Android uses system-managed background work without a persistent notification. Actual execution may be delayed.',
+      );
+  String get autoRefreshSettingsHintLinux => _text(
+        zhCn: 'Linux 会在应用运行期间按订阅源配置定时刷新，并在发现新文章时发送系统通知。',
+        zhHant: 'Linux 會在應用執行期間依訂閱源設定定時刷新，並在發現新文章時發送系統通知。',
+        en: 'On Linux, the app refreshes enabled sources while it is running and sends system notifications when new articles are found.',
+      );
+  String get autoRefreshSettingsHintDefault => _text(
+        zhCn: '自动刷新会根据当前平台支持情况运行，实际执行时机可能受系统限制。',
+        zhHant: '自動刷新會依目前平台支援情況執行，實際執行時機可能受系統限制。',
+        en: 'Automatic refresh runs when supported by the current platform. Actual timing may be limited by the system.',
       );
   String get autoRefreshDisabledNotice => _text(
         zhCn: '自动更新订阅未开启',
