@@ -7,6 +7,7 @@ import 'src/services/json_store.dart';
 import 'src/services/rss_service.dart';
 import 'src/services/android_auto_refresh_scheduler.dart';
 import 'src/services/android_auto_refresh_service.dart';
+import 'src/services/linux_auto_refresh_service.dart';
 import 'src/services/subscription_notification_service.dart';
 import 'src/services/windows_auto_refresh_service.dart';
 import 'src/state/reader_controller.dart';
@@ -14,6 +15,7 @@ import 'src/ui/reader_app.dart';
 
 WindowsAutoRefreshService? _windowsAutoRefreshService;
 AndroidAutoRefreshService? _androidAutoRefreshService;
+LinuxAutoRefreshService? _linuxAutoRefreshService;
 
 Future<void> _initializePlatformServices(ReaderController controller) async {
   await SubscriptionNotificationService.instance.initialize(
@@ -33,6 +35,14 @@ Future<void> _initializePlatformServices(ReaderController controller) async {
       controller: controller,
     );
     await _androidAutoRefreshService!.initialize();
+    return;
+  }
+
+  if (!kIsWeb && defaultTargetPlatform == TargetPlatform.linux) {
+    _linuxAutoRefreshService = LinuxAutoRefreshService(
+      controller: controller,
+    );
+    await _linuxAutoRefreshService!.initialize();
   }
 }
 

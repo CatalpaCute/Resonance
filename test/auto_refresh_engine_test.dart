@@ -7,7 +7,7 @@ void main() {
   group('AutoRefreshEngine', () {
     final AutoRefreshEngine engine = AutoRefreshEngine.defaultInstance();
 
-    test('computes earliest next refresh time per source independently', () {
+    test('aligns next refresh time to real-world boundaries', () {
       final DateTime now = DateTime.parse('2026-04-30T12:00:00Z');
       final ReaderSettings settings = ReaderSettings.defaults.copyWith(
         autoRefreshMode: AutoRefreshMode.partial,
@@ -56,12 +56,12 @@ void main() {
         now: now,
       );
 
-      expect(nextAt?.toUtc(), DateTime.parse('2026-04-30T12:05:00Z'));
-      expect(dueFeeds, isEmpty);
+      expect(nextAt?.toUtc(), DateTime.parse('2026-04-30T00:00:00Z'));
+      expect(dueFeeds.map((FeedSource source) => source.id), <String>['a', 'b', 'c']);
     });
 
-    test('treats first-time enabled source as immediately due', () {
-      final DateTime now = DateTime.parse('2026-04-30T12:00:00Z');
+    test('treats first-time enabled source as due in the current aligned slot', () {
+      final DateTime now = DateTime.parse('2026-04-30T12:07:00Z');
       final ReaderSettings settings = ReaderSettings.defaults.copyWith(
         autoRefreshMode: AutoRefreshMode.partial,
       );
@@ -81,11 +81,11 @@ void main() {
         now: now,
       );
 
-      expect(nextAt, now);
+      expect(nextAt?.toUtc(), DateTime.parse('2026-04-30T12:00:00Z'));
     });
 
-    test('all-on mode uses global interval without overriding per-source values', () {
-      final DateTime now = DateTime.parse('2026-04-30T12:00:00Z');
+    test('all-on mode uses global aligned interval without overriding per-source values', () {
+      final DateTime now = DateTime.parse('2026-04-30T12:31:00Z');
       final ReaderSettings settings = ReaderSettings.defaults.copyWith(
         autoRefreshMode: AutoRefreshMode.allOn,
         globalAutoRefreshIntervalMinutes: 60,
@@ -107,8 +107,41 @@ void main() {
         now: now,
       );
 
-      expect(nextAt?.toUtc(), DateTime.parse('2026-04-30T12:30:00Z'));
+      expect(nextAt?.toUtc(), DateTime.parse('2026-04-30T12:00:00Z'));
       expect(feed.autoRefreshIntervalMinutes, 4320);
+    });
+
+    test('marks source due when last refresh happened before current aligned slot', () {
+      final DateTime now = DateTime.parse('2026-04-30T22:36:00Z');
+      final ReaderSettings settings = ReaderSettings.defaults.copyWith(
+        autoRefreshMode: AutoRefreshMode.partial,
+      );
+      final FeedSource feed = FeedSource(
+        id: 'fifteen',
+        title: 'Fifteen',
+        url: 'https://example.com/fifteen.xml',
+        enabled: true,
+        autoRefreshEnabled: true,
+        notificationEnabled: false,
+        autoRefreshIntervalMinutes: 15,
+        lastFetchedAt: DateTime.parse('2026-04-30T22:16:00Z'),
+      );
+
+      final DateTime? nextAt = engine.nextRefreshTimeForSource(
+        settings: settings,
+        source: feed,
+        now: now,
+      );
+
+      expect(nextAt?.toUtc(), DateTime.parse('2026-04-30T22:30:00Z'));
+      expect(
+        engine.dueFeeds(
+          settings: settings,
+          feeds: <FeedSource>[feed],
+          now: now,
+        ).single.id,
+        'fifteen',
+      );
     });
   });
 }

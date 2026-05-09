@@ -142,17 +142,21 @@ class AutoRefreshEngine {
     }
 
     final DateTime cursor = now ?? DateTime.now();
+    final int intervalMinutes = settings.autoRefreshMode == AutoRefreshMode.allOn
+        ? settings.globalAutoRefreshIntervalMinutes
+        : source.autoRefreshIntervalMinutes;
+    final DateTime currentBoundary = alignedRefreshBoundaryAtOrBefore(
+      cursor,
+      intervalMinutes,
+    );
     final DateTime? baseTime = latestAutoRefreshBaseTime(source);
-    if (baseTime == null) {
-      return cursor;
+    if (baseTime == null || baseTime.isBefore(currentBoundary)) {
+      return currentBoundary;
     }
 
-    return baseTime.add(
-      Duration(
-        minutes: settings.autoRefreshMode == AutoRefreshMode.allOn
-            ? settings.globalAutoRefreshIntervalMinutes
-            : source.autoRefreshIntervalMinutes,
-      ),
+    return nextAlignedRefreshBoundaryAfter(
+      cursor,
+      intervalMinutes,
     );
   }
 
@@ -166,6 +170,67 @@ class AutoRefreshEngine {
       return fetchedAt;
     }
     return fetchedAt.isAfter(attemptedAt) ? fetchedAt : attemptedAt;
+  }
+
+  /// 设计意图：
+  /// 统一把自动更新对齐到“现实时间边界”，而不是从上次刷新时间往后漂移。
+  /// 例如 15 分钟永远落在 :00 / :15 / :30 / :45，1 小时永远落在整点。
+  /// 这样 Windows 前台、Windows 托盘和 Android 的后台调度都共享同一节奏。
+  DateTime alignedRefreshBoundaryAtOrBefore(
+    DateTime time,
+    int intervalMinutes,
+  ) {
+    final int normalizedInterval = intervalMinutes <= 0 ? 1 : intervalMinutes;
+
+    if (normalizedInterval < 1440) {
+      final DateTime dayStart = _dayStart(time);
+      final int minutesSinceDayStart = time.difference(dayStart).inMinutes;
+      final int alignedMinutes =
+          (minutesSinceDayStart ~/ normalizedInterval) * normalizedInterval;
+      return dayStart.add(Duration(minutes: alignedMinutes));
+    }
+
+    final DateTime dayStart = _dayStart(time);
+    final int intervalDays = normalizedInterval ~/ 1440;
+    final DateTime epochDayStart = _zonedDateTime(
+      year: 1970,
+      month: 1,
+      day: 1,
+      sample: time,
+    );
+    final int daysSinceEpoch = dayStart.difference(epochDayStart).inDays;
+    final int alignedDays = (daysSinceEpoch ~/ intervalDays) * intervalDays;
+    return epochDayStart.add(Duration(days: alignedDays));
+  }
+
+  DateTime nextAlignedRefreshBoundaryAfter(
+    DateTime time,
+    int intervalMinutes,
+  ) {
+    final DateTime currentBoundary = alignedRefreshBoundaryAtOrBefore(
+      time,
+      intervalMinutes,
+    );
+    return currentBoundary.add(Duration(minutes: intervalMinutes));
+  }
+
+  DateTime _dayStart(DateTime time) => _zonedDateTime(
+        year: time.year,
+        month: time.month,
+        day: time.day,
+        sample: time,
+      );
+
+  DateTime _zonedDateTime({
+    required int year,
+    required int month,
+    required int day,
+    required DateTime sample,
+  }) {
+    if (sample.isUtc) {
+      return DateTime.utc(year, month, day);
+    }
+    return DateTime(year, month, day);
   }
 
   Future<AutoRefreshRunResult> refreshPersistedDueFeeds({
