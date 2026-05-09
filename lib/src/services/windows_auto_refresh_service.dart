@@ -248,6 +248,7 @@ class WindowsAutoRefreshService
       await SubscriptionNotificationService.instance.notifyAutoRefreshResult(
         settings: controller.settings,
         result: result,
+        allowWhenForeground: true,
       );
     } finally {
       _isHandlingDueFeeds = false;

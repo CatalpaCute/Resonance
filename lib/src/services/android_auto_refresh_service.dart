@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/widgets.dart';
 
 import '../models/feed_source.dart';
 import '../state/reader_controller.dart';
 import 'android_auto_refresh_scheduler.dart';
 import 'auto_refresh_engine.dart';
+import 'subscription_notification_service.dart';
 
 class AndroidAutoRefreshService with WidgetsBindingObserver {
   AndroidAutoRefreshService({
@@ -13,6 +16,7 @@ class AndroidAutoRefreshService with WidgetsBindingObserver {
   final ReaderController controller;
   final AutoRefreshEngine _engine;
 
+  Timer? _foregroundTimer;
   bool _disposed = false;
   bool _isHandlingForegroundRefresh = false;
   bool _isHandlingResume = false;
@@ -39,6 +43,8 @@ class AndroidAutoRefreshService with WidgetsBindingObserver {
     }
 
     _disposed = true;
+    _foregroundTimer?.cancel();
+    _foregroundTimer = null;
     controller.removeListener(_handleControllerChanged);
     WidgetsBinding.instance.removeObserver(this);
   }
@@ -47,7 +53,10 @@ class AndroidAutoRefreshService with WidgetsBindingObserver {
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
       _handleAppResumed();
+      return;
     }
+    _foregroundTimer?.cancel();
+    _foregroundTimer = null;
   }
 
   void _handleControllerChanged() {
@@ -88,6 +97,8 @@ class AndroidAutoRefreshService with WidgetsBindingObserver {
     _lastSchedulingSignature = schedulingSignature;
 
     if (!controller.settings.autoRefreshEnabled) {
+      _foregroundTimer?.cancel();
+      _foregroundTimer = null;
       await AndroidAutoRefreshScheduler.cancelSchedule();
       return;
     }
@@ -105,6 +116,7 @@ class AndroidAutoRefreshService with WidgetsBindingObserver {
       return;
     }
 
+    _rescheduleForegroundTimer(isForeground: isForeground);
     await AndroidAutoRefreshScheduler.syncFromSnapshot(
       settings: controller.settings,
       feeds: controller.feeds,
@@ -119,13 +131,38 @@ class AndroidAutoRefreshService with WidgetsBindingObserver {
 
     _isHandlingForegroundRefresh = true;
     try {
-      await controller.refreshDueAutoRefreshFeeds();
+      final result = await controller.refreshDueAutoRefreshFeeds();
+      await SubscriptionNotificationService.instance.notifyAutoRefreshResult(
+        settings: controller.settings,
+        result: result,
+        allowWhenForeground: true,
+      );
     } finally {
       _isHandlingForegroundRefresh = false;
       if (!_disposed) {
         await _syncFromController(force: true);
       }
     }
+  }
+
+  void _rescheduleForegroundTimer({required bool isForeground}) {
+    _foregroundTimer?.cancel();
+    _foregroundTimer = null;
+
+    if (!isForeground || _disposed || controller.isBusy || _isHandlingForegroundRefresh) {
+      return;
+    }
+
+    final DateTime? nextAt = controller.nextAutoRefreshAt();
+    if (nextAt == null) {
+      return;
+    }
+
+    final Duration delay = nextAt.difference(DateTime.now());
+    _foregroundTimer = Timer(
+      delay.isNegative ? Duration.zero : delay,
+      () => _runForegroundDueRefreshes(),
+    );
   }
 
   String _buildSchedulingSignature() {

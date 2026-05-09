@@ -68,11 +68,12 @@ class SubscriptionNotificationService with WidgetsBindingObserver {
   Future<void> notifyAutoRefreshResult({
     required ReaderSettings settings,
     required AutoRefreshRunResult result,
+    bool allowWhenForeground = false,
   }) async {
     if (!_isSupportedNativePlatform || result.sourceUpdates.isEmpty) {
       return;
     }
-    if (await _isAppInForeground()) {
+    if (!allowWhenForeground && await _isAppInForeground()) {
       return;
     }
     await _ensureInitialized();
