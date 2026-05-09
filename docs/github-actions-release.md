@@ -14,8 +14,8 @@
 触发后，Actions 会自动执行三项构建：
 
 - Android `release` APK（1 个 universal + 3 个按 ABI 拆分）
-- Linux `release` bundle 压缩包（x64 + arm64）
-- Windows `release` 打包压缩包（x64 + arm64）
+- Linux `release` bundle 压缩包
+- Windows `release` 打包压缩包
 
 构建完成后，产物会自动上传回当前这个 Release。
 
@@ -38,10 +38,8 @@ Android 签名文件会在 CI 运行时临时还原为 `android/upload-keystore.
 - Android arm64：`Resonance-android-<version>-<tag>-arm64-v8a.apk`
 - Android armv7：`Resonance-android-<version>-<tag>-armeabi-v7a.apk`
 - Android x64：`Resonance-android-<version>-<tag>-x86_64.apk`
-- Linux x64：`Resonance-linux-<version>-<tag>-x64.zip`
-- Linux arm64：`Resonance-linux-<version>-<tag>-arm64.zip`
-- Windows x64：`Resonance-windows-<version>-<tag>-x64.zip`
-- Windows arm64：`Resonance-windows-<version>-<tag>-arm64.zip`
+- Linux：`Resonance-linux-<version>-<tag>.zip`
+- Windows：`Resonance-windows-<version>-<tag>.zip`
 
 例如当前 `pubspec.yaml` 里是 `0.7.0+13`，tag 是 `Testv10`，那么产物文件名会是：
 
@@ -49,14 +47,12 @@ Android 签名文件会在 CI 运行时临时还原为 `android/upload-keystore.
 - `Resonance-android-0.7.0+13-Testv10-arm64-v8a.apk`
 - `Resonance-android-0.7.0+13-Testv10-armeabi-v7a.apk`
 - `Resonance-android-0.7.0+13-Testv10-x86_64.apk`
-- `Resonance-linux-0.7.0+13-Testv10-x64.zip`
-- `Resonance-linux-0.7.0+13-Testv10-arm64.zip`
-- `Resonance-windows-0.7.0+13-Testv10-x64.zip`
-- `Resonance-windows-0.7.0+13-Testv10-arm64.zip`
+- `Resonance-linux-0.7.0+13-Testv10.zip`
+- `Resonance-windows-0.7.0+13-Testv10.zip`
 
-Linux 当前输出的是 Flutter `linux` 的 `bundle` 目录压缩包，分别提供 `x64` 和 `arm64` 两种架构。解压后可直接运行其中名为 `Resonance` 的可执行文件，但目标机器仍需要系统级 GTK 运行库。CI 会先在 runner 的临时目录生成这些 zip，再把它们作为 Release 资产上传回当前发布。
+Linux 当前输出的是 Flutter `linux` 的 `bundle` 目录压缩包，解压后可直接运行其中名为 `Resonance` 的可执行文件，但目标机器仍需要系统级 GTK 运行库。CI 会先在 runner 的临时目录生成这个 zip，再把它作为 Release 资产上传回当前发布。
 
-Windows 当前输出的是 Flutter `windows` 发布目录压缩包，分别提供 `x64` 和 `arm64` 两种架构，解压后可直接运行。如果后续需要标准安装器，可以再接 `msix` 或 Inno Setup。
+Windows 当前输出的是 Flutter `windows` 发布目录压缩包，解压后可直接运行。如果后续需要标准安装器，可以再接 `msix` 或 Inno Setup。
 
 ## 设计说明
 
@@ -65,5 +61,4 @@ Windows 当前输出的是 Flutter `windows` 发布目录压缩包，分别提�
 - Android 构建会同时产出一个 universal APK 和三个按 ABI 拆分的 APK。拆分包体积更小，universal APK 则保留为通用兜底版本。
 - Android 的 4 个 APK 会按顺序逐个上传到 Release，避免在 GitHub Release 侧并发更新资产时出现偶发上传失败。
 - Android 构建优先读取 CI 生成的 `android/key.properties`；本地没配正式签名时，会自动回退到 debug 签名，避免影响日常开发。
-- 为了让 Linux / Windows 的 arm64 runner 稳定拿到 Flutter SDK，工作流现在对桌面矩阵显式固定 Flutter 版本，不再依赖 `subosito/flutter-action` 去自动推断 `stable` 通道在 arm64 上的最新版本；其中 arm64 桌面 job 会单独使用一个确认可解析的稳定版本。
-- Linux 与 Windows 现在都通过 GitHub 官方 arm64 hosted runner 额外产出 `arm64` 版本，因此 Release 中会同时看到 `x64` 和 `arm64` 两套桌面包。
+- Linux 与 Windows 当前工作流都只构建 `x64` 版本，先保持桌面发布链路稳定；如果后续再恢复 `arm64`，需要单独处理 Flutter SDK 与 runner 架构兼容性。

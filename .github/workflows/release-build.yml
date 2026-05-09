@@ -1,8 +1,11 @@
 name: Release Build
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - "Testv*"
+      - "v*"
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -11,7 +14,7 @@ env:
   FLUTTER_VERSION: "3.41.9"
 
 concurrency:
-  group: release-build-${{ github.event.release.id }}
+  group: release-build-${{ github.ref_name }}
   cancel-in-progress: false
 
 jobs:
@@ -89,7 +92,7 @@ jobs:
         run: |
           set -euo pipefail
 
-          artifact_base="Resonance-android-${{ steps.app_version.outputs.value }}-${{ github.event.release.tag_name }}"
+          artifact_base="Resonance-android-${{ steps.app_version.outputs.value }}-${{ steps.release_tag.outputs.value }}"
 
           universal_artifact="${artifact_base}-universal.apk"
           arm64_artifact="${artifact_base}-arm64-v8a.apk"
@@ -114,41 +117,30 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.ANDROID_ARTIFACT_UNIVERSAL }}
+          tag_name: ${{ steps.release_tag.outputs.value }}
+          name: ${{ steps.release_tag.outputs.value }}
 
       - name: Upload Android arm64 artifact to release
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.ANDROID_ARTIFACT_ARM64 }}
+          tag_name: ${{ steps.release_tag.outputs.value }}
 
       - name: Upload Android armv7 artifact to release
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.ANDROID_ARTIFACT_ARMV7 }}
+          tag_name: ${{ steps.release_tag.outputs.value }}
 
       - name: Upload Android x86_64 artifact to release
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.ANDROID_ARTIFACT_X64 }}
+          tag_name: ${{ steps.release_tag.outputs.value }}
 
   build-linux:
-    name: Build Linux Package (${{ matrix.label }})
-    runs-on: ${{ matrix.runs_on }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - label: x64
-            runs_on: ubuntu-latest
-            build_dir: x64
-            artifact_suffix: x64
-            flutter_arch: x64
-            flutter_version: "3.41.9"
-          - label: arm64
-            runs_on: ubuntu-24.04-arm
-            build_dir: arm64
-            artifact_suffix: arm64
-            flutter_arch: arm64
-            flutter_version: "3.41.5"
+    name: Build Linux Package
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
@@ -163,8 +155,8 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: ${{ matrix.flutter_version }}
-          architecture: ${{ matrix.flutter_arch }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          architecture: x64
           cache: true
 
       - name: Install dependencies
@@ -182,6 +174,30 @@ jobs:
           fi
           echo "value=$app_version" >> "$GITHUB_OUTPUT"
 
+      - name: Read release tag
+        id: release_tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_tag="${GITHUB_REF_NAME}"
+          if [ -z "$release_tag" ]; then
+            echo "Failed to determine tag name from GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          echo "value=$release_tag" >> "$GITHUB_OUTPUT"
+
+      - name: Read release tag
+        id: release_tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_tag="${GITHUB_REF_NAME}"
+          if [ -z "$release_tag" ]; then
+            echo "Failed to determine tag name from GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          echo "value=$release_tag" >> "$GITHUB_OUTPUT"
+
       - name: Build Linux
         run: flutter build linux --release
 
@@ -189,12 +205,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          artifact_base="Resonance-linux-${{ steps.app_version.outputs.value }}-${{ github.event.release.tag_name }}-${{ matrix.artifact_suffix }}"
+          artifact_base="Resonance-linux-${{ steps.app_version.outputs.value }}-${{ steps.release_tag.outputs.value }}"
           package_dir="$RUNNER_TEMP/$artifact_base"
           package_path="$RUNNER_TEMP/${artifact_base}.zip"
 
           mkdir -p "$package_dir"
-          cp -R build/linux/${{ matrix.build_dir }}/release/bundle/. "$package_dir/"
+          cp -R build/linux/x64/release/bundle/. "$package_dir/"
 
           cd "$RUNNER_TEMP"
           zip -r "$package_path" "$artifact_base"
@@ -204,26 +220,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.LINUX_ARTIFACT_NAME }}
+          tag_name: ${{ steps.release_tag.outputs.value }}
 
   build-windows:
-    name: Build Windows Package (${{ matrix.label }})
-    runs-on: ${{ matrix.runs_on }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - label: x64
-            runs_on: windows-latest
-            build_dir: x64
-            artifact_suffix: x64
-            flutter_arch: x64
-            flutter_version: "3.41.9"
-          - label: arm64
-            runs_on: windows-11-arm
-            build_dir: arm64
-            artifact_suffix: arm64
-            flutter_arch: arm64
-            flutter_version: "3.41.5"
+    name: Build Windows Package
+    runs-on: windows-latest
 
     steps:
       - name: Checkout
@@ -233,8 +234,8 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: stable
-          flutter-version: ${{ matrix.flutter_version }}
-          architecture: ${{ matrix.flutter_arch }}
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          architecture: x64
           cache: true
 
       - name: Install dependencies
@@ -251,19 +252,28 @@ jobs:
           $appVersion = $versionLine.Matches[0].Groups[1].Value.Trim()
           "value=$appVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
+      - name: Read release tag
+        id: release_tag
+        shell: pwsh
+        run: |
+          if (-not $env:GITHUB_REF_NAME) {
+            throw "Failed to determine tag name from GITHUB_REF_NAME"
+          }
+          "value=$($env:GITHUB_REF_NAME)" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
+
       - name: Build Windows
         run: flutter build windows --release
 
       - name: Package Windows output
         shell: pwsh
         run: |
-          $tag = "${{ github.event.release.tag_name }}"
+          $tag = "${{ steps.release_tag.outputs.value }}"
           $appVersion = "${{ steps.app_version.outputs.value }}"
-          $packageName = "Resonance-windows-$appVersion-$tag-${{ matrix.artifact_suffix }}"
+          $packageName = "Resonance-windows-$appVersion-$tag"
           $packageDir = Join-Path $env:RUNNER_TEMP $packageName
 
           New-Item -ItemType Directory -Path $packageDir -Force | Out-Null
-          Copy-Item -Path "build\windows\${{ matrix.build_dir }}\runner\Release\*" -Destination $packageDir -Recurse -Force
+          Copy-Item -Path "build\windows\x64\runner\Release\*" -Destination $packageDir -Recurse -Force
 
           Compress-Archive -Path $packageDir -DestinationPath "$packageName.zip" -Force
           "WINDOWS_ARTIFACT_NAME=$packageName.zip" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
@@ -272,3 +282,4 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: ${{ env.WINDOWS_ARTIFACT_NAME }}
+          tag_name: ${{ steps.release_tag.outputs.value }}
