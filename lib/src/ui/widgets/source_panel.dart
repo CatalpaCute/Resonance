@@ -281,6 +281,7 @@ class CompactSourceFilterHeader extends StatelessWidget {
                     right: 0,
                     bottom: 0,
                     child: _CompactActionDock(
+                      blurEnabled: controller.settings.blurEffectsEnabled,
                       children: <Widget>[
                         _CompactToggleChip(
                           active: expanded,
@@ -819,32 +820,39 @@ class _CompactSourceChip extends StatelessWidget {
 
 class _CompactActionDock extends StatelessWidget {
   const _CompactActionDock({
+    required this.blurEnabled,
     required this.children,
   });
 
+  final bool blurEnabled;
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
+    final Widget dock = Container(
+      padding: const EdgeInsets.only(left: 12),
+      decoration: BoxDecoration(
+        color: palette.panelBackground.withValues(
+          alpha: blurEnabled ? 0.78 : 1,
+        ),
+        border: Border(
+          left: BorderSide(
+            color: palette.border.withValues(alpha: blurEnabled ? 0.38 : 1),
+          ),
+        ),
+      ),
+      child: Row(children: children),
+    );
 
     return ClipPath(
       clipper: _CompactActionDockClipper(),
-      child: BackdropFilter(
-        filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-        child: Container(
-          padding: const EdgeInsets.only(left: 12),
-          decoration: BoxDecoration(
-            color: palette.panelBackground.withValues(alpha: 0.78),
-            border: Border(
-              left: BorderSide(
-                color: palette.border.withValues(alpha: 0.38),
-              ),
-            ),
-          ),
-          child: Row(children: children),
-        ),
-      ),
+      child: blurEnabled
+          ? BackdropFilter(
+              filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: dock,
+            )
+          : dock,
     );
   }
 }
@@ -869,7 +877,7 @@ class _CompactActionDockClipper extends CustomClipper<Path> {
   }
 
   @override
-  bool shouldReclip(covariant CustomClipper<Path> oldClipper) => false;
+  bool shouldReclip(covariant _CompactActionDockClipper oldClipper) => false;
 }
 
 class _CompactToggleChip extends StatelessWidget {

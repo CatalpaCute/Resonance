@@ -11,7 +11,10 @@ class AppBrand {
   static const String nameZhHant = '回響';
   static const String nameEn = 'Resonance';
   static const String fullName = 'Resonance';
-  static const String version = '0.12.0';
+  static const String version = String.fromEnvironment(
+    'APP_VERSION',
+    defaultValue: 'dev',
+  );
   static const String repoUrl = 'https://github.com/CatalpaCute/Resonance';
 }
 

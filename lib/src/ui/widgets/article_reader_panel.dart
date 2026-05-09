@@ -508,7 +508,7 @@ class _DesktopReaderToolbar extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
     final Color surfaceColor = baseColor.withValues(
-      alpha: blurEnabled ? 0.70 : 0.96,
+      alpha: blurEnabled ? 0.70 : 1,
     );
 
     final Widget surface = DecoratedBox(
@@ -632,7 +632,7 @@ class _MobileReaderBottomBar extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
     final Color surfaceColor = baseColor.withValues(
-      alpha: blurEnabled ? 0.78 : 0.98,
+      alpha: blurEnabled ? 0.78 : 1,
     );
 
     final Widget surface = DecoratedBox(

@@ -82,7 +82,7 @@ jobs:
           echo "value=$app_version" >> "$GITHUB_OUTPUT"
 
       - name: Build Android APKs
-        run: flutter build apk --release --split-per-abi
+        run: flutter build apk --release --split-per-abi --dart-define=APP_VERSION=${{ steps.app_version.outputs.value }}
 
       - name: Package Android artifacts
         shell: bash
@@ -96,7 +96,7 @@ jobs:
           armv7_artifact="${artifact_base}-armeabi-v7a.apk"
           x64_artifact="${artifact_base}-x86_64.apk"
 
-          flutter build apk --release
+          flutter build apk --release --dart-define=APP_VERSION=${{ steps.app_version.outputs.value }}
 
           cp build/app/outputs/flutter-apk/app-release.apk "$universal_artifact"
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "$arm64_artifact"
@@ -183,7 +183,7 @@ jobs:
           echo "value=$app_version" >> "$GITHUB_OUTPUT"
 
       - name: Build Linux
-        run: flutter build linux --release
+        run: flutter build linux --release --dart-define=APP_VERSION=${{ steps.app_version.outputs.value }}
 
       - name: Package Linux output
         shell: bash
@@ -252,7 +252,7 @@ jobs:
           "value=$appVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
       - name: Build Windows
-        run: flutter build windows --release
+        run: flutter build windows --release --dart-define=APP_VERSION=${{ steps.app_version.outputs.value }}
 
       - name: Package Windows output
         shell: pwsh

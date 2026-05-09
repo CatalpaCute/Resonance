@@ -62,54 +62,68 @@ class _SettingsViewState extends State<SettingsView> {
     final _SettingsCategory activeCategory =
         _activeCategory ?? _SettingsCategory.autoRefreshNotifications;
 
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final double availableHeight = constraints.maxHeight.isFinite
-            ? math.max(300, constraints.maxHeight - 32)
-            : 680;
-        final double panelHeight = math.min(760, availableHeight);
-
-        return Center(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 1040),
-              child: SizedBox(
-                height: panelHeight,
-                child: _FrostedSettingsPanel(
-                  blurEnabled: controller.settings.blurEffectsEnabled,
-                  child: Row(
-                    children: <Widget>[
-                      SizedBox(
-                        width: 236,
-                        child: _CategoryRail(
-                          selected: activeCategory,
-                          onSelect: _setActiveCategory,
-                        ),
-                      ),
-                      VerticalDivider(
-                        width: 1,
-                        color: palette.divider,
-                      ),
-                      Expanded(
-                        child: _SettingsDetailPane(
-                          keyboardScrollId: 'settings-detail-wide',
-                          title: _categoryTitle(strings, activeCategory),
-                          child: _buildCategoryContent(
-                            context,
-                            category: activeCategory,
-                            wideLayout: true,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+    return Stack(
+      children: <Widget>[
+        Positioned.fill(
+          child: ClipRect(
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+              child: ColoredBox(
+                color: palette.chromeBackground.withValues(alpha: 0.72),
               ),
             ),
           ),
-        );
-      },
+        ),
+        LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            final double availableHeight = constraints.maxHeight.isFinite
+                ? math.max(300, constraints.maxHeight - 32)
+                : 680;
+            final double panelHeight = math.min(760, availableHeight);
+
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1040),
+                  child: SizedBox(
+                    height: panelHeight,
+                    child: _FrostedSettingsPanel(
+                      blurEnabled: controller.settings.blurEffectsEnabled,
+                      child: Row(
+                        children: <Widget>[
+                          SizedBox(
+                            width: 248,
+                            child: _CategoryRail(
+                              selected: activeCategory,
+                              onSelect: _setActiveCategory,
+                            ),
+                          ),
+                          VerticalDivider(
+                            width: 1,
+                            color: palette.divider.withValues(alpha: 0.72),
+                          ),
+                          Expanded(
+                            child: _SettingsDetailPane(
+                              keyboardScrollId: 'settings-detail-wide',
+                              title: _categoryTitle(strings, activeCategory),
+                              child: _buildCategoryContent(
+                                context,
+                                category: activeCategory,
+                                wideLayout: true,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -692,7 +706,7 @@ class _FrostedSettingsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final Color background = palette.panelBackground.withValues(
-      alpha: blurEnabled ? 0.88 : 0.96,
+      alpha: blurEnabled ? 0.84 : 0.96,
     );
     final Widget panel = Container(
       decoration: BoxDecoration(
@@ -701,9 +715,9 @@ class _FrostedSettingsPanel extends StatelessWidget {
         border: Border.all(color: palette.border.withValues(alpha: 0.82)),
         boxShadow: <BoxShadow>[
           BoxShadow(
-            color: palette.shadow.withValues(alpha: 0.24),
-            blurRadius: 28,
-            offset: const Offset(0, 18),
+            color: palette.shadow.withValues(alpha: 0.26),
+            blurRadius: 34,
+            offset: const Offset(0, 20),
           ),
         ],
       ),
@@ -718,7 +732,7 @@ class _FrostedSettingsPanel extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(22),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
         child: panel,
       ),
     );
@@ -925,6 +939,7 @@ class _MobileCategoryTile extends StatelessWidget {
     );
   }
 }
+
 class _SettingsDetailPane extends StatelessWidget {
   const _SettingsDetailPane({
     required this.keyboardScrollId,
