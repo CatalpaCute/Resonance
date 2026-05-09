@@ -84,6 +84,18 @@ jobs:
           fi
           echo "value=$app_version" >> "$GITHUB_OUTPUT"
 
+      - name: Read release tag
+        id: release_tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          release_tag="${GITHUB_REF_NAME}"
+          if [ -z "$release_tag" ]; then
+            echo "Failed to determine tag name from GITHUB_REF_NAME" >&2
+            exit 1
+          fi
+          echo "value=$release_tag" >> "$GITHUB_OUTPUT"
+
       - name: Build Android APKs
         run: flutter build apk --release --split-per-abi
 
@@ -173,18 +185,6 @@ jobs:
             exit 1
           fi
           echo "value=$app_version" >> "$GITHUB_OUTPUT"
-
-      - name: Read release tag
-        id: release_tag
-        shell: bash
-        run: |
-          set -euo pipefail
-          release_tag="${GITHUB_REF_NAME}"
-          if [ -z "$release_tag" ]; then
-            echo "Failed to determine tag name from GITHUB_REF_NAME" >&2
-            exit 1
-          fi
-          echo "value=$release_tag" >> "$GITHUB_OUTPUT"
 
       - name: Read release tag
         id: release_tag
