@@ -13,6 +13,7 @@ import '../../theme/app_theme.dart';
 import '../widgets/desktop_smooth_scroll.dart';
 
 const double _settingsWideBreakpoint = 980;
+const Curve _settingsSpringCurve = Cubic(0.18, 1.18, 0.28, 1.0);
 
 enum _SettingsCategory {
   syncAccount,
@@ -27,10 +28,12 @@ class SettingsView extends StatefulWidget {
     super.key,
     required this.controller,
     this.onSubPageChanged,
+    this.onClose,
   });
 
   final ReaderController controller;
   final ValueChanged<String?>? onSubPageChanged;
+  final VoidCallback? onClose;
 
   @override
   State<SettingsView> createState() => SettingsViewState();
@@ -109,6 +112,14 @@ class SettingsViewState extends State<SettingsView> {
                             child: _SettingsDetailPane(
                               keyboardScrollId: 'settings-detail-wide',
                               title: _categoryTitle(strings, activeCategory),
+                              trailing: widget.onClose == null
+                                  ? null
+                                  : IconButton(
+                                      tooltip: MaterialLocalizations.of(context)
+                                          .closeButtonTooltip,
+                                      onPressed: widget.onClose,
+                                      icon: const Icon(Icons.close_rounded),
+                                    ),
                               child: _buildCategoryContent(
                                 context,
                                 category: activeCategory,
@@ -132,12 +143,13 @@ class SettingsViewState extends State<SettingsView> {
   Widget _buildCompactCategoryList(BuildContext context, AppStrings strings) {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
+    final Size viewport = MediaQuery.sizeOf(context);
 
     return DesktopSmoothListView(
       keyboardScrollId: 'settings-category-list',
       padding: const EdgeInsets.fromLTRB(18, 26, 18, 32),
       children: <Widget>[
-        SizedBox(height: MediaQuery.sizeOf(context).height * 0.08),
+        SizedBox(height: viewport.height * 0.08),
         GestureDetector(
           onTap: () {
             setState(() {
@@ -184,90 +196,17 @@ class SettingsViewState extends State<SettingsView> {
             ),
           ),
         ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 320),
-          curve: Curves.easeOutCubic,
-          alignment: Alignment.topCenter,
-          child: _isAboutExpanded
-              ? Padding(
-                  padding: EdgeInsets.only(
-                    top: MediaQuery.sizeOf(context).height * 0.06,
-                  ),
-                  child: Column(
-                    children: <Widget>[
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).colorScheme.primary,
-                          borderRadius: BorderRadius.circular(22),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          strings.settingsVersionLabel,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onPrimary,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        decoration: BoxDecoration(
-                          color: palette.panelBackground,
-                          borderRadius: BorderRadius.circular(22),
-                          border: Border.all(color: palette.border),
-                        ),
-                        alignment: Alignment.center,
-                        child: Text(
-                          strings.settingsAboutLicense,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 14),
-                      InkWell(
-                        borderRadius: BorderRadius.circular(22),
-                        onTap: () {
-                          launchUrl(Uri.parse(AppBrand.repoUrl));
-                        },
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          decoration: BoxDecoration(
-                            color: palette.panelBackground,
-                            borderRadius: BorderRadius.circular(22),
-                            border: Border.all(color: palette.border),
-                          ),
-                          alignment: Alignment.center,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: <Widget>[
-                              Icon(
-                                Icons.open_in_new_rounded,
-                                size: 16,
-                                color: palette.secondaryText,
-                              ),
-                              const SizedBox(width: 8),
-                              Text(
-                                strings.settingsAboutRepo,
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-              : const SizedBox.shrink(),
+        _MobileAboutReveal(
+          expanded: _isAboutExpanded,
+          strings: strings,
         ),
-        SizedBox(height: MediaQuery.sizeOf(context).height * 0.10),
+        AnimatedContainer(
+          duration: const Duration(milliseconds: 420),
+          curve: _settingsSpringCurve,
+          height: _isAboutExpanded
+              ? viewport.height * 0.04
+              : viewport.height * 0.18,
+        ),
         _MobileCategoryList(onSelect: _setActiveCategory),
       ],
     );
@@ -674,8 +613,7 @@ class SettingsViewState extends State<SettingsView> {
     setState(() {
       _activeCategory = category;
     });
-    widget.onSubPageChanged
-        ?.call(_categoryTitle(context.strings, category));
+    widget.onSubPageChanged?.call(_categoryTitle(context.strings, category));
   }
 
   String _autoRefreshSettingsHint(AppStrings strings) {
@@ -865,6 +803,12 @@ class _MobileCategoryList extends StatelessWidget {
   Widget build(BuildContext context) {
     final AppStrings strings = context.strings;
     final ReaderPalette palette = AppTheme.paletteOf(context);
+    const List<_SettingsCategory> categories = <_SettingsCategory>[
+      _SettingsCategory.syncAccount,
+      _SettingsCategory.ai,
+      _SettingsCategory.autoRefreshNotifications,
+      _SettingsCategory.themeDisplay,
+    ];
 
     return Container(
       decoration: BoxDecoration(
@@ -874,9 +818,9 @@ class _MobileCategoryList extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
-        children: _SettingsCategory.values.map(
+        children: categories.map(
           (_SettingsCategory category) {
-            final bool last = category == _SettingsCategory.values.last;
+            final bool last = category == categories.last;
             return _MobileCategoryTile(
               title: _categoryTitle(strings, category),
               icon: _categoryIcon(category),
@@ -944,18 +888,217 @@ class _MobileCategoryTile extends StatelessWidget {
   }
 }
 
+class _MobileAboutReveal extends StatelessWidget {
+  const _MobileAboutReveal({
+    required this.expanded,
+    required this.strings,
+  });
+
+  final bool expanded;
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final double topSpacing = MediaQuery.sizeOf(context).height * 0.045;
+
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 430),
+      curve: _settingsSpringCurve,
+      alignment: Alignment.topCenter,
+      child: expanded
+          ? TweenAnimationBuilder<double>(
+              tween: Tween<double>(begin: 0, end: 1),
+              duration: const Duration(milliseconds: 430),
+              curve: _settingsSpringCurve,
+              builder: (BuildContext context, double value, Widget? child) {
+                final double normalized = value.clamp(0, 1);
+                return Opacity(
+                  opacity: normalized,
+                  child: Transform.translate(
+                    offset: Offset(0, (1 - normalized) * -10),
+                    child: Transform.scale(
+                      scale: 0.96 + normalized * 0.04,
+                      alignment: Alignment.topCenter,
+                      child: child,
+                    ),
+                  ),
+                );
+              },
+              child: Padding(
+                padding: EdgeInsets.only(top: topSpacing),
+                child: Column(
+                  children: <Widget>[
+                    _MobileAboutPill(
+                      filled: true,
+                      child: Text(
+                        strings.settingsVersionLabel,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          color: Theme.of(context).colorScheme.onPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    _MobileAboutPill(
+                      child: Text(
+                        strings.settingsAboutLicense,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(22),
+                      onTap: () {
+                        launchUrl(Uri.parse(AppBrand.repoUrl));
+                      },
+                      child: _MobileAboutPill(
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            _GitHubMark(
+                              size: 17,
+                              color: palette.secondaryText,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              strings.settingsAboutRepo,
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : const SizedBox.shrink(),
+    );
+  }
+}
+
+class _MobileAboutPill extends StatelessWidget {
+  const _MobileAboutPill({
+    required this.child,
+    this.filled = false,
+  });
+
+  final Widget child;
+  final bool filled;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(vertical: filled ? 18 : 16),
+      decoration: BoxDecoration(
+        color: filled
+            ? Theme.of(context).colorScheme.primary
+            : palette.panelBackground,
+        borderRadius: BorderRadius.circular(22),
+        border: filled ? null : Border.all(color: palette.border),
+        boxShadow: <BoxShadow>[
+          BoxShadow(
+            color: palette.shadow.withValues(alpha: filled ? 0.16 : 0.08),
+            blurRadius: filled ? 24 : 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      alignment: Alignment.center,
+      child: child,
+    );
+  }
+}
+
+class _GitHubMark extends StatelessWidget {
+  const _GitHubMark({
+    required this.size,
+    required this.color,
+  });
+
+  final double size;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        painter: _GitHubMarkPainter(color),
+      ),
+    );
+  }
+}
+
+class _GitHubMarkPainter extends CustomPainter {
+  const _GitHubMarkPainter(this.color);
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()..color = color;
+    final double w = size.width;
+    final double h = size.height;
+    final Path mark = Path()
+      ..moveTo(w * 0.50, h * 0.04)
+      ..cubicTo(w * 0.24, h * 0.04, w * 0.05, h * 0.24, w * 0.05, h * 0.50)
+      ..cubicTo(w * 0.05, h * 0.70, w * 0.18, h * 0.86, w * 0.36, h * 0.92)
+      ..cubicTo(w * 0.39, h * 0.93, w * 0.41, h * 0.91, w * 0.41, h * 0.88)
+      ..lineTo(w * 0.41, h * 0.76)
+      ..cubicTo(w * 0.25, h * 0.80, w * 0.22, h * 0.69, w * 0.22, h * 0.69)
+      ..cubicTo(w * 0.19, h * 0.61, w * 0.14, h * 0.59, w * 0.14, h * 0.59)
+      ..cubicTo(w * 0.08, h * 0.55, w * 0.14, h * 0.55, w * 0.14, h * 0.55)
+      ..cubicTo(w * 0.20, h * 0.55, w * 0.24, h * 0.62, w * 0.24, h * 0.62)
+      ..cubicTo(w * 0.30, h * 0.72, w * 0.39, h * 0.69, w * 0.42, h * 0.67)
+      ..cubicTo(w * 0.43, h * 0.63, w * 0.45, h * 0.60, w * 0.47, h * 0.58)
+      ..cubicTo(w * 0.33, h * 0.56, w * 0.18, h * 0.51, w * 0.18, h * 0.29)
+      ..cubicTo(w * 0.18, h * 0.23, w * 0.20, h * 0.17, w * 0.24, h * 0.13)
+      ..cubicTo(w * 0.23, h * 0.11, w * 0.22, h * 0.04, w * 0.25, h * 0.00)
+      ..cubicTo(w * 0.25, h * 0.00, w * 0.31, h * -0.01, w * 0.41, h * 0.06)
+      ..cubicTo(w * 0.47, h * 0.04, w * 0.53, h * 0.04, w * 0.59, h * 0.06)
+      ..cubicTo(w * 0.69, h * -0.01, w * 0.75, h * 0.00, w * 0.75, h * 0.00)
+      ..cubicTo(w * 0.78, h * 0.04, w * 0.77, h * 0.11, w * 0.76, h * 0.13)
+      ..cubicTo(w * 0.80, h * 0.17, w * 0.82, h * 0.23, w * 0.82, h * 0.29)
+      ..cubicTo(w * 0.82, h * 0.51, w * 0.67, h * 0.56, w * 0.53, h * 0.58)
+      ..cubicTo(w * 0.56, h * 0.61, w * 0.59, h * 0.67, w * 0.59, h * 0.75)
+      ..lineTo(w * 0.59, h * 0.88)
+      ..cubicTo(w * 0.59, h * 0.91, w * 0.61, h * 0.93, w * 0.64, h * 0.92)
+      ..cubicTo(w * 0.82, h * 0.86, w * 0.95, h * 0.70, w * 0.95, h * 0.50)
+      ..cubicTo(w * 0.95, h * 0.24, w * 0.76, h * 0.04, w * 0.50, h * 0.04)
+      ..close();
+    canvas.drawPath(mark, paint);
+  }
+
+  @override
+  bool shouldRepaint(_GitHubMarkPainter oldDelegate) {
+    return oldDelegate.color != color;
+  }
+}
+
 class _SettingsDetailPane extends StatelessWidget {
   const _SettingsDetailPane({
     required this.keyboardScrollId,
     required this.title,
     required this.child,
     this.compact = false,
+    this.trailing,
   });
 
   final String keyboardScrollId;
   final String title;
   final Widget child;
   final bool compact;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -979,6 +1122,7 @@ class _SettingsDetailPane extends StatelessWidget {
                       : Theme.of(context).textTheme.headlineMedium,
                 ),
               ),
+              if (trailing != null) trailing!,
             ],
           ),
           SizedBox(height: compact ? 14 : 20),
@@ -1103,30 +1247,60 @@ class _AboutSettingsContent extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
 
-    return _SettingsFlatSectionList(
-      children: <Widget>[
-        _SettingsFlatSection(
-          title: strings.appFullName,
-          child: Column(
-            children: <Widget>[
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primary,
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  strings.settingsVersionLabel,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onPrimary,
-                    fontWeight: FontWeight.w700,
-                  ),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Column(
+          children: <Widget>[
+            Text(
+              strings.appFullName,
+              textAlign: TextAlign.center,
+              style: theme.textTheme.displaySmall?.copyWith(
+                fontWeight: FontWeight.w800,
+                height: 1.05,
+              ),
+            ),
+            const SizedBox(height: 28),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: BorderRadius.circular(18),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                strings.settingsVersionLabel,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onPrimary,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 12),
-              Container(
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: palette.panelBackground,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: palette.border),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                strings.settingsAboutLicense,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            InkWell(
+              borderRadius: BorderRadius.circular(18),
+              onTap: () {
+                launchUrl(Uri.parse(AppBrand.repoUrl));
+              },
+              child: Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
@@ -1135,51 +1309,27 @@ class _AboutSettingsContent extends StatelessWidget {
                   border: Border.all(color: palette.border),
                 ),
                 alignment: Alignment.center,
-                child: Text(
-                  strings.settingsAboutLicense,
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                  ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    _GitHubMark(
+                      size: 17,
+                      color: palette.secondaryText,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      strings.settingsAboutRepo,
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 12),
-              InkWell(
-                borderRadius: BorderRadius.circular(18),
-                onTap: () {
-                  launchUrl(Uri.parse(AppBrand.repoUrl));
-                },
-                child: Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  decoration: BoxDecoration(
-                    color: palette.panelBackground,
-                    borderRadius: BorderRadius.circular(18),
-                    border: Border.all(color: palette.border),
-                  ),
-                  alignment: Alignment.center,
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: <Widget>[
-                      Icon(
-                        Icons.open_in_new_rounded,
-                        size: 16,
-                        color: palette.secondaryText,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        strings.settingsAboutRepo,
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }

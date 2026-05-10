@@ -10,7 +10,7 @@ const Curve _sidebarAnimationCurve = Cubic(0.18, 0.92, 0.28, 1.0);
 const double _expandedSidebarWidth = 176;
 const double _collapsedSidebarWidth = 62;
 
-class NavigationSidebar extends StatefulWidget {
+class NavigationSidebar extends StatelessWidget {
   const NavigationSidebar({
     super.key,
     required this.controller,
@@ -18,6 +18,8 @@ class NavigationSidebar extends StatefulWidget {
     required this.showCollapseToggle,
     this.onNavigate,
     this.onToggleCollapse,
+    this.onOpenSettings,
+    this.profileAvatar,
   });
 
   final ReaderController controller;
@@ -25,18 +27,12 @@ class NavigationSidebar extends StatefulWidget {
   final bool showCollapseToggle;
   final VoidCallback? onNavigate;
   final VoidCallback? onToggleCollapse;
-
-  @override
-  State<NavigationSidebar> createState() => _NavigationSidebarState();
-}
-
-class _NavigationSidebarState extends State<NavigationSidebar> {
-  bool _profileActionsOpen = false;
+  final VoidCallback? onOpenSettings;
+  final Widget? profileAvatar;
 
   @override
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
-    final bool collapsed = widget.collapsed;
 
     return AnimatedContainer(
       duration: _sidebarAnimationDuration,
@@ -69,11 +65,11 @@ class _NavigationSidebarState extends State<NavigationSidebar> {
                           icon: Icons.home_outlined,
                           activeIcon: Icons.home_rounded,
                           label: context.strings.home,
-                          active: widget.controller.currentRoute ==
-                              AppRouteId.allArticles,
+                          active:
+                              controller.currentRoute == AppRouteId.allArticles,
                           collapsed: collapsed,
-                          badge: widget.controller.totalUnreadCount > 0
-                              ? '${widget.controller.totalUnreadCount}'
+                          badge: controller.totalUnreadCount > 0
+                              ? '${controller.totalUnreadCount}'
                               : null,
                           onTap: () => _navigate(AppRouteId.allArticles),
                         ),
@@ -81,8 +77,8 @@ class _NavigationSidebarState extends State<NavigationSidebar> {
                           icon: Icons.bookmark_outline_rounded,
                           activeIcon: Icons.bookmark_rounded,
                           label: context.strings.bookmarksAndLater,
-                          active: widget.controller.currentRoute ==
-                              AppRouteId.bookmarks,
+                          active:
+                              controller.currentRoute == AppRouteId.bookmarks,
                           collapsed: collapsed,
                           onTap: () => _navigate(AppRouteId.bookmarks),
                         ),
@@ -90,20 +86,20 @@ class _NavigationSidebarState extends State<NavigationSidebar> {
                           icon: Icons.add_circle_outline_rounded,
                           activeIcon: Icons.add_circle_rounded,
                           label: context.strings.subscriptionManagement,
-                          active: widget.controller.currentRoute ==
+                          active: controller.currentRoute ==
                               AppRouteId.discoverAddSource,
                           collapsed: collapsed,
                           onTap: () => _navigate(AppRouteId.discoverAddSource),
                         ),
-                        if (!widget.showCollapseToggle)
+                        if (!showCollapseToggle)
                           _NavItem(
                             icon: Icons.tune_rounded,
                             activeIcon: Icons.tune_rounded,
                             label: context.strings.settings,
-                            active: widget.controller.currentRoute ==
-                                AppRouteId.settings,
+                            active:
+                                controller.currentRoute == AppRouteId.settings,
                             collapsed: collapsed,
-                            onTap: () => _navigate(AppRouteId.settings),
+                            onTap: _openSettings,
                           ),
                       ],
                     ),
@@ -115,36 +111,11 @@ class _NavigationSidebarState extends State<NavigationSidebar> {
                       ),
                     ),
                     padding: const EdgeInsets.only(top: 10),
-                    child: Column(
-                      children: <Widget>[
-                        _ProfileActionDrawer(
-                          open: _profileActionsOpen,
-                          collapsed: collapsed,
-                          settingsActive: widget.controller.currentRoute ==
-                              AppRouteId.settings,
-                          onSettingsTap: () => _navigate(AppRouteId.settings),
-                          onLockTap: () {
-                            setState(() {
-                              _profileActionsOpen = false;
-                            });
-                          },
-                        ),
-                        AnimatedSize(
-                          duration: _sidebarAnimationDuration,
-                          curve: _sidebarAnimationCurve,
-                          child: SizedBox(height: _profileActionsOpen ? 10 : 0),
-                        ),
-                        _ProfileCard(
-                          controller: widget.controller,
-                          collapsed: collapsed,
-                          expanded: _profileActionsOpen,
-                          onTap: () {
-                            setState(() {
-                              _profileActionsOpen = !_profileActionsOpen;
-                            });
-                          },
-                        ),
-                      ],
+                    child: _ProfileCard(
+                      controller: controller,
+                      collapsed: collapsed,
+                      avatar: profileAvatar,
+                      onTap: _openSettings,
                     ),
                   ),
                 ],
@@ -157,11 +128,16 @@ class _NavigationSidebarState extends State<NavigationSidebar> {
   }
 
   void _navigate(AppRouteId route) {
-    widget.controller.setCurrentRoute(route);
-    widget.onNavigate?.call();
-    setState(() {
-      _profileActionsOpen = false;
-    });
+    controller.setCurrentRoute(route);
+    onNavigate?.call();
+  }
+
+  void _openSettings() {
+    if (onOpenSettings != null) {
+      onOpenSettings!.call();
+      return;
+    }
+    _navigate(AppRouteId.settings);
   }
 }
 
@@ -284,14 +260,14 @@ class _ProfileCard extends StatelessWidget {
   const _ProfileCard({
     required this.controller,
     required this.collapsed,
-    required this.expanded,
     required this.onTap,
+    this.avatar,
   });
 
   final ReaderController controller;
   final bool collapsed;
-  final bool expanded;
   final VoidCallback onTap;
+  final Widget? avatar;
 
   @override
   Widget build(BuildContext context) {
@@ -325,32 +301,9 @@ class _ProfileCard extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  Container(
-                    width: 28,
-                    height: 28,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.18),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    alignment: Alignment.center,
-                    child: Text(
-                      AppBrand.mark,
-                      style: theme.textTheme.labelMedium?.copyWith(
-                        color: theme.colorScheme.primary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  _SidebarReveal(
-                    visible: collapsed,
-                    maxWidth: 18,
-                    child: Icon(
-                      expanded
-                          ? Icons.keyboard_arrow_down_rounded
-                          : Icons.keyboard_arrow_up_rounded,
-                      size: 16,
-                      color: palette.secondaryText,
-                    ),
+                  _ProfileAvatar(
+                    avatar: avatar,
+                    fallbackIcon: Icons.settings_rounded,
                   ),
                   _SidebarReveal(
                     visible: !collapsed,
@@ -395,133 +348,33 @@ class _ProfileCard extends StatelessWidget {
   }
 }
 
-class _ProfileActionDrawer extends StatelessWidget {
-  const _ProfileActionDrawer({
-    required this.open,
-    required this.collapsed,
-    required this.settingsActive,
-    required this.onSettingsTap,
-    required this.onLockTap,
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({
+    required this.fallbackIcon,
+    this.avatar,
   });
 
-  final bool open;
-  final bool collapsed;
-  final bool settingsActive;
-  final VoidCallback onSettingsTap;
-  final VoidCallback onLockTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final Widget content = collapsed
-        ? Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              _ProfileActionButton(
-                icon: Icons.tune_rounded,
-                label: context.strings.settings,
-                active: settingsActive,
-                collapsed: true,
-                onTap: onSettingsTap,
-              ),
-              const SizedBox(height: 6),
-              _ProfileActionButton(
-                icon: Icons.lock_outline_rounded,
-                label: context.strings.unlocked,
-                collapsed: true,
-                onTap: onLockTap,
-              ),
-            ],
-          )
-        : Row(
-            children: <Widget>[
-              Expanded(
-                child: _ProfileActionButton(
-                  icon: Icons.tune_rounded,
-                  label: context.strings.settings,
-                  active: settingsActive,
-                  collapsed: false,
-                  onTap: onSettingsTap,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _ProfileActionButton(
-                  icon: Icons.lock_outline_rounded,
-                  label: context.strings.unlocked,
-                  collapsed: false,
-                  onTap: onLockTap,
-                ),
-              ),
-            ],
-          );
-
-    return AnimatedSize(
-      duration: _sidebarAnimationDuration,
-      curve: _sidebarAnimationCurve,
-      alignment: Alignment.bottomCenter,
-      child: open ? content : const SizedBox.shrink(),
-    );
-  }
-}
-
-class _ProfileActionButton extends StatelessWidget {
-  const _ProfileActionButton({
-    required this.icon,
-    required this.label,
-    required this.collapsed,
-    required this.onTap,
-    this.active = false,
-  });
-
-  final IconData icon;
-  final String label;
-  final bool collapsed;
-  final bool active;
-  final VoidCallback onTap;
+  final IconData fallbackIcon;
+  final Widget? avatar;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
-    final ReaderPalette palette = AppTheme.paletteOf(context);
-    final Color foreground = active
-        ? theme.colorScheme.primary
-        : Theme.of(context).colorScheme.onSurface;
-
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onTap: onTap,
-        child: Container(
-          height: collapsed ? 40 : 38,
-          padding: EdgeInsets.symmetric(horizontal: collapsed ? 6 : 10),
-          decoration: BoxDecoration(
-            color: active ? palette.primarySoft : palette.panelBackground,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: palette.border),
-          ),
-          child: collapsed
-              ? Center(child: Icon(icon, size: 18, color: foreground))
-              : Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: <Widget>[
-                    Icon(icon, size: 17, color: foreground),
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: foreground,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-        ),
+    return Container(
+      width: 28,
+      height: 28,
+      decoration: BoxDecoration(
+        color: theme.colorScheme.primary.withValues(alpha: 0.18),
+        borderRadius: BorderRadius.circular(8),
       ),
+      clipBehavior: Clip.antiAlias,
+      alignment: Alignment.center,
+      child: avatar ??
+          Icon(
+            fallbackIcon,
+            size: 17,
+            color: theme.colorScheme.primary,
+          ),
     );
   }
 }

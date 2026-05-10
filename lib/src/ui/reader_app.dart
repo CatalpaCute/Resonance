@@ -109,12 +109,14 @@ class ReaderHome extends StatefulWidget {
 
 class _ReaderHomeState extends State<ReaderHome> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  final GlobalKey<SettingsViewState> _settingsKey = GlobalKey<SettingsViewState>();
+  final GlobalKey<SettingsViewState> _settingsKey =
+      GlobalKey<SettingsViewState>();
   final FocusNode _searchFocusNode = FocusNode();
   final ScrollController _compactHomeListController = ScrollController();
 
   bool _compactFilterExpanded = false;
   bool _compactRailCollapsed = true;
+  bool _desktopSettingsOpen = false;
   String? _settingsSubPageTitle;
   bool _lastCompactLayout = true;
   AppRouteId? _lastObservedRoute;
@@ -160,6 +162,18 @@ class _ReaderHomeState extends State<ReaderHome> {
     }
     _searchFocusNode.requestFocus();
     return true;
+  }
+
+  void _openDesktopSettings() {
+    setState(() {
+      _desktopSettingsOpen = true;
+    });
+  }
+
+  void _closeDesktopSettings() {
+    setState(() {
+      _desktopSettingsOpen = false;
+    });
   }
 
   @override
@@ -269,8 +283,7 @@ class _ReaderHomeState extends State<ReaderHome> {
                                 setState(() {
                                   _settingsSubPageTitle = null;
                                 });
-                                _settingsKey.currentState
-                                    ?.popToCategoryList();
+                                _settingsKey.currentState?.popToCategoryList();
                               },
                             ),
                             Expanded(
@@ -282,6 +295,7 @@ class _ReaderHomeState extends State<ReaderHome> {
                                       collapsed: controller
                                           .settings.desktopSidebarCollapsed,
                                       showCollapseToggle: true,
+                                      onOpenSettings: _openDesktopSettings,
                                       onToggleCollapse: () {
                                         controller.setDesktopSidebarCollapsed(
                                           !controller
@@ -296,117 +310,133 @@ class _ReaderHomeState extends State<ReaderHome> {
                                       showCollapseToggle: false,
                                     ),
                                   Expanded(
-                                    child: AnimatedContainer(
-                                      duration: _shellMotionDuration,
-                                      curve: _shellMotionCurve,
-                                      color: usePortraitMobileHome
-                                          ? mobilePageBackground
-                                          : palette.chromeBackground,
-                                      padding: EdgeInsets.fromLTRB(
-                                        usePortraitMobileHome
-                                            ? 0
-                                            : compact
-                                                ? 6
-                                                : 10,
-                                        usePortraitMobileHome
-                                            ? 0
-                                            : compact
-                                                ? 6
-                                                : 6,
-                                        usePortraitMobileHome
-                                            ? 0
-                                            : compact
-                                                ? 6
-                                                : controller.settings
-                                                        .desktopSidebarCollapsed
-                                                    ? 12
+                                    child: Stack(
+                                      children: <Widget>[
+                                        AnimatedContainer(
+                                          duration: _shellMotionDuration,
+                                          curve: _shellMotionCurve,
+                                          color: usePortraitMobileHome
+                                              ? mobilePageBackground
+                                              : palette.chromeBackground,
+                                          padding: EdgeInsets.fromLTRB(
+                                            usePortraitMobileHome
+                                                ? 0
+                                                : compact
+                                                    ? 6
                                                     : 10,
-                                        usePortraitMobileHome
-                                            ? 0
-                                            : compact
-                                                ? 6
-                                                : 10,
-                                      ),
-                                      child: TweenAnimationBuilder<double>(
-                                        tween: Tween<double>(
-                                          end: compact
-                                              ? 0
-                                              : controller.settings
-                                                      .desktopSidebarCollapsed
-                                                  ? 1
-                                                  : 0,
-                                        ),
-                                        duration: _shellMotionDuration,
-                                        curve: _shellMotionCurve,
-                                        child: _MainCanvas(
-                                          compact: compact,
-                                          mobileRestyled: usePortraitMobileHome,
-                                          flatDesktopSurface:
-                                              useFlatDesktopContentSurface,
-                                          child: Column(
-                                            children: <Widget>[
-                                              if (controller.errorMessage !=
-                                                  null)
-                                                _InlineBanner(
-                                                  icon: Icons
-                                                      .warning_amber_rounded,
-                                                  text:
-                                                      controller.errorMessage!,
-                                                  kind: _BannerKind.error,
-                                                  compact: compact,
-                                                  onClose:
-                                                      controller.clearError,
-                                                ),
-                                              if (controller.statusMessage !=
-                                                  null)
-                                                _InlineBanner(
-                                                  icon: Icons.sync_rounded,
-                                                  text:
-                                                      controller.statusMessage!,
-                                                  kind: _BannerKind.info,
-                                                  compact: compact,
-                                                  onClose:
-                                                      controller.clearStatus,
-                                                ),
-                                              Expanded(
-                                                child: FluidAnimatedSwitcher(
-                                                  slideOffset: compact
-                                                      ? const Offset(0.045, 0)
-                                                      : const Offset(0.025, 0),
-                                                  child: KeyedSubtree(
-                                                    key: ValueKey<String>(
-                                                      _bodyTransitionSignature(
-                                                        compact: compact,
-                                                        mobileRestyled:
-                                                            usePortraitMobileHome,
+                                            usePortraitMobileHome
+                                                ? 0
+                                                : compact
+                                                    ? 6
+                                                    : 6,
+                                            usePortraitMobileHome
+                                                ? 0
+                                                : compact
+                                                    ? 6
+                                                    : controller.settings
+                                                            .desktopSidebarCollapsed
+                                                        ? 12
+                                                        : 10,
+                                            usePortraitMobileHome
+                                                ? 0
+                                                : compact
+                                                    ? 6
+                                                    : 10,
+                                          ),
+                                          child: TweenAnimationBuilder<double>(
+                                            tween: Tween<double>(
+                                              end: compact
+                                                  ? 0
+                                                  : controller.settings
+                                                          .desktopSidebarCollapsed
+                                                      ? 1
+                                                      : 0,
+                                            ),
+                                            duration: _shellMotionDuration,
+                                            curve: _shellMotionCurve,
+                                            child: _MainCanvas(
+                                              compact: compact,
+                                              mobileRestyled:
+                                                  usePortraitMobileHome,
+                                              flatDesktopSurface:
+                                                  useFlatDesktopContentSurface,
+                                              child: Column(
+                                                children: <Widget>[
+                                                  if (controller.errorMessage !=
+                                                      null)
+                                                    _InlineBanner(
+                                                      icon: Icons
+                                                          .warning_amber_rounded,
+                                                      text: controller
+                                                          .errorMessage!,
+                                                      kind: _BannerKind.error,
+                                                      compact: compact,
+                                                      onClose:
+                                                          controller.clearError,
+                                                    ),
+                                                  if (controller
+                                                          .statusMessage !=
+                                                      null)
+                                                    _InlineBanner(
+                                                      icon: Icons.sync_rounded,
+                                                      text: controller
+                                                          .statusMessage!,
+                                                      kind: _BannerKind.info,
+                                                      compact: compact,
+                                                      onClose: controller
+                                                          .clearStatus,
+                                                    ),
+                                                  Expanded(
+                                                    child:
+                                                        FluidAnimatedSwitcher(
+                                                      slideOffset: compact
+                                                          ? const Offset(
+                                                              0.045, 0)
+                                                          : const Offset(
+                                                              0.025, 0),
+                                                      child: KeyedSubtree(
+                                                        key: ValueKey<String>(
+                                                          _bodyTransitionSignature(
+                                                            compact: compact,
+                                                            mobileRestyled:
+                                                                usePortraitMobileHome,
+                                                          ),
+                                                        ),
+                                                        child: _buildBody(
+                                                          context,
+                                                          compact: compact,
+                                                          mobileRestyled:
+                                                              usePortraitMobileHome,
+                                                        ),
                                                       ),
                                                     ),
-                                                    child: _buildBody(
-                                                      context,
-                                                      compact: compact,
-                                                      mobileRestyled:
-                                                          usePortraitMobileHome,
-                                                    ),
                                                   ),
-                                                ),
+                                                ],
                                               ),
-                                            ],
+                                            ),
+                                            builder: (
+                                              BuildContext context,
+                                              double value,
+                                              Widget? child,
+                                            ) {
+                                              return Transform.translate(
+                                                offset: Offset(
+                                                  compact ? 0 : value * 4,
+                                                  0,
+                                                ),
+                                                child: child,
+                                              );
+                                            },
                                           ),
                                         ),
-                                        builder: (
-                                          BuildContext context,
-                                          double value,
-                                          Widget? child,
-                                        ) {
-                                          return Transform.translate(
-                                            offset: Offset(
-                                              compact ? 0 : value * 4,
-                                              0,
+                                        if (!compact && _desktopSettingsOpen)
+                                          Positioned.fill(
+                                            child: SettingsView(
+                                              controller: controller,
+                                              onClose: _closeDesktopSettings,
                                             ),
-                                            child: child,
-                                          );
-                                        },
-                                      ),
+                                          ),
+                                      ],
                                     ),
                                   ),
                                 ],
