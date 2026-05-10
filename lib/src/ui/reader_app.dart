@@ -109,11 +109,13 @@ class ReaderHome extends StatefulWidget {
 
 class _ReaderHomeState extends State<ReaderHome> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final GlobalKey<SettingsViewState> _settingsKey = GlobalKey<SettingsViewState>();
   final FocusNode _searchFocusNode = FocusNode();
   final ScrollController _compactHomeListController = ScrollController();
 
   bool _compactFilterExpanded = false;
   bool _compactRailCollapsed = true;
+  String? _settingsSubPageTitle;
   bool _lastCompactLayout = true;
   AppRouteId? _lastObservedRoute;
   String? _lastObservedSourceId;
@@ -262,6 +264,14 @@ class _ReaderHomeState extends State<ReaderHome> {
                               showMenuButton: compact && useDrawer,
                               onMenuPressed: () =>
                                   _scaffoldKey.currentState?.openDrawer(),
+                              settingsSubPageTitle: _settingsSubPageTitle,
+                              onSettingsBack: () {
+                                setState(() {
+                                  _settingsSubPageTitle = null;
+                                });
+                                _settingsKey.currentState
+                                    ?.popToCategoryList();
+                              },
                             ),
                             Expanded(
                               child: Row(
@@ -467,7 +477,15 @@ class _ReaderHomeState extends State<ReaderHome> {
       case AppRouteId.discoverAddSource:
         return AddSourceView(controller: controller);
       case AppRouteId.settings:
-        return SettingsView(controller: controller);
+        return SettingsView(
+          key: _settingsKey,
+          controller: controller,
+          onSubPageChanged: (String? title) {
+            setState(() {
+              _settingsSubPageTitle = title;
+            });
+          },
+        );
       case AppRouteId.readerDetail:
         if (compact) {
           return _buildCompactWorkspace(mobileRestyled: mobileRestyled);
@@ -891,6 +909,8 @@ class _ShellHeader extends StatelessWidget {
     required this.onSidebarToggle,
     required this.showMenuButton,
     required this.onMenuPressed,
+    this.settingsSubPageTitle,
+    this.onSettingsBack,
   });
 
   final ReaderController controller;
@@ -903,6 +923,8 @@ class _ShellHeader extends StatelessWidget {
   final VoidCallback onSidebarToggle;
   final bool showMenuButton;
   final VoidCallback onMenuPressed;
+  final String? settingsSubPageTitle;
+  final VoidCallback? onSettingsBack;
 
   @override
   Widget build(BuildContext context) {
@@ -912,6 +934,9 @@ class _ShellHeader extends StatelessWidget {
     final bool compactReading = compact &&
         controller.currentRoute == AppRouteId.readerDetail &&
         selectedArticle != null;
+    final bool compactSettings = compact &&
+        controller.currentRoute == AppRouteId.settings &&
+        settingsSubPageTitle != null;
     final double headerHeight =
         mobileRestyled || compactReading ? 58 : (compact ? 52 : 40);
 
@@ -937,9 +962,11 @@ class _ShellHeader extends StatelessWidget {
               // In the reader route this slot becomes page back; otherwise the
               // compact rail keeps behaving like desktop with an in-place
               // sidebar toggle instead of opening a second drawer layer.
-              child: compactReading
+              child: compactReading || compactSettings
                   ? IconButton(
-                      onPressed: controller.closeCompactReader,
+                      onPressed: compactReading
+                          ? controller.closeCompactReader
+                          : onSettingsBack,
                       icon: const Icon(Icons.arrow_back_rounded),
                       splashRadius: 18,
                       tooltip:
@@ -984,11 +1011,18 @@ class _ShellHeader extends StatelessWidget {
                         strings: strings,
                         mobileRestyled: mobileRestyled,
                       )
-                    : _MobileHeaderTitle(
-                        controller: controller,
-                        strings: strings,
-                        mobileRestyled: mobileRestyled,
-                      )
+                    : compactSettings
+                        ? _MobileHeaderTitle(
+                            controller: controller,
+                            strings: strings,
+                            mobileRestyled: mobileRestyled,
+                            routeTitleOverride: settingsSubPageTitle,
+                          )
+                        : _MobileHeaderTitle(
+                            controller: controller,
+                            strings: strings,
+                            mobileRestyled: mobileRestyled,
+                          )
                 : Stack(
                     alignment: Alignment.center,
                     children: <Widget>[
@@ -2043,11 +2077,13 @@ class _MobileHeaderTitle extends StatelessWidget {
     required this.controller,
     required this.strings,
     required this.mobileRestyled,
+    this.routeTitleOverride,
   });
 
   final ReaderController controller;
   final AppStrings strings;
   final bool mobileRestyled;
+  final String? routeTitleOverride;
 
   @override
   Widget build(BuildContext context) {
@@ -2063,7 +2099,7 @@ class _MobileHeaderTitle extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Text(
-                controller.currentRouteTitle,
+                routeTitleOverride ?? controller.currentRouteTitle,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: mobileRestyled

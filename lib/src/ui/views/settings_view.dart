@@ -26,15 +26,17 @@ class SettingsView extends StatefulWidget {
   const SettingsView({
     super.key,
     required this.controller,
+    this.onSubPageChanged,
   });
 
   final ReaderController controller;
+  final ValueChanged<String?>? onSubPageChanged;
 
   @override
-  State<SettingsView> createState() => _SettingsViewState();
+  State<SettingsView> createState() => SettingsViewState();
 }
 
-class _SettingsViewState extends State<SettingsView> {
+class SettingsViewState extends State<SettingsView> {
   _SettingsCategory? _activeCategory;
   bool _isAboutExpanded = false;
 
@@ -279,22 +281,22 @@ class _SettingsViewState extends State<SettingsView> {
     return _SettingsDetailPane(
       keyboardScrollId: 'settings-detail-compact',
       compact: true,
-      title: _categoryTitle(strings, category),
-      leading: IconButton(
-        tooltip: strings.settingsBack,
-        onPressed: () {
-          setState(() {
-            _activeCategory = null;
-          });
-        },
-        icon: const Icon(Icons.arrow_back_rounded),
-      ),
+      title: '',
       child: _buildCategoryContent(
         context,
         category: category,
         wideLayout: false,
       ),
     );
+  }
+
+  void popToCategoryList() {
+    if (_activeCategory != null) {
+      setState(() {
+        _activeCategory = null;
+      });
+      widget.onSubPageChanged?.call(null);
+    }
   }
 
   Widget _buildCategoryContent(
@@ -672,6 +674,8 @@ class _SettingsViewState extends State<SettingsView> {
     setState(() {
       _activeCategory = category;
     });
+    widget.onSubPageChanged
+        ?.call(_categoryTitle(context.strings, category));
   }
 
   String _autoRefreshSettingsHint(AppStrings strings) {
@@ -946,14 +950,12 @@ class _SettingsDetailPane extends StatelessWidget {
     required this.title,
     required this.child,
     this.compact = false,
-    this.leading,
   });
 
   final String keyboardScrollId;
   final String title;
   final Widget child;
   final bool compact;
-  final Widget? leading;
 
   @override
   Widget build(BuildContext context) {
@@ -961,27 +963,26 @@ class _SettingsDetailPane extends StatelessWidget {
         ? const EdgeInsets.fromLTRB(16, 12, 16, 26)
         : const EdgeInsets.fromLTRB(28, 24, 28, 28);
 
+    final bool showTitleRow = !compact || title.isNotEmpty;
     return DesktopSmoothListView(
       keyboardScrollId: keyboardScrollId,
       padding: padding,
       children: <Widget>[
-        Row(
-          children: <Widget>[
-            if (leading != null) ...<Widget>[
-              leading!,
-              const SizedBox(width: 6),
-            ],
-            Expanded(
-              child: Text(
-                title,
-                style: compact
-                    ? Theme.of(context).textTheme.headlineSmall
-                    : Theme.of(context).textTheme.headlineMedium,
+        if (showTitleRow) ...<Widget>[
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  title,
+                  style: compact
+                      ? Theme.of(context).textTheme.headlineSmall
+                      : Theme.of(context).textTheme.headlineMedium,
+                ),
               ),
-            ),
-          ],
-        ),
-        SizedBox(height: compact ? 14 : 20),
+            ],
+          ),
+          SizedBox(height: compact ? 14 : 20),
+        ],
         child,
       ],
     );
