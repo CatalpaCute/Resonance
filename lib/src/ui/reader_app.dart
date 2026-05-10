@@ -187,6 +187,24 @@ class _ReaderHomeState extends State<ReaderHome> {
     });
   }
 
+  void _selectPhoneNavigationIndex(int index) {
+    final AppRouteId route = _phoneNavigationRouteForIndex(index);
+    setState(() {
+      _settingsSubPageTitle = null;
+    });
+    controller.setCurrentRoute(route);
+  }
+
+  void _handlePhonePageSwipe(int direction) {
+    final int currentIndex = _phoneNavigationIndexFor(controller.currentRoute);
+    final int nextIndex =
+        (currentIndex + direction).clamp(0, _phoneNavigationLength - 1);
+    if (nextIndex == currentIndex) {
+      return;
+    }
+    _selectPhoneNavigationIndex(nextIndex);
+  }
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
@@ -269,11 +287,11 @@ class _ReaderHomeState extends State<ReaderHome> {
                             _showPhoneBottomNavigation(usePhoneBottomNavigation)
                                 ? _PhoneNavigationBar(
                                     controller: controller,
-                                    onSettingsSelected: () {
-                                      setState(() {
-                                        _settingsSubPageTitle = null;
-                                      });
-                                    },
+                                    selectedIndex: _phoneNavigationIndexFor(
+                                      controller.currentRoute,
+                                    ),
+                                    onDestinationSelected:
+                                        _selectPhoneNavigationIndex,
                                   )
                                 : null,
                         body: Stack(
@@ -374,93 +392,104 @@ class _ReaderHomeState extends State<ReaderHome> {
                                                       ? 6
                                                       : 10,
                                             ),
-                                            child:
-                                                TweenAnimationBuilder<double>(
-                                              tween: Tween<double>(
-                                                end: compact
-                                                    ? 0
-                                                    : controller.settings
-                                                            .desktopSidebarCollapsed
-                                                        ? 1
-                                                        : 0,
+                                            child: _PhonePageSwipeRegion(
+                                              enabled:
+                                                  _showPhoneBottomNavigation(
+                                                usePhoneBottomNavigation,
                                               ),
-                                              duration: _shellMotionDuration,
-                                              curve: _shellMotionCurve,
-                                              child: _MainCanvas(
-                                                compact: compact,
-                                                mobileRestyled:
-                                                    usePortraitMobileHome,
-                                                flatDesktopSurface:
-                                                    useFlatDesktopContentSurface,
-                                                child: Column(
-                                                  children: <Widget>[
-                                                    if (controller
-                                                            .errorMessage !=
-                                                        null)
-                                                      _InlineBanner(
-                                                        icon: Icons
-                                                            .warning_amber_rounded,
-                                                        text: controller
-                                                            .errorMessage!,
-                                                        kind: _BannerKind.error,
-                                                        compact: compact,
-                                                        onClose: controller
-                                                            .clearError,
-                                                      ),
-                                                    if (controller
-                                                            .statusMessage !=
-                                                        null)
-                                                      _InlineBanner(
-                                                        icon:
-                                                            Icons.sync_rounded,
-                                                        text: controller
-                                                            .statusMessage!,
-                                                        kind: _BannerKind.info,
-                                                        compact: compact,
-                                                        onClose: controller
-                                                            .clearStatus,
-                                                      ),
-                                                    Expanded(
-                                                      child:
-                                                          FluidAnimatedSwitcher(
-                                                        slideOffset: compact
-                                                            ? const Offset(
-                                                                0.045, 0)
-                                                            : const Offset(
-                                                                0.025, 0),
-                                                        child: KeyedSubtree(
-                                                          key: ValueKey<String>(
-                                                            _bodyTransitionSignature(
+                                              onSwipe: _handlePhonePageSwipe,
+                                              child:
+                                                  TweenAnimationBuilder<double>(
+                                                tween: Tween<double>(
+                                                  end: compact
+                                                      ? 0
+                                                      : controller.settings
+                                                              .desktopSidebarCollapsed
+                                                          ? 1
+                                                          : 0,
+                                                ),
+                                                duration: _shellMotionDuration,
+                                                curve: _shellMotionCurve,
+                                                child: _MainCanvas(
+                                                  compact: compact,
+                                                  mobileRestyled:
+                                                      usePortraitMobileHome,
+                                                  flatDesktopSurface:
+                                                      useFlatDesktopContentSurface,
+                                                  child: Column(
+                                                    children: <Widget>[
+                                                      if (controller
+                                                              .errorMessage !=
+                                                          null)
+                                                        _InlineBanner(
+                                                          icon: Icons
+                                                              .warning_amber_rounded,
+                                                          text: controller
+                                                              .errorMessage!,
+                                                          kind:
+                                                              _BannerKind.error,
+                                                          compact: compact,
+                                                          onClose: controller
+                                                              .clearError,
+                                                        ),
+                                                      if (controller
+                                                              .statusMessage !=
+                                                          null)
+                                                        _InlineBanner(
+                                                          icon: Icons
+                                                              .sync_rounded,
+                                                          text: controller
+                                                              .statusMessage!,
+                                                          kind:
+                                                              _BannerKind.info,
+                                                          compact: compact,
+                                                          onClose: controller
+                                                              .clearStatus,
+                                                        ),
+                                                      Expanded(
+                                                        child:
+                                                            FluidAnimatedSwitcher(
+                                                          slideOffset: compact
+                                                              ? const Offset(
+                                                                  0.045, 0)
+                                                              : const Offset(
+                                                                  0.025, 0),
+                                                          child: KeyedSubtree(
+                                                            key: ValueKey<
+                                                                String>(
+                                                              _bodyTransitionSignature(
+                                                                compact:
+                                                                    compact,
+                                                                mobileRestyled:
+                                                                    usePortraitMobileHome,
+                                                              ),
+                                                            ),
+                                                            child: _buildBody(
+                                                              context,
                                                               compact: compact,
                                                               mobileRestyled:
                                                                   usePortraitMobileHome,
                                                             ),
                                                           ),
-                                                          child: _buildBody(
-                                                            context,
-                                                            compact: compact,
-                                                            mobileRestyled:
-                                                                usePortraitMobileHome,
-                                                          ),
                                                         ),
                                                       ),
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
-                                              builder: (
-                                                BuildContext context,
-                                                double value,
-                                                Widget? child,
-                                              ) {
-                                                return Transform.translate(
-                                                  offset: Offset(
-                                                    compact ? 0 : value * 4,
-                                                    0,
+                                                    ],
                                                   ),
-                                                  child: child,
-                                                );
-                                              },
+                                                ),
+                                                builder: (
+                                                  BuildContext context,
+                                                  double value,
+                                                  Widget? child,
+                                                ) {
+                                                  return Transform.translate(
+                                                    offset: Offset(
+                                                      compact ? 0 : value * 4,
+                                                      0,
+                                                    ),
+                                                    child: child,
+                                                  );
+                                                },
+                                              ),
                                             ),
                                           ),
                                         ),
@@ -513,6 +542,39 @@ class _ReaderHomeState extends State<ReaderHome> {
     return usePhoneBottomNavigation &&
         !(controller.currentRoute == AppRouteId.readerDetail &&
             controller.compactReaderOpen);
+  }
+
+  static const int _phoneNavigationLength = 4;
+
+  AppRouteId _phoneNavigationRouteForIndex(int index) {
+    switch (index) {
+      case 0:
+        return AppRouteId.allArticles;
+      case 1:
+        return AppRouteId.bookmarks;
+      case 2:
+        return AppRouteId.discoverAddSource;
+      case 3:
+        return AppRouteId.settings;
+      default:
+        return AppRouteId.allArticles;
+    }
+  }
+
+  int _phoneNavigationIndexFor(AppRouteId route) {
+    switch (route) {
+      case AppRouteId.bookmarks:
+        return 1;
+      case AppRouteId.discoverAddSource:
+        return 2;
+      case AppRouteId.settings:
+        return 3;
+      case AppRouteId.allArticles:
+      case AppRouteId.sources:
+      case AppRouteId.sourceDetail:
+      case AppRouteId.readerDetail:
+        return 0;
+    }
   }
 
   bool _usePortraitMobileHome(
@@ -972,20 +1034,70 @@ class _CompactReaderDeck extends StatelessWidget {
   }
 }
 
+class _PhonePageSwipeRegion extends StatefulWidget {
+  const _PhonePageSwipeRegion({
+    required this.enabled,
+    required this.onSwipe,
+    required this.child,
+  });
+
+  final bool enabled;
+  final ValueChanged<int> onSwipe;
+  final Widget child;
+
+  @override
+  State<_PhonePageSwipeRegion> createState() => _PhonePageSwipeRegionState();
+}
+
+class _PhonePageSwipeRegionState extends State<_PhonePageSwipeRegion> {
+  static const double _distanceThreshold = 96;
+  static const double _velocityThreshold = 520;
+
+  double _dragDistance = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.enabled) {
+      return widget.child;
+    }
+
+    return GestureDetector(
+      behavior: HitTestBehavior.translucent,
+      onHorizontalDragStart: (_) {
+        _dragDistance = 0;
+      },
+      onHorizontalDragUpdate: (DragUpdateDetails details) {
+        _dragDistance += details.primaryDelta ?? 0;
+      },
+      onHorizontalDragEnd: (DragEndDetails details) {
+        final double velocity = details.primaryVelocity ?? 0;
+        final bool fastEnough = velocity.abs() >= _velocityThreshold;
+        final bool farEnough = _dragDistance.abs() >= _distanceThreshold;
+        if (!fastEnough && !farEnough) {
+          return;
+        }
+        widget.onSwipe(_dragDistance < 0 || velocity < 0 ? 1 : -1);
+      },
+      child: widget.child,
+    );
+  }
+}
+
 class _PhoneNavigationBar extends StatelessWidget {
   const _PhoneNavigationBar({
     required this.controller,
-    required this.onSettingsSelected,
+    required this.selectedIndex,
+    required this.onDestinationSelected,
   });
 
   final ReaderController controller;
-  final VoidCallback onSettingsSelected;
+  final int selectedIndex;
+  final ValueChanged<int> onDestinationSelected;
 
   @override
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
-    final int selectedIndex = _selectedIndexFor(controller.currentRoute);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -1019,41 +1131,9 @@ class _PhoneNavigationBar extends StatelessWidget {
             label: strings.settingsTab,
           ),
         ],
-        onDestinationSelected: (int index) {
-          switch (index) {
-            case 0:
-              controller.setCurrentRoute(AppRouteId.allArticles);
-              return;
-            case 1:
-              controller.setCurrentRoute(AppRouteId.bookmarks);
-              return;
-            case 2:
-              controller.setCurrentRoute(AppRouteId.discoverAddSource);
-              return;
-            case 3:
-              onSettingsSelected();
-              controller.setCurrentRoute(AppRouteId.settings);
-              return;
-          }
-        },
+        onDestinationSelected: onDestinationSelected,
       ),
     );
-  }
-
-  int _selectedIndexFor(AppRouteId route) {
-    switch (route) {
-      case AppRouteId.bookmarks:
-        return 1;
-      case AppRouteId.discoverAddSource:
-        return 2;
-      case AppRouteId.settings:
-        return 3;
-      case AppRouteId.allArticles:
-      case AppRouteId.sources:
-      case AppRouteId.sourceDetail:
-      case AppRouteId.readerDetail:
-        return 0;
-    }
   }
 }
 
