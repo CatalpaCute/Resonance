@@ -143,72 +143,86 @@ class SettingsViewState extends State<SettingsView> {
   Widget _buildCompactCategoryList(BuildContext context, AppStrings strings) {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
-    final Size viewport = MediaQuery.sizeOf(context);
 
-    return DesktopSmoothListView(
-      keyboardScrollId: 'settings-category-list',
-      padding: const EdgeInsets.fromLTRB(18, 26, 18, 32),
-      children: <Widget>[
-        SizedBox(height: viewport.height * 0.08),
-        GestureDetector(
-          onTap: () {
-            setState(() {
-              _isAboutExpanded = !_isAboutExpanded;
-            });
-          },
-          child: Center(
-            child: Column(
-              children: <Widget>[
-                Text(
-                  strings.appFullName,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.displaySmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                    height: 1.05,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final double viewportHeight = constraints.maxHeight.isFinite
+            ? constraints.maxHeight
+            : MediaQuery.sizeOf(context).height;
+        final double topGap = viewportHeight * 0.08;
+        final double brandHeight = 104;
+        final double listHeight = 292;
+        final double bottomGap = 34 + MediaQuery.viewPaddingOf(context).bottom;
+        final double collapsedSpacer = math.max(
+          36,
+          viewportHeight - topGap - brandHeight - listHeight - bottomGap,
+        );
+
+        return DesktopSmoothListView(
+          keyboardScrollId: 'settings-category-list',
+          padding: const EdgeInsets.fromLTRB(18, 26, 18, 32),
+          children: <Widget>[
+            SizedBox(height: topGap),
+            GestureDetector(
+              onTap: () {
+                setState(() {
+                  _isAboutExpanded = !_isAboutExpanded;
+                });
+              },
+              child: Center(
+                child: Column(
                   children: <Widget>[
                     Text(
-                      strings.settingsAboutApp,
+                      strings.appFullName,
                       textAlign: TextAlign.center,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: palette.secondaryText,
-                        fontWeight: FontWeight.w600,
+                      style: theme.textTheme.displaySmall?.copyWith(
+                        fontWeight: FontWeight.w800,
+                        height: 1.05,
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    AnimatedRotation(
-                      turns: _isAboutExpanded ? 0.5 : 0,
-                      duration: const Duration(milliseconds: 280),
-                      curve: Curves.easeOutCubic,
-                      child: Icon(
-                        Icons.expand_more_rounded,
-                        size: 20,
-                        color: palette.secondaryText,
-                      ),
+                    const SizedBox(height: 18),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: <Widget>[
+                        Text(
+                          strings.settingsAboutApp,
+                          textAlign: TextAlign.center,
+                          style: theme.textTheme.titleMedium?.copyWith(
+                            color: palette.secondaryText,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        AnimatedRotation(
+                          turns: _isAboutExpanded ? 0.5 : 0,
+                          duration: const Duration(milliseconds: 280),
+                          curve: Curves.easeOutCubic,
+                          child: Icon(
+                            Icons.expand_more_rounded,
+                            size: 20,
+                            color: palette.secondaryText,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
-        _MobileAboutReveal(
-          expanded: _isAboutExpanded,
-          strings: strings,
-        ),
-        AnimatedContainer(
-          duration: const Duration(milliseconds: 420),
-          curve: _settingsSpringCurve,
-          height: _isAboutExpanded
-              ? viewport.height * 0.04
-              : viewport.height * 0.18,
-        ),
-        _MobileCategoryList(onSelect: _setActiveCategory),
-      ],
+            _MobileAboutReveal(
+              expanded: _isAboutExpanded,
+              strings: strings,
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 420),
+              curve: _settingsSpringCurve,
+              height:
+                  _isAboutExpanded ? viewportHeight * 0.04 : collapsedSpacer,
+            ),
+            _MobileCategoryList(onSelect: _setActiveCategory),
+          ],
+        );
+      },
     );
   }
 
@@ -1247,60 +1261,41 @@ class _AboutSettingsContent extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
 
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 520),
-        child: Column(
-          children: <Widget>[
-            Text(
-              strings.appFullName,
-              textAlign: TextAlign.center,
-              style: theme.textTheme.displaySmall?.copyWith(
-                fontWeight: FontWeight.w800,
-                height: 1.05,
-              ),
-            ),
-            const SizedBox(height: 28),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.primary,
-                borderRadius: BorderRadius.circular(18),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                strings.settingsVersionLabel,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  color: Theme.of(context).colorScheme.onPrimary,
-                  fontWeight: FontWeight.w700,
+    return SizedBox(
+      height: math.min(560, MediaQuery.sizeOf(context).height * 0.62),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 520),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Text(
+                strings.appFullName,
+                textAlign: TextAlign.center,
+                style: theme.textTheme.displaySmall?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  height: 1.05,
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 14),
-              decoration: BoxDecoration(
-                color: palette.panelBackground,
-                borderRadius: BorderRadius.circular(18),
-                border: Border.all(color: palette.border),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                strings.settingsAboutLicense,
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
+              const SizedBox(height: 28),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.primary,
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  strings.settingsVersionLabel,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    color: Theme.of(context).colorScheme.onPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            InkWell(
-              borderRadius: BorderRadius.circular(18),
-              onTap: () {
-                launchUrl(Uri.parse(AppBrand.repoUrl));
-              },
-              child: Container(
+              const SizedBox(height: 12),
+              Container(
                 width: double.infinity,
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 decoration: BoxDecoration(
@@ -1309,25 +1304,48 @@ class _AboutSettingsContent extends StatelessWidget {
                   border: Border.all(color: palette.border),
                 ),
                 alignment: Alignment.center,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    _GitHubMark(
-                      size: 17,
-                      color: palette.secondaryText,
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      strings.settingsAboutRepo,
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
+                child: Text(
+                  strings.settingsAboutLicense,
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              InkWell(
+                borderRadius: BorderRadius.circular(18),
+                onTap: () {
+                  launchUrl(Uri.parse(AppBrand.repoUrl));
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: palette.panelBackground,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: palette.border),
+                  ),
+                  alignment: Alignment.center,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: <Widget>[
+                      _GitHubMark(
+                        size: 17,
+                        color: palette.secondaryText,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        strings.settingsAboutRepo,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

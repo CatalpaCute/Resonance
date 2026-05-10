@@ -111,11 +111,17 @@ class NavigationSidebar extends StatelessWidget {
                       ),
                     ),
                     padding: const EdgeInsets.only(top: 10),
-                    child: _ProfileCard(
-                      controller: controller,
-                      collapsed: collapsed,
-                      avatar: profileAvatar,
-                      onTap: _openSettings,
+                    child: Column(
+                      children: <Widget>[
+                        _LockEntry(collapsed: collapsed),
+                        const SizedBox(height: 10),
+                        _ProfileCard(
+                          controller: controller,
+                          collapsed: collapsed,
+                          avatar: profileAvatar,
+                          onTap: _openSettings,
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -249,6 +255,63 @@ class _NavItem extends StatelessWidget {
                 ),
               ],
             ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _LockEntry extends StatelessWidget {
+  const _LockEntry({
+    required this.collapsed,
+  });
+
+  final bool collapsed;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final AppStrings strings = context.strings;
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () {},
+      child: AnimatedContainer(
+        duration: _sidebarAnimationDuration,
+        curve: _sidebarAnimationCurve,
+        height: 38,
+        padding: EdgeInsets.symmetric(horizontal: collapsed ? 6 : 10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: AnimatedAlign(
+          duration: _sidebarAnimationDuration,
+          curve: _sidebarAnimationCurve,
+          alignment: collapsed ? Alignment.center : Alignment.centerLeft,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(
+                Icons.lock_outline_rounded,
+                size: 17,
+                color: palette.secondaryText,
+              ),
+              _SidebarReveal(
+                visible: !collapsed,
+                maxWidth: 74,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 10),
+                  child: Text(
+                    strings.unlocked,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: palette.secondaryText,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
