@@ -880,6 +880,21 @@ class AppStrings {
         zhHant: '訂閱位址不能為空',
         en: 'Subscription URL cannot be empty',
       );
+  String get homeTab => _text(zhCn: '首页', zhHant: '首頁', en: 'Home');
+  String get bookmarksTab => _text(zhCn: '收藏', zhHant: '收藏', en: 'Bookmarks');
+  String get subscriptionsTab =>
+      _text(zhCn: '订阅', zhHant: '訂閱', en: 'Subscriptions');
+  String get settingsTab => _text(zhCn: '设置', zhHant: '設定', en: 'Settings');
+  String get wideMobileNavigation => _text(
+        zhCn: '宽屏移动端导航',
+        zhHant: '寬屏移動端導覽',
+        en: 'Wide Mobile Navigation',
+      );
+  String get wideMobileNavigationHint => _text(
+        zhCn: '仅影响宽屏手机、横屏和 Pad；手机版窄屏固定使用底部导航。',
+        zhHant: '僅影響寬屏手機、橫屏和 Pad；手機版窄屏固定使用底部導覽。',
+        en: 'Only affects wide phones, landscape, and tablets. Narrow phone layouts always use bottom navigation.',
+      );
 }
 
 extension AppStringsBuildContextX on BuildContext {

@@ -597,7 +597,8 @@ class SettingsViewState extends State<SettingsView> {
   }) {
     final AppStrings strings = context.strings;
     return _SettingsFlatSection(
-      title: strings.mobileSidebar,
+      title: strings.wideMobileNavigation,
+      subtitle: strings.wideMobileNavigationHint,
       child: RadioGroup<MobileSidebarMode>(
         groupValue: controller.settings.mobileSidebarMode,
         onChanged: (MobileSidebarMode? value) {

@@ -14,6 +14,27 @@ void main() {
       expect(AppTheme.displayName('ink_black_white'), '墨水黑白');
     });
 
+    test('exposes the Material You theme', () {
+      expect(AppTheme.themeIds, contains('material_you_light'));
+      expect(AppTheme.displayName('material_you_light'), 'Material You');
+    });
+
+    test('builds the Material You theme palette', () {
+      final ThemeData theme = AppTheme.themeFor('material_you_light');
+      final ReaderPalette? palette = theme.extension<ReaderPalette>();
+
+      expect(theme.useMaterial3, isTrue);
+      expect(theme.brightness, Brightness.light);
+      expect(theme.colorScheme.primary, const Color(0xFF6750A4));
+      expect(theme.scaffoldBackgroundColor, const Color(0xFFFFFBFE));
+      expect(theme.navigationBarTheme.height, 72);
+      expect(palette, isNotNull);
+      expect(palette!.shellBackground, const Color(0xFFFFFBFE));
+      expect(palette.panelMutedBackground, const Color(0xFFF3EDF7));
+      expect(palette.primarySoft, const Color(0xFFEADDFF));
+      expect(palette.linkText, const Color(0xFF6750A4));
+    });
+
     test('builds the WeChat green theme palette', () {
       final ThemeData theme = AppTheme.themeFor('wechat_green');
       final ReaderPalette? palette = theme.extension<ReaderPalette>();
@@ -94,6 +115,7 @@ void main() {
         'warm_default': Color(0xFF8F7658),
         'deep_default': Color(0xFFE0C49A),
         'neutral_minimal': Color(0xFF3F4850),
+        'material_you_light': Color(0xFF6750A4),
         'wechat_green': Color(0xFF047A3D),
         'ink_black_white': Colors.black,
       };

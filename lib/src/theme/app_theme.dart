@@ -78,19 +78,31 @@ class ReaderPalette extends ThemeExtension<ReaderPalette> {
       return this;
     }
     return ReaderPalette(
-      shellBackground: Color.lerp(shellBackground, other.shellBackground, t) ?? shellBackground,
-      chromeBackground: Color.lerp(chromeBackground, other.chromeBackground, t) ?? chromeBackground,
-      sidebarBackground: Color.lerp(sidebarBackground, other.sidebarBackground, t) ?? sidebarBackground,
-      canvasBackground: Color.lerp(canvasBackground, other.canvasBackground, t) ?? canvasBackground,
-      panelBackground: Color.lerp(panelBackground, other.panelBackground, t) ?? panelBackground,
-      panelMutedBackground: Color.lerp(panelMutedBackground, other.panelMutedBackground, t) ?? panelMutedBackground,
+      shellBackground: Color.lerp(shellBackground, other.shellBackground, t) ??
+          shellBackground,
+      chromeBackground:
+          Color.lerp(chromeBackground, other.chromeBackground, t) ??
+              chromeBackground,
+      sidebarBackground:
+          Color.lerp(sidebarBackground, other.sidebarBackground, t) ??
+              sidebarBackground,
+      canvasBackground:
+          Color.lerp(canvasBackground, other.canvasBackground, t) ??
+              canvasBackground,
+      panelBackground: Color.lerp(panelBackground, other.panelBackground, t) ??
+          panelBackground,
+      panelMutedBackground:
+          Color.lerp(panelMutedBackground, other.panelMutedBackground, t) ??
+              panelMutedBackground,
       border: Color.lerp(border, other.border, t) ?? border,
       divider: Color.lerp(divider, other.divider, t) ?? divider,
       hover: Color.lerp(hover, other.hover, t) ?? hover,
       primarySoft: Color.lerp(primarySoft, other.primarySoft, t) ?? primarySoft,
       linkText: Color.lerp(linkText, other.linkText, t) ?? linkText,
-      secondaryText: Color.lerp(secondaryText, other.secondaryText, t) ?? secondaryText,
-      tertiaryText: Color.lerp(tertiaryText, other.tertiaryText, t) ?? tertiaryText,
+      secondaryText:
+          Color.lerp(secondaryText, other.secondaryText, t) ?? secondaryText,
+      tertiaryText:
+          Color.lerp(tertiaryText, other.tertiaryText, t) ?? tertiaryText,
       shadow: Color.lerp(shadow, other.shadow, t) ?? shadow,
     );
   }
@@ -103,6 +115,7 @@ class AppTheme {
     'warm_default',
     'deep_default',
     'neutral_minimal',
+    'material_you_light',
     'wechat_green',
     'ink_black_white',
   ];
@@ -120,6 +133,9 @@ class AppTheme {
   ];
 
   static String displayName(String id) {
+    if (id == 'material_you_light') {
+      return 'Material You';
+    }
     switch (id) {
       case 'warm_default':
         return '暖灰默认';
@@ -143,6 +159,8 @@ class AppTheme {
           return _buildDeepTheme();
         case 'neutral_minimal':
           return _buildNeutralTheme();
+        case 'material_you_light':
+          return _buildMaterialYouTheme();
         case 'wechat_green':
           return _buildWechatGreenTheme();
         case 'ink_black_white':
@@ -286,6 +304,43 @@ class AppTheme {
     );
   }
 
+  static ThemeData _buildMaterialYouTheme() {
+    const Color primary = Color(0xFF6750A4);
+    final ColorScheme scheme = ColorScheme.fromSeed(
+      seedColor: primary,
+      brightness: Brightness.light,
+      primary: primary,
+      onPrimary: Colors.white,
+      surface: const Color(0xFFFFFBFE),
+      surfaceContainerLowest: const Color(0xFFFFFFFF),
+      surfaceContainerLow: const Color(0xFFF7F2FA),
+      surfaceContainer: const Color(0xFFF3EDF7),
+      surfaceContainerHigh: const Color(0xFFECE6F0),
+      surfaceContainerHighest: const Color(0xFFE6E0E9),
+    );
+    return _buildTheme(
+      scheme: scheme,
+      scaffoldBackground: const Color(0xFFFFFBFE),
+      bodyColor: const Color(0xFF1D1B20),
+      palette: const ReaderPalette(
+        shellBackground: Color(0xFFFFFBFE),
+        chromeBackground: Color(0xFFFFFBFE),
+        sidebarBackground: Color(0xFFFFFBFE),
+        canvasBackground: Color(0xFFF7F2FA),
+        panelBackground: Color(0xFFFFFFFF),
+        panelMutedBackground: Color(0xFFF3EDF7),
+        border: Color(0xFFE7E0EC),
+        divider: Color(0xFFE7E0EC),
+        hover: Color(0xFFECE6F0),
+        primarySoft: Color(0xFFEADDFF),
+        linkText: Color(0xFF6750A4),
+        secondaryText: Color(0xFF625B71),
+        tertiaryText: Color(0xFF938F99),
+        shadow: Color.fromRGBO(29, 27, 32, 0.08),
+      ),
+    );
+  }
+
   static ThemeData _buildInkBlackWhiteTheme() {
     const ColorScheme scheme = ColorScheme(
       brightness: Brightness.light,
@@ -295,36 +350,36 @@ class AppTheme {
       onSecondary: Colors.white,
       tertiary: Colors.black,
       onTertiary: Colors.white,
-      primaryContainer: const Color(0xFFC2C2C2),
+      primaryContainer: Color(0xFFC2C2C2),
       onPrimaryContainer: Colors.black,
-      primaryFixed: const Color(0xFFD9D9D9),
-      primaryFixedDim: const Color(0xFFC2C2C2),
+      primaryFixed: Color(0xFFD9D9D9),
+      primaryFixedDim: Color(0xFFC2C2C2),
       onPrimaryFixed: Colors.black,
       onPrimaryFixedVariant: Colors.black,
-      secondaryContainer: const Color(0xFFD9D9D9),
+      secondaryContainer: Color(0xFFD9D9D9),
       onSecondaryContainer: Colors.black,
-      secondaryFixed: const Color(0xFFD9D9D9),
-      secondaryFixedDim: const Color(0xFFC2C2C2),
+      secondaryFixed: Color(0xFFD9D9D9),
+      secondaryFixedDim: Color(0xFFC2C2C2),
       onSecondaryFixed: Colors.black,
       onSecondaryFixedVariant: Colors.black,
-      tertiaryContainer: const Color(0xFFE0E0E0),
+      tertiaryContainer: Color(0xFFE0E0E0),
       onTertiaryContainer: Colors.black,
-      tertiaryFixed: const Color(0xFFD9D9D9),
-      tertiaryFixedDim: const Color(0xFFC2C2C2),
+      tertiaryFixed: Color(0xFFD9D9D9),
+      tertiaryFixedDim: Color(0xFFC2C2C2),
       onTertiaryFixed: Colors.black,
       onTertiaryFixedVariant: Colors.black,
       surface: Colors.white,
       onSurface: Colors.black,
-      surfaceDim: const Color(0xFFE0E0E0),
+      surfaceDim: Color(0xFFE0E0E0),
       surfaceBright: Colors.white,
       surfaceContainerLowest: Colors.white,
       surfaceContainerLow: Colors.white,
       surfaceContainer: Colors.white,
-      surfaceContainerHigh: const Color(0xFFF2F2F2),
-      surfaceContainerHighest: const Color(0xFFE0E0E0),
+      surfaceContainerHigh: Color(0xFFF2F2F2),
+      surfaceContainerHighest: Color(0xFFE0E0E0),
       onSurfaceVariant: Colors.black,
-      outline: const Color(0xFF5F5F5F),
-      outlineVariant: const Color(0xFF8A8A8A),
+      outline: Color(0xFF5F5F5F),
+      outlineVariant: Color(0xFF8A8A8A),
       shadow: Colors.transparent,
       scrim: Colors.black,
       inverseSurface: Colors.black,
@@ -333,7 +388,7 @@ class AppTheme {
       surfaceTint: Colors.transparent,
       error: Colors.black,
       onError: Colors.white,
-      errorContainer: const Color(0xFFE0E0E0),
+      errorContainer: Color(0xFFE0E0E0),
       onErrorContainer: Colors.black,
     );
     return _buildTheme(
@@ -372,6 +427,35 @@ class AppTheme {
       textTheme: _baseTextTheme(bodyColor),
       extensions: <ThemeExtension<dynamic>>[palette],
       dividerColor: palette.divider,
+      navigationBarTheme: NavigationBarThemeData(
+        height: 72,
+        backgroundColor: palette.panelBackground,
+        elevation: 0,
+        indicatorColor: palette.primarySoft,
+        indicatorShape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(999),
+        ),
+        iconTheme: WidgetStateProperty.resolveWith((Set<WidgetState> states) {
+          return IconThemeData(
+            color: states.contains(WidgetState.selected)
+                ? scheme.onSurface
+                : palette.secondaryText,
+            size: 24,
+          );
+        }),
+        labelTextStyle:
+            WidgetStateProperty.resolveWith((Set<WidgetState> states) {
+          return TextStyle(
+            color: states.contains(WidgetState.selected)
+                ? scheme.onSurface
+                : palette.secondaryText,
+            fontWeight: states.contains(WidgetState.selected)
+                ? FontWeight.w600
+                : FontWeight.w500,
+            fontSize: 12,
+          );
+        }),
+      ),
       dialogTheme: DialogThemeData(
         backgroundColor: palette.panelBackground,
         surfaceTintColor: Colors.transparent,
@@ -392,7 +476,8 @@ class AppTheme {
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
         fillColor: palette.panelBackground,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide(color: palette.border),
@@ -413,7 +498,8 @@ class AppTheme {
           backgroundColor: scheme.primary,
           foregroundColor: scheme.onPrimary,
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
           textStyle: const TextStyle(fontWeight: FontWeight.w600),
         ),
       ),
@@ -422,7 +508,8 @@ class AppTheme {
           foregroundColor: bodyColor,
           side: BorderSide(color: palette.border),
           padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
       ),
       switchTheme: SwitchThemeData(
@@ -486,16 +573,23 @@ class AppTheme {
       displaySmall: _decorateText(base.displaySmall, bodyColor),
       headlineLarge: _decorateText(base.headlineLarge, bodyColor),
       headlineMedium: _decorateText(base.headlineMedium, bodyColor),
-      headlineSmall: _decorateText(base.headlineSmall, bodyColor, fontWeight: FontWeight.w700, height: 1.18),
-      titleLarge: _decorateText(base.titleLarge, bodyColor, fontWeight: FontWeight.w700, height: 1.24),
-      titleMedium: _decorateText(base.titleMedium, bodyColor, fontWeight: FontWeight.w600, height: 1.28),
-      titleSmall: _decorateText(base.titleSmall, bodyColor, fontWeight: FontWeight.w600, height: 1.32),
+      headlineSmall: _decorateText(base.headlineSmall, bodyColor,
+          fontWeight: FontWeight.w700, height: 1.18),
+      titleLarge: _decorateText(base.titleLarge, bodyColor,
+          fontWeight: FontWeight.w700, height: 1.24),
+      titleMedium: _decorateText(base.titleMedium, bodyColor,
+          fontWeight: FontWeight.w600, height: 1.28),
+      titleSmall: _decorateText(base.titleSmall, bodyColor,
+          fontWeight: FontWeight.w600, height: 1.32),
       bodyLarge: _decorateText(base.bodyLarge, bodyColor, height: 1.55),
       bodyMedium: _decorateText(base.bodyMedium, bodyColor, height: 1.50),
       bodySmall: _decorateText(base.bodySmall, bodyColor, height: 1.40),
-      labelLarge: _decorateText(base.labelLarge, bodyColor, fontWeight: FontWeight.w600),
-      labelMedium: _decorateText(base.labelMedium, bodyColor, fontWeight: FontWeight.w500),
-      labelSmall: _decorateText(base.labelSmall, bodyColor, fontWeight: FontWeight.w500),
+      labelLarge: _decorateText(base.labelLarge, bodyColor,
+          fontWeight: FontWeight.w600),
+      labelMedium: _decorateText(base.labelMedium, bodyColor,
+          fontWeight: FontWeight.w500),
+      labelSmall: _decorateText(base.labelSmall, bodyColor,
+          fontWeight: FontWeight.w500),
     );
   }
 

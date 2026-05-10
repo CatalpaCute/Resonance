@@ -187,14 +187,18 @@ class _ReaderHomeState extends State<ReaderHome> {
           builder: (BuildContext context, BoxConstraints constraints) {
             final bool compact = constraints.maxWidth < 980;
             _lastCompactLayout = compact;
-            final bool usePortraitMobileHome =
+            final bool usePhoneBottomNavigation =
+                _usePhoneBottomNavigation(constraints);
+            final bool usePortraitMobileHome = usePhoneBottomNavigation ||
                 _usePortraitMobileHome(context, constraints);
             final Color mobilePageBackground = _mobilePageBackgroundOf(context);
             final bool useFlatDesktopContentSurface = !compact &&
                 controller.settings.desktopContentSurfaceMode ==
                     DesktopContentSurfaceMode.flat;
-            final bool useDrawer = _useDrawer(constraints.maxWidth);
-            final bool useRail = compact && !useDrawer;
+            final bool useDrawer =
+                !usePhoneBottomNavigation && _useDrawer(constraints.maxWidth);
+            final bool useRail =
+                compact && !usePhoneBottomNavigation && !useDrawer;
             final double topInset = _useWindowsWindowChrome
                 ? 0
                 : MediaQuery.viewPaddingOf(context).top;
@@ -250,6 +254,17 @@ class _ReaderHomeState extends State<ReaderHome> {
                             ? mobilePageBackground
                             : palette.shellBackground,
                         drawer: useDrawer ? mobileDrawer : null,
+                        bottomNavigationBar:
+                            _showPhoneBottomNavigation(usePhoneBottomNavigation)
+                                ? _PhoneNavigationBar(
+                                    controller: controller,
+                                    onSettingsSelected: () {
+                                      setState(() {
+                                        _settingsSubPageTitle = null;
+                                      });
+                                    },
+                                  )
+                                : null,
                         body: Stack(
                           children: <Widget>[
                             Positioned.fill(
@@ -477,6 +492,16 @@ class _ReaderHomeState extends State<ReaderHome> {
       case MobileSidebarMode.adaptive:
         return width < 720;
     }
+  }
+
+  bool _usePhoneBottomNavigation(BoxConstraints constraints) {
+    return _isNativeMobilePlatform && constraints.maxWidth < 600;
+  }
+
+  bool _showPhoneBottomNavigation(bool usePhoneBottomNavigation) {
+    return usePhoneBottomNavigation &&
+        !(controller.currentRoute == AppRouteId.readerDetail &&
+            controller.compactReaderOpen);
   }
 
   bool _usePortraitMobileHome(
@@ -936,6 +961,91 @@ class _CompactReaderDeck extends StatelessWidget {
   }
 }
 
+class _PhoneNavigationBar extends StatelessWidget {
+  const _PhoneNavigationBar({
+    required this.controller,
+    required this.onSettingsSelected,
+  });
+
+  final ReaderController controller;
+  final VoidCallback onSettingsSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final AppStrings strings = context.strings;
+    final int selectedIndex = _selectedIndexFor(controller.currentRoute);
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: palette.divider.withValues(alpha: 0.72)),
+        ),
+      ),
+      child: NavigationBar(
+        selectedIndex: selectedIndex,
+        maintainBottomViewPadding: true,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        destinations: <NavigationDestination>[
+          NavigationDestination(
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home_rounded),
+            label: strings.homeTab,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.bookmark_border_rounded),
+            selectedIcon: const Icon(Icons.bookmark_rounded),
+            label: strings.bookmarksTab,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.format_list_bulleted_rounded),
+            selectedIcon: const Icon(Icons.format_list_bulleted_rounded),
+            label: strings.subscriptionsTab,
+          ),
+          NavigationDestination(
+            icon: const Icon(Icons.settings_outlined),
+            selectedIcon: const Icon(Icons.settings_rounded),
+            label: strings.settingsTab,
+          ),
+        ],
+        onDestinationSelected: (int index) {
+          switch (index) {
+            case 0:
+              controller.setCurrentRoute(AppRouteId.allArticles);
+              return;
+            case 1:
+              controller.setCurrentRoute(AppRouteId.bookmarks);
+              return;
+            case 2:
+              controller.setCurrentRoute(AppRouteId.discoverAddSource);
+              return;
+            case 3:
+              onSettingsSelected();
+              controller.setCurrentRoute(AppRouteId.settings);
+              return;
+          }
+        },
+      ),
+    );
+  }
+
+  int _selectedIndexFor(AppRouteId route) {
+    switch (route) {
+      case AppRouteId.bookmarks:
+        return 1;
+      case AppRouteId.discoverAddSource:
+        return 2;
+      case AppRouteId.settings:
+        return 3;
+      case AppRouteId.allArticles:
+      case AppRouteId.sources:
+      case AppRouteId.sourceDetail:
+      case AppRouteId.readerDetail:
+        return 0;
+    }
+  }
+}
+
 class _ShellHeader extends StatelessWidget {
   const _ShellHeader({
     required this.controller,
@@ -1016,12 +1126,14 @@ class _ShellHeader extends StatelessWidget {
                           collapsed: sidebarCollapsed,
                           onTap: onSidebarToggle,
                         )
-                      : IconButton(
-                          onPressed: showMenuButton ? onMenuPressed : null,
-                          icon: const Icon(Icons.menu_rounded),
-                          splashRadius: 18,
-                          tooltip: strings.subscriptionManagement,
-                        ),
+                      : showMenuButton
+                          ? IconButton(
+                              onPressed: onMenuPressed,
+                              icon: const Icon(Icons.menu_rounded),
+                              splashRadius: 18,
+                              tooltip: strings.subscriptionManagement,
+                            )
+                          : SizedBox(width: mobileRestyled ? 6 : 4),
             )
           else
             const SizedBox(width: 12),
