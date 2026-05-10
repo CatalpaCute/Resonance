@@ -16,7 +16,7 @@ void main() {
 
     test('exposes the Material You theme', () {
       expect(AppTheme.themeIds, contains('material_you_light'));
-      expect(AppTheme.displayName('material_you_light'), 'Material You');
+      expect(AppTheme.displayName('material_you_light'), '材料你');
     });
 
     test('builds the Material You theme palette', () {
@@ -33,6 +33,47 @@ void main() {
       expect(palette.panelMutedBackground, const Color(0xFFF3EDF7));
       expect(palette.primarySoft, const Color(0xFFEADDFF));
       expect(palette.linkText, const Color(0xFF6750A4));
+    });
+
+    test('builds the Material You theme from a dynamic color scheme', () {
+      const ColorScheme dynamicScheme = ColorScheme(
+        brightness: Brightness.light,
+        primary: Color(0xFF006C4C),
+        onPrimary: Colors.white,
+        secondary: Color(0xFF4D6358),
+        onSecondary: Colors.white,
+        tertiary: Color(0xFF3D6373),
+        onTertiary: Colors.white,
+        error: Color(0xFFBA1A1A),
+        onError: Colors.white,
+        surface: Color(0xFFFBFDF8),
+        onSurface: Color(0xFF191C1A),
+        primaryContainer: Color(0xFF89F8C7),
+        onPrimaryContainer: Color(0xFF002115),
+        surfaceContainerLowest: Colors.white,
+        surfaceContainerLow: Color(0xFFF5F7F2),
+        surfaceContainer: Color(0xFFEFF1EC),
+        surfaceContainerHigh: Color(0xFFE9ECE7),
+        surfaceContainerHighest: Color(0xFFE4E6E1),
+        onSurfaceVariant: Color(0xFF414942),
+        outline: Color(0xFF717971),
+        outlineVariant: Color(0xFFC1C9C0),
+        shadow: Colors.black,
+      );
+
+      final ThemeData theme = AppTheme.themeFor(
+        'material_you_light',
+        materialYouColorScheme: dynamicScheme,
+      );
+      final ReaderPalette? palette = theme.extension<ReaderPalette>();
+
+      expect(theme.colorScheme.primary, const Color(0xFF006C4C));
+      expect(theme.scaffoldBackgroundColor, const Color(0xFFFBFDF8));
+      expect(palette, isNotNull);
+      expect(palette!.shellBackground, const Color(0xFFFBFDF8));
+      expect(palette.panelMutedBackground, const Color(0xFFEFF1EC));
+      expect(palette.primarySoft, const Color(0xFF89F8C7));
+      expect(palette.linkText, const Color(0xFF006C4C));
     });
 
     test('builds the WeChat green theme palette', () {

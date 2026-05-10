@@ -134,7 +134,7 @@ class AppTheme {
 
   static String displayName(String id) {
     if (id == 'material_you_light') {
-      return 'Material You';
+      return '材料你';
     }
     switch (id) {
       case 'warm_default':
@@ -152,7 +152,11 @@ class AppTheme {
     }
   }
 
-  static ThemeData themeFor(String id) {
+  static ThemeData themeFor(String id, {ColorScheme? materialYouColorScheme}) {
+    if (id == 'material_you_light' && materialYouColorScheme != null) {
+      return _buildMaterialYouTheme(materialYouColorScheme);
+    }
+
     return _themeCache.putIfAbsent(id, () {
       switch (id) {
         case 'deep_default':
@@ -304,13 +308,15 @@ class AppTheme {
     );
   }
 
-  static ThemeData _buildMaterialYouTheme() {
+  static ThemeData _buildMaterialYouTheme([ColorScheme? dynamicScheme]) {
     const Color primary = Color(0xFF6750A4);
-    final ColorScheme scheme = ColorScheme.fromSeed(
+    final ColorScheme fallbackScheme = ColorScheme.fromSeed(
       seedColor: primary,
       brightness: Brightness.light,
       primary: primary,
       onPrimary: Colors.white,
+      primaryContainer: const Color(0xFFEADDFF),
+      onPrimaryContainer: const Color(0xFF21005D),
       surface: const Color(0xFFFFFBFE),
       surfaceContainerLowest: const Color(0xFFFFFFFF),
       surfaceContainerLow: const Color(0xFFF7F2FA),
@@ -318,25 +324,26 @@ class AppTheme {
       surfaceContainerHigh: const Color(0xFFECE6F0),
       surfaceContainerHighest: const Color(0xFFE6E0E9),
     );
+    final ColorScheme scheme = dynamicScheme ?? fallbackScheme;
     return _buildTheme(
       scheme: scheme,
-      scaffoldBackground: const Color(0xFFFFFBFE),
-      bodyColor: const Color(0xFF1D1B20),
-      palette: const ReaderPalette(
-        shellBackground: Color(0xFFFFFBFE),
-        chromeBackground: Color(0xFFFFFBFE),
-        sidebarBackground: Color(0xFFFFFBFE),
-        canvasBackground: Color(0xFFF7F2FA),
-        panelBackground: Color(0xFFFFFFFF),
-        panelMutedBackground: Color(0xFFF3EDF7),
-        border: Color(0xFFE7E0EC),
-        divider: Color(0xFFE7E0EC),
-        hover: Color(0xFFECE6F0),
-        primarySoft: Color(0xFFEADDFF),
-        linkText: Color(0xFF6750A4),
-        secondaryText: Color(0xFF625B71),
-        tertiaryText: Color(0xFF938F99),
-        shadow: Color.fromRGBO(29, 27, 32, 0.08),
+      scaffoldBackground: scheme.surface,
+      bodyColor: scheme.onSurface,
+      palette: ReaderPalette(
+        shellBackground: scheme.surface,
+        chromeBackground: scheme.surface,
+        sidebarBackground: scheme.surface,
+        canvasBackground: scheme.surfaceContainerLow,
+        panelBackground: scheme.surfaceContainerLowest,
+        panelMutedBackground: scheme.surfaceContainer,
+        border: scheme.outlineVariant,
+        divider: scheme.outlineVariant,
+        hover: scheme.surfaceContainerHigh,
+        primarySoft: scheme.primaryContainer,
+        linkText: scheme.primary,
+        secondaryText: scheme.onSurfaceVariant,
+        tertiaryText: scheme.outline,
+        shadow: scheme.shadow.withValues(alpha: 0.08),
       ),
     );
   }

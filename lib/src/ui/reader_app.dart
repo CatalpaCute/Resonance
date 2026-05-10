@@ -1,3 +1,4 @@
+import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -56,39 +57,49 @@ class _ReaderAppState extends State<ReaderApp> {
     return AnimatedBuilder(
       animation: controller,
       builder: (BuildContext context, _) {
-        final ThemeData theme = AppTheme.themeFor(controller.settings.themeId);
-        final bool isDark = theme.brightness == Brightness.dark;
-        final Brightness overlayBrightness =
-            isDark ? Brightness.light : Brightness.dark;
+        return DynamicColorBuilder(
+          builder: (
+            ColorScheme? lightDynamic,
+            ColorScheme? _,
+          ) {
+            final ThemeData theme = AppTheme.themeFor(
+              controller.settings.themeId,
+              materialYouColorScheme: lightDynamic,
+            );
+            final bool isDark = theme.brightness == Brightness.dark;
+            final Brightness overlayBrightness =
+                isDark ? Brightness.light : Brightness.dark;
 
-        if (_lastSystemOverlayBrightness != overlayBrightness) {
-          _lastSystemOverlayBrightness = overlayBrightness;
-          SystemChrome.setSystemUIOverlayStyle(
-            SystemUiOverlayStyle(
-              statusBarColor: Colors.transparent,
-              systemNavigationBarColor: Colors.transparent,
-              statusBarIconBrightness: overlayBrightness,
-              systemNavigationBarIconBrightness: overlayBrightness,
-              systemNavigationBarContrastEnforced: false,
-            ),
-          );
-        }
-
-        return MaterialApp(
-          debugShowCheckedModeBanner: false,
-          title: AppBrand.fullName,
-          locale: controller.appLocale,
-          supportedLocales: supportedAppLocales,
-          localeListResolutionCallback: AppStrings.resolveLocaleList,
-          localizationsDelegates: GlobalMaterialLocalizations.delegates,
-          theme: theme,
-          builder: (BuildContext context, Widget? child) {
-            if (_useWindowsWindowChrome && child != null) {
-              return VirtualWindowFrame(child: child);
+            if (_lastSystemOverlayBrightness != overlayBrightness) {
+              _lastSystemOverlayBrightness = overlayBrightness;
+              SystemChrome.setSystemUIOverlayStyle(
+                SystemUiOverlayStyle(
+                  statusBarColor: Colors.transparent,
+                  systemNavigationBarColor: Colors.transparent,
+                  statusBarIconBrightness: overlayBrightness,
+                  systemNavigationBarIconBrightness: overlayBrightness,
+                  systemNavigationBarContrastEnforced: false,
+                ),
+              );
             }
-            return child ?? const SizedBox.shrink();
+
+            return MaterialApp(
+              debugShowCheckedModeBanner: false,
+              title: AppBrand.fullName,
+              locale: controller.appLocale,
+              supportedLocales: supportedAppLocales,
+              localeListResolutionCallback: AppStrings.resolveLocaleList,
+              localizationsDelegates: GlobalMaterialLocalizations.delegates,
+              theme: theme,
+              builder: (BuildContext context, Widget? child) {
+                if (_useWindowsWindowChrome && child != null) {
+                  return VirtualWindowFrame(child: child);
+                }
+                return child ?? const SizedBox.shrink();
+              },
+              home: ReaderHome(controller: controller),
+            );
           },
-          home: ReaderHome(controller: controller),
         );
       },
     );
