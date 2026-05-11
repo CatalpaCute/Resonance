@@ -123,9 +123,16 @@ class ReaderController extends ChangeNotifier {
       return _visibleArticlesCache;
     }
 
+    final List<Article> sorted = articlesForRoute(_currentRoute);
+    _visibleArticlesCacheKey = cacheKey;
+    _visibleArticlesCache = List<Article>.unmodifiable(sorted);
+    return _visibleArticlesCache;
+  }
+
+  List<Article> articlesForRoute(AppRouteId route) {
     Iterable<Article> items = _articles;
 
-    switch (_currentRoute) {
+    switch (route) {
       case AppRouteId.allArticles:
       case AppRouteId.sources:
       case AppRouteId.sourceDetail:
@@ -167,11 +174,8 @@ class ReaderController extends ChangeNotifier {
       items = items.where((Article article) => !article.isRead);
     }
 
-    final List<Article> sorted = items.toList()
+    return items.toList()
       ..sort((Article a, Article b) => b.publishedAt.compareTo(a.publishedAt));
-    _visibleArticlesCacheKey = cacheKey;
-    _visibleArticlesCache = List<Article>.unmodifiable(sorted);
-    return _visibleArticlesCache;
   }
 
   Future<void> initialize() async {
@@ -660,7 +664,8 @@ class ReaderController extends ChangeNotifier {
     );
   }
 
-  Future<AutoRefreshRunResult> refreshDueAutoRefreshFeeds({DateTime? now}) async {
+  Future<AutoRefreshRunResult> refreshDueAutoRefreshFeeds(
+      {DateTime? now}) async {
     if (_isBusy) {
       return const AutoRefreshRunResult(
         attemptedCount: 0,

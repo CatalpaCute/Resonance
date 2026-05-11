@@ -18,6 +18,9 @@ class ArticleListPanel extends StatefulWidget {
     this.mobileRestyled = false,
     this.topContent,
     this.scrollController,
+    this.routeOverride,
+    this.articlesOverride,
+    this.routeTitleOverride,
   });
 
   final ReaderController controller;
@@ -25,6 +28,9 @@ class ArticleListPanel extends StatefulWidget {
   final bool mobileRestyled;
   final Widget? topContent;
   final ScrollController? scrollController;
+  final AppRouteId? routeOverride;
+  final List<Article>? articlesOverride;
+  final String? routeTitleOverride;
 
   @override
   State<ArticleListPanel> createState() => _ArticleListPanelState();
@@ -183,13 +189,13 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
     final ReaderController controller = widget.controller;
     final bool compact = widget.compact;
     final bool mobileRestyled = widget.mobileRestyled;
-    final List<Article> articles = controller.visibleArticles;
+    final AppRouteId route = widget.routeOverride ?? controller.currentRoute;
+    final List<Article> articles =
+        widget.articlesOverride ?? controller.visibleArticles;
     final AppStrings strings = context.strings;
-    final bool compactHome =
-        compact && controller.currentRoute == AppRouteId.allArticles;
-    final bool compactBookmarkRestyled = compact &&
-        mobileRestyled &&
-        controller.currentRoute == AppRouteId.bookmarks;
+    final bool compactHome = compact && route == AppRouteId.allArticles;
+    final bool compactBookmarkRestyled =
+        compact && mobileRestyled && route == AppRouteId.bookmarks;
     final bool compactMobileListRoute = compactHome || compactBookmarkRestyled;
     final bool mobileHomeRestyled = mobileRestyled && compactMobileListRoute;
     // Design intent: the compact shell header already carries route + brand, so
@@ -229,7 +235,8 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: <Widget>[
                       Text(
-                        controller.currentRouteTitle,
+                        widget.routeTitleOverride ??
+                            controller.currentRouteTitle,
                         style: compact
                             ? Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w700,
@@ -246,9 +253,9 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
                     ],
                   ),
                 ),
-                if (controller.currentRoute == AppRouteId.allArticles ||
-                    controller.currentRoute == AppRouteId.sourceDetail ||
-                    controller.currentRoute == AppRouteId.sources)
+                if (route == AppRouteId.allArticles ||
+                    route == AppRouteId.sourceDetail ||
+                    route == AppRouteId.sources)
                   IconButton(
                     visualDensity: compact
                         ? VisualDensity.compact
@@ -304,7 +311,7 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
                     bottom: compactMobileListRoute ? 18 : 8,
                   ),
                   key: PageStorageKey<String>(
-                    'article-list-${controller.currentRoute.storageValue}-${compact ? 'compact' : 'desktop'}',
+                    'article-list-${route.storageValue}-${compact ? 'compact' : 'desktop'}',
                   ),
                   controller: _effectiveScrollController,
                   itemCount: articles.length,
@@ -361,7 +368,7 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
 
     return MotionEntrance(
       signature: <String>[
-        controller.currentRoute.storageValue,
+        route.storageValue,
         controller.activeSourceId ?? 'all',
         controller.showOnlyUnread ? 'unread' : 'all-read-states',
         controller.bookmarkFilter.name,
