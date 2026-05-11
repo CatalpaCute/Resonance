@@ -435,6 +435,10 @@ class CompactSourceFilterHeader extends StatelessWidget {
                       FilterChip(
                         materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         visualDensity: VisualDensity.compact,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 10,
+                        ),
                         label: Text(strings.unreadOnly),
                         selected: controller.showOnlyUnread,
                         onSelected: (bool value) {
@@ -734,23 +738,28 @@ class _BookmarkModeSwitch extends StatelessWidget {
                   ),
                 ),
                 Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: <Widget>[
                     Expanded(
-                      child: Icon(
-                        Icons.star_rounded,
-                        size: 17,
-                        color: value == BookmarkFilter.starred
-                            ? theme.colorScheme.primary
-                            : palette.secondaryText,
+                      child: Center(
+                        child: Icon(
+                          Icons.star_rounded,
+                          size: 17,
+                          color: value == BookmarkFilter.starred
+                              ? theme.colorScheme.primary
+                              : palette.secondaryText,
+                        ),
                       ),
                     ),
                     Expanded(
-                      child: Icon(
-                        Icons.schedule_rounded,
-                        size: 17,
-                        color: value == BookmarkFilter.savedForLater
-                            ? theme.colorScheme.primary
-                            : palette.secondaryText,
+                      child: Center(
+                        child: Icon(
+                          Icons.schedule_rounded,
+                          size: 17,
+                          color: value == BookmarkFilter.savedForLater
+                              ? theme.colorScheme.primary
+                              : palette.secondaryText,
+                        ),
                       ),
                     ),
                   ],
