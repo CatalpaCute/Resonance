@@ -123,11 +123,15 @@ class _ReaderHomeState extends State<ReaderHome> {
   final GlobalKey<SettingsViewState> _settingsKey =
       GlobalKey<SettingsViewState>();
   final FocusNode _searchFocusNode = FocusNode();
+  final FocusNode _mobileSearchFocusNode = FocusNode();
+  final TextEditingController _mobileSearchController = TextEditingController();
   final ScrollController _compactHomeListController = ScrollController();
   late final PageController _phonePageController;
 
   bool _compactFilterExpanded = false;
   bool _compactRailCollapsed = true;
+  bool _mobileSearchActive = false;
+  int _mobileSearchSelectedIndex = -1;
   bool _desktopSettingsOpen = false;
   String? _settingsSubPageTitle;
   bool _lastCompactLayout = true;
@@ -144,6 +148,7 @@ class _ReaderHomeState extends State<ReaderHome> {
     _phonePageController = PageController(
       initialPage: _phoneNavigationIndexFor(controller.currentRoute),
     );
+    _mobileSearchController.addListener(_handleMobileSearchQueryChanged);
     controller.addListener(_handleControllerChanged);
     HardwareKeyboard.instance.addHandler(_handleHomeKeyboard);
     _syncControllerSnapshot();
@@ -164,12 +169,18 @@ class _ReaderHomeState extends State<ReaderHome> {
     controller.removeListener(_handleControllerChanged);
     HardwareKeyboard.instance.removeHandler(_handleHomeKeyboard);
     _phonePageController.dispose();
+    _mobileSearchController.removeListener(_handleMobileSearchQueryChanged);
+    _mobileSearchController.dispose();
+    _mobileSearchFocusNode.dispose();
     _compactHomeListController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
   }
 
   bool _handleHomeKeyboard(KeyEvent event) {
+    if (_mobileSearchActive && _handleMobileSearchKeyboard(event)) {
+      return true;
+    }
     if (event is! KeyDownEvent ||
         event.logicalKey != LogicalKeyboardKey.keyK ||
         !HardwareKeyboard.instance.isControlPressed ||
@@ -178,6 +189,116 @@ class _ReaderHomeState extends State<ReaderHome> {
     }
     _searchFocusNode.requestFocus();
     return true;
+  }
+
+  void _handleMobileSearchQueryChanged() {
+    if (!_mobileSearchActive || !mounted) {
+      return;
+    }
+    setState(() {
+      _mobileSearchSelectedIndex =
+          _mobileSearchEntriesForCurrentPage().isEmpty ? -1 : 0;
+    });
+  }
+
+  bool _handleMobileSearchKeyboard(KeyEvent event) {
+    if (event is! KeyDownEvent) {
+      return false;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.escape) {
+      _closeMobileSearch();
+      return true;
+    }
+    if (!_mobileSearchFocusNode.hasFocus) {
+      return false;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+      _moveMobileSearchSelection(1);
+      return true;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.arrowUp) {
+      _moveMobileSearchSelection(-1);
+      return true;
+    }
+    if (event.logicalKey == LogicalKeyboardKey.enter ||
+        event.logicalKey == LogicalKeyboardKey.numpadEnter) {
+      _openSelectedMobileSearchEntry();
+      return true;
+    }
+    return false;
+  }
+
+  void _openMobileSearch() {
+    if (!_canUseMobileSearch) {
+      return;
+    }
+    setState(() {
+      _mobileSearchActive = true;
+      _mobileSearchSelectedIndex =
+          _mobileSearchEntriesForCurrentPage().isEmpty ? -1 : 0;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _mobileSearchFocusNode.requestFocus();
+      }
+    });
+  }
+
+  void _clearOrCloseMobileSearch() {
+    if (_mobileSearchController.text.isNotEmpty) {
+      _mobileSearchController.clear();
+      return;
+    }
+    _closeMobileSearch();
+  }
+
+  void _closeMobileSearch() {
+    if (!_mobileSearchActive && _mobileSearchController.text.isEmpty) {
+      return;
+    }
+    _mobileSearchFocusNode.unfocus();
+    setState(() {
+      _mobileSearchActive = false;
+      _mobileSearchSelectedIndex = -1;
+    });
+    _mobileSearchController.clear();
+  }
+
+  void _moveMobileSearchSelection(int delta) {
+    final List<_SearchEntry> entries = _mobileSearchEntriesForCurrentPage();
+    if (entries.isEmpty) {
+      setState(() {
+        _mobileSearchSelectedIndex = -1;
+      });
+      return;
+    }
+    setState(() {
+      if (_mobileSearchSelectedIndex < 0) {
+        _mobileSearchSelectedIndex = 0;
+        return;
+      }
+      _mobileSearchSelectedIndex =
+          (_mobileSearchSelectedIndex + delta) % entries.length;
+      if (_mobileSearchSelectedIndex < 0) {
+        _mobileSearchSelectedIndex += entries.length;
+      }
+    });
+  }
+
+  void _openSelectedMobileSearchEntry() {
+    final List<_SearchEntry> entries = _mobileSearchEntriesForCurrentPage();
+    if (_mobileSearchSelectedIndex < 0 ||
+        _mobileSearchSelectedIndex >= entries.length) {
+      return;
+    }
+    final _SearchEntry entry = entries[_mobileSearchSelectedIndex];
+    if (entry.source != null) {
+      _openSearchSource(entry.source!);
+      return;
+    }
+    if (entry.article != null) {
+      _openSearchArticle(entry.article!.article);
+    }
   }
 
   void _openDesktopSettings() {
@@ -342,6 +463,33 @@ class _ReaderHomeState extends State<ReaderHome> {
                                     compact: compact,
                                     mobileRestyled: usePortraitMobileHome,
                                     searchFocusNode: _searchFocusNode,
+                                    desktopSearchResultsForQuery: (
+                                      String query,
+                                    ) =>
+                                        _desktopSettingsOpen
+                                            ? searchGlobalContent(
+                                                feeds: const <FeedSource>[],
+                                                articles: const <Article>[],
+                                                query: query,
+                                                sourceTitleForArticle:
+                                                    controller
+                                                        .sourceTitleForArticle,
+                                              )
+                                            : _searchResultsForRoute(
+                                                controller.currentRoute,
+                                                query,
+                                              ),
+                                    mobileSearchActive: _mobileSearchActive,
+                                    mobileSearchEnabled:
+                                        usePortraitMobileHome &&
+                                            _canUseMobileSearch,
+                                    mobileSearchController:
+                                        _mobileSearchController,
+                                    mobileSearchFocusNode:
+                                        _mobileSearchFocusNode,
+                                    onMobileSearchOpen: _openMobileSearch,
+                                    onMobileSearchClearOrClose:
+                                        _clearOrCloseMobileSearch,
                                     topInset: topInset,
                                     sidebarCollapsed: compact
                                         ? _compactRailCollapsed
@@ -611,6 +759,79 @@ class _ReaderHomeState extends State<ReaderHome> {
     }
   }
 
+  bool get _canUseMobileSearch {
+    return controller.currentRoute == AppRouteId.allArticles ||
+        controller.currentRoute == AppRouteId.bookmarks;
+  }
+
+  bool get _showMobileSearchResults {
+    return _mobileSearchActive &&
+        _mobileSearchController.text.trim().isNotEmpty;
+  }
+
+  List<Article> _searchArticlesForRoute(AppRouteId route) {
+    switch (route) {
+      case AppRouteId.allArticles:
+      case AppRouteId.sources:
+      case AppRouteId.sourceDetail:
+      case AppRouteId.bookmarks:
+        return controller.articlesForRoute(route);
+      case AppRouteId.readerDetail:
+      case AppRouteId.discoverAddSource:
+      case AppRouteId.settings:
+        return const <Article>[];
+    }
+  }
+
+  GlobalSearchResultSet _searchResultsForRoute(
+    AppRouteId route,
+    String query,
+  ) {
+    final List<Article> articles = _searchArticlesForRoute(route);
+    final Set<String> sourceIds =
+        articles.map((Article article) => article.sourceId).toSet();
+    final List<FeedSource> feeds = controller.feeds
+        .where((FeedSource source) => sourceIds.contains(source.id))
+        .toList(growable: false);
+
+    return searchGlobalContent(
+      feeds: feeds,
+      articles: articles,
+      query: query,
+      sourceTitleForArticle: controller.sourceTitleForArticle,
+      articleScoreBoost: (Article article) {
+        if (route == AppRouteId.allArticles &&
+            (article.starred || article.savedForLater)) {
+          return 34;
+        }
+        return 0;
+      },
+    );
+  }
+
+  GlobalSearchResultSet _mobileSearchResultsForCurrentPage() {
+    return _searchResultsForRoute(
+      controller.currentRoute,
+      _mobileSearchController.text,
+    );
+  }
+
+  List<_SearchEntry> _mobileSearchEntriesForCurrentPage() {
+    return _searchEntries(_mobileSearchResultsForCurrentPage());
+  }
+
+  void _openSearchSource(FeedSource source) {
+    controller.selectSource(source, enterSourceDetail: false);
+  }
+
+  void _openSearchArticle(Article article) {
+    controller.selectArticle(
+      article,
+      openInReaderRoute: controller.settings.mobileWorkspaceMode ==
+          MobileWorkspaceMode.singlePane,
+    );
+  }
+
   bool _usePortraitMobileHome(
     BuildContext context,
     BoxConstraints constraints,
@@ -774,6 +995,17 @@ class _ReaderHomeState extends State<ReaderHome> {
   Widget _buildCompactWorkspace({required bool mobileRestyled}) {
     if (controller.currentRoute == AppRouteId.allArticles ||
         controller.currentRoute == AppRouteId.readerDetail) {
+      if (_showMobileSearchResults &&
+          controller.currentRoute == AppRouteId.allArticles) {
+        return _MobileSearchResultsPanel(
+          controller: controller,
+          results: _mobileSearchResultsForCurrentPage(),
+          entries: _mobileSearchEntriesForCurrentPage(),
+          query: _mobileSearchController.text,
+          onSourceSelected: _openSearchSource,
+          onArticleSelected: _openSearchArticle,
+        );
+      }
       // Keep the compact home list alive while the reader opens on top of it,
       // so Android back can return to the exact previous scroll position.
       return _CompactReaderDeck(
@@ -803,6 +1035,16 @@ class _ReaderHomeState extends State<ReaderHome> {
       );
     }
     if (controller.currentRoute == AppRouteId.bookmarks) {
+      if (_showMobileSearchResults) {
+        return _MobileSearchResultsPanel(
+          controller: controller,
+          results: _mobileSearchResultsForCurrentPage(),
+          entries: _mobileSearchEntriesForCurrentPage(),
+          query: _mobileSearchController.text,
+          onSourceSelected: _openSearchSource,
+          onArticleSelected: _openSearchArticle,
+        );
+      }
       return ArticleListPanel(
         controller: controller,
         compact: true,
@@ -856,6 +1098,18 @@ class _ReaderHomeState extends State<ReaderHome> {
   }
 
   Widget _buildPhoneHomePage({required bool mobileRestyled}) {
+    if (_showMobileSearchResults &&
+        controller.currentRoute == AppRouteId.allArticles) {
+      return _MobileSearchResultsPanel(
+        controller: controller,
+        results: _mobileSearchResultsForCurrentPage(),
+        entries: _mobileSearchEntriesForCurrentPage(),
+        query: _mobileSearchController.text,
+        onSourceSelected: _openSearchSource,
+        onArticleSelected: _openSearchArticle,
+      );
+    }
+
     return _CompactReaderDeck(
       showReader: false,
       list: ArticleListPanel(
@@ -882,6 +1136,18 @@ class _ReaderHomeState extends State<ReaderHome> {
   }
 
   Widget _buildPhoneBookmarksPage({required bool mobileRestyled}) {
+    if (_showMobileSearchResults &&
+        controller.currentRoute == AppRouteId.bookmarks) {
+      return _MobileSearchResultsPanel(
+        controller: controller,
+        results: _mobileSearchResultsForCurrentPage(),
+        entries: _mobileSearchEntriesForCurrentPage(),
+        query: _mobileSearchController.text,
+        onSourceSelected: _openSearchSource,
+        onArticleSelected: _openSearchArticle,
+      );
+    }
+
     return ArticleListPanel(
       controller: controller,
       compact: true,
@@ -1063,6 +1329,16 @@ class _ReaderHomeState extends State<ReaderHome> {
       }
     }
 
+    if (_mobileSearchActive &&
+        route != AppRouteId.allArticles &&
+        route != AppRouteId.bookmarks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _closeMobileSearch();
+        }
+      });
+    }
+
     _syncControllerSnapshot();
   }
 
@@ -1239,6 +1515,13 @@ class _ShellHeader extends StatelessWidget {
     required this.compact,
     required this.mobileRestyled,
     required this.searchFocusNode,
+    required this.desktopSearchResultsForQuery,
+    required this.mobileSearchActive,
+    required this.mobileSearchEnabled,
+    required this.mobileSearchController,
+    required this.mobileSearchFocusNode,
+    required this.onMobileSearchOpen,
+    required this.onMobileSearchClearOrClose,
     required this.topInset,
     required this.sidebarCollapsed,
     required this.showSidebarToggle,
@@ -1253,6 +1536,14 @@ class _ShellHeader extends StatelessWidget {
   final bool compact;
   final bool mobileRestyled;
   final FocusNode searchFocusNode;
+  final GlobalSearchResultSet Function(String query)
+      desktopSearchResultsForQuery;
+  final bool mobileSearchActive;
+  final bool mobileSearchEnabled;
+  final TextEditingController mobileSearchController;
+  final FocusNode mobileSearchFocusNode;
+  final VoidCallback onMobileSearchOpen;
+  final VoidCallback onMobileSearchClearOrClose;
   final double topInset;
   final bool sidebarCollapsed;
   final bool showSidebarToggle;
@@ -1342,25 +1633,59 @@ class _ShellHeader extends StatelessWidget {
             ),
           Expanded(
             child: compact
-                ? compactReading
-                    ? _MobileReaderHeaderTitle(
-                        controller: controller,
-                        article: selectedArticle,
-                        strings: strings,
-                        mobileRestyled: mobileRestyled,
-                      )
-                    : compactSettings
-                        ? _MobileHeaderTitle(
-                            controller: controller,
-                            strings: strings,
-                            mobileRestyled: mobileRestyled,
-                            routeTitleOverride: settingsSubPageTitle,
+                ? AnimatedSwitcher(
+                    duration: _shellMotionDuration,
+                    switchInCurve: _shellMotionCurve,
+                    switchOutCurve: _shellMotionCurve,
+                    transitionBuilder: (Widget child, Animation<double> anim) {
+                      return FadeTransition(
+                        opacity: anim,
+                        child: SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0.04, 0),
+                            end: Offset.zero,
+                          ).animate(anim),
+                          child: child,
+                        ),
+                      );
+                    },
+                    child: mobileSearchActive && mobileSearchEnabled
+                        ? _MobileHeaderSearchField(
+                            key: const ValueKey<String>('mobile-search'),
+                            controller: mobileSearchController,
+                            focusNode: mobileSearchFocusNode,
+                            hintText: strings.searchArticlesOrSources,
+                            onClearOrClose: onMobileSearchClearOrClose,
                           )
-                        : _MobileHeaderTitle(
-                            controller: controller,
-                            strings: strings,
-                            mobileRestyled: mobileRestyled,
-                          )
+                        : compactReading
+                            ? _MobileReaderHeaderTitle(
+                                key: const ValueKey<String>('mobile-reader'),
+                                controller: controller,
+                                article: selectedArticle,
+                                strings: strings,
+                                mobileRestyled: mobileRestyled,
+                              )
+                            : compactSettings
+                                ? _MobileHeaderTitle(
+                                    key: const ValueKey<String>(
+                                      'mobile-settings',
+                                    ),
+                                    controller: controller,
+                                    strings: strings,
+                                    mobileRestyled: mobileRestyled,
+                                    routeTitleOverride: settingsSubPageTitle,
+                                  )
+                                : _MobileHeaderTitle(
+                                    key: const ValueKey<String>(
+                                      'mobile-title',
+                                    ),
+                                    controller: controller,
+                                    strings: strings,
+                                    mobileRestyled: mobileRestyled,
+                                    searchEnabled: mobileSearchEnabled,
+                                    onSearchOpen: onMobileSearchOpen,
+                                  ),
+                  )
                 : Stack(
                     alignment: Alignment.center,
                     children: <Widget>[
@@ -1402,17 +1727,33 @@ class _ShellHeader extends StatelessWidget {
                         controller: controller,
                         hintText: strings.searchArticlesOrSources,
                         focusNode: searchFocusNode,
+                        resultsForQuery: desktopSearchResultsForQuery,
                       ),
                     ],
                   ),
           ),
           if (compact && !compactReading)
-            Padding(
-              padding: EdgeInsets.only(right: mobileRestyled ? 12 : 10),
-              child: _CompactStat(
-                mobileRestyled: mobileRestyled,
-                text: strings.unreadCountStat(controller.totalUnreadCount),
-              ),
+            AnimatedSwitcher(
+              duration: _shellMotionDuration,
+              switchInCurve: _shellMotionCurve,
+              switchOutCurve: _shellMotionCurve,
+              child: mobileSearchActive && mobileSearchEnabled
+                  ? const SizedBox(
+                      key: ValueKey<String>('mobile-search-stat-hidden'),
+                      width: 12,
+                    )
+                  : Padding(
+                      key: const ValueKey<String>('mobile-stat'),
+                      padding: EdgeInsets.only(
+                        right: mobileRestyled ? 12 : 10,
+                      ),
+                      child: _CompactStat(
+                        mobileRestyled: mobileRestyled,
+                        text: strings.unreadCountStat(
+                          controller.totalUnreadCount,
+                        ),
+                      ),
+                    ),
             )
           else if (compact && compactReading)
             const SizedBox(width: 12),
@@ -1476,11 +1817,13 @@ class _DesktopSearchField extends StatefulWidget {
     required this.controller,
     required this.hintText,
     required this.focusNode,
+    required this.resultsForQuery,
   });
 
   final ReaderController controller;
   final String hintText;
   final FocusNode focusNode;
+  final GlobalSearchResultSet Function(String query) resultsForQuery;
 
   @override
   State<_DesktopSearchField> createState() => _DesktopSearchFieldState();
@@ -1537,19 +1880,14 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
   }
 
   GlobalSearchResultSet get _searchResults {
-    return searchGlobalContent(
-      feeds: widget.controller.feeds,
-      articles: widget.controller.articles,
-      query: _queryController.text,
-      sourceTitleForArticle: widget.controller.sourceTitleForArticle,
-    );
+    return widget.resultsForQuery(_queryController.text);
   }
 
   void _handleQueryChanged() {
     setState(() {});
     if (_overlayEntry != null) {
       final GlobalSearchResultSet currentResults = _searchResults;
-      final int count = _desktopSearchEntries(currentResults).length;
+      final int count = _searchEntries(currentResults).length;
       _syncResultItemKeys(count);
       setState(() {
         _selectedIndex = count == 0 ? -1 : 0;
@@ -1628,8 +1966,7 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
       builder: (BuildContext context) {
         final ReaderPalette palette = AppTheme.paletteOf(context);
         final GlobalSearchResultSet results = _searchResults;
-        final List<_DesktopSearchEntry> entries =
-            _desktopSearchEntries(results);
+        final List<_SearchEntry> entries = _searchEntries(results);
         _syncResultItemKeys(entries.length);
         return Positioned(
           width: 420,
@@ -1710,7 +2047,7 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
     if (_overlayEntry == null) return;
 
     final GlobalSearchResultSet currentResults = _searchResults;
-    final int count = _desktopSearchEntries(currentResults).length;
+    final int count = _searchEntries(currentResults).length;
     if (count == 0) return;
     _syncResultItemKeys(count);
 
@@ -1731,12 +2068,11 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
   void _openSelected() {
     if (_overlayEntry == null || _selectedIndex < 0) return;
 
-    final List<_DesktopSearchEntry> entries =
-        _desktopSearchEntries(_searchResults);
+    final List<_SearchEntry> entries = _searchEntries(_searchResults);
     if (_selectedIndex >= entries.length) {
       return;
     }
-    final _DesktopSearchEntry entry = entries[_selectedIndex];
+    final _SearchEntry entry = entries[_selectedIndex];
     if (entry.source != null) {
       _openSource(entry.source!);
       return;
@@ -1749,13 +2085,12 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
   void _openSource(FeedSource source) {
     widget.focusNode.unfocus();
     _removeOverlay();
-    widget.controller.selectSource(source, enterSourceDetail: true);
+    widget.controller.selectSource(source, enterSourceDetail: false);
   }
 
   void _openArticle(Article article) {
     widget.focusNode.unfocus();
     _removeOverlay();
-    widget.controller.setCurrentRoute(AppRouteId.allArticles);
     widget.controller.selectArticle(
       article,
       openInReaderRoute: widget.controller.settings.desktopWorkspaceMode ==
@@ -1906,30 +2241,30 @@ class _Keycap extends StatelessWidget {
   }
 }
 
-class _DesktopSearchEntry {
-  const _DesktopSearchEntry.source(this.source) : article = null;
+class _SearchEntry {
+  const _SearchEntry.source(this.source) : article = null;
 
-  const _DesktopSearchEntry.article(this.article) : source = null;
+  const _SearchEntry.article(this.article) : source = null;
 
   final FeedSource? source;
   final GlobalSearchArticleResult? article;
 }
 
-List<_DesktopSearchEntry> _desktopSearchEntries(
+List<_SearchEntry> _searchEntries(
   GlobalSearchResultSet results,
 ) {
-  final List<_DesktopSearchEntry> entries = <_DesktopSearchEntry>[];
+  final List<_SearchEntry> entries = <_SearchEntry>[];
   final Set<String> usedArticleIds = <String>{};
 
   for (final GlobalSearchSourceResult sourceResult in results.sourceResults) {
-    entries.add(_DesktopSearchEntry.source(sourceResult.source));
+    entries.add(_SearchEntry.source(sourceResult.source));
     for (final GlobalSearchArticleResult articleResult
         in results.articleResults) {
       if (articleResult.article.sourceId != sourceResult.source.id) {
         continue;
       }
       if (usedArticleIds.add(articleResult.article.id)) {
-        entries.add(_DesktopSearchEntry.article(articleResult));
+        entries.add(_SearchEntry.article(articleResult));
       }
     }
   }
@@ -1937,11 +2272,287 @@ List<_DesktopSearchEntry> _desktopSearchEntries(
   for (final GlobalSearchArticleResult articleResult
       in results.articleResults) {
     if (usedArticleIds.add(articleResult.article.id)) {
-      entries.add(_DesktopSearchEntry.article(articleResult));
+      entries.add(_SearchEntry.article(articleResult));
     }
   }
 
   return entries;
+}
+
+class _MobileSearchResultsPanel extends StatelessWidget {
+  const _MobileSearchResultsPanel({
+    required this.controller,
+    required this.results,
+    required this.entries,
+    required this.query,
+    required this.onSourceSelected,
+    required this.onArticleSelected,
+  });
+
+  final ReaderController controller;
+  final GlobalSearchResultSet results;
+  final List<_SearchEntry> entries;
+  final String query;
+  final ValueChanged<FeedSource> onSourceSelected;
+  final ValueChanged<Article> onArticleSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    if (results.isEmpty) {
+      return _MobileSearchEmptyState(
+          text: context.strings.globalSearchNoResults);
+    }
+
+    return MotionEntrance(
+      signature: 'mobile-search-${results.query}',
+      offset: const Offset(0, 0.018),
+      child: ListView.separated(
+        padding: const EdgeInsets.fromLTRB(10, 12, 10, 18),
+        itemCount: entries.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (BuildContext context, int index) {
+          final _SearchEntry entry = entries[index];
+          final FeedSource? source = entry.source;
+          final GlobalSearchArticleResult? article = entry.article;
+          if (source != null) {
+            return _MobileSearchSourceCard(
+              source: source,
+              articleCount: controller.articleCountForSource(source.id),
+              unreadCount: controller.unreadCountForSource(source.id),
+              onTap: () => onSourceSelected(source),
+            );
+          }
+          if (article == null) {
+            return const SizedBox.shrink();
+          }
+          return _MobileSearchArticleCard(
+            result: article,
+            query: query,
+            onTap: () => onArticleSelected(article.article),
+          );
+        },
+        physics: const BouncingScrollPhysics(),
+        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+      ),
+    );
+  }
+}
+
+class _MobileSearchEmptyState extends StatelessWidget {
+  const _MobileSearchEmptyState({
+    required this.text,
+  });
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Icon(
+              Icons.search_rounded,
+              size: 46,
+              color: palette.tertiaryText,
+            ),
+            const SizedBox(height: 14),
+            Text(
+              text,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    color: palette.secondaryText,
+                    fontWeight: FontWeight.w600,
+                  ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileSearchSourceCard extends StatelessWidget {
+  const _MobileSearchSourceCard({
+    required this.source,
+    required this.articleCount,
+    required this.unreadCount,
+    required this.onTap,
+  });
+
+  final FeedSource source;
+  final int articleCount;
+  final int unreadCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 12, 12, 12),
+          decoration: BoxDecoration(
+            color: palette.panelBackground,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: palette.border.withValues(alpha: 0.82)),
+          ),
+          child: Row(
+            children: <Widget>[
+              _SearchSourceAvatar(iconUrl: source.iconUrl, size: 42),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      source.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      context.strings.sourceStats(articleCount, unreadCount),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: palette.secondaryText,
+                            fontWeight: FontWeight.w500,
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: palette.secondaryText,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MobileSearchArticleCard extends StatelessWidget {
+  const _MobileSearchArticleCard({
+    required this.result,
+    required this.query,
+    required this.onTap,
+  });
+
+  final GlobalSearchArticleResult result;
+  final String query;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final Article article = result.article;
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final ThemeData theme = Theme.of(context);
+    final String snippet = _searchSnippetForArticle(
+      article: article,
+      query: query,
+      fallback: context.strings.noReadableSummary,
+    );
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: Container(
+          padding: const EdgeInsets.fromLTRB(14, 14, 14, 14),
+          decoration: BoxDecoration(
+            color: palette.panelBackground,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: palette.border.withValues(alpha: 0.88)),
+            boxShadow: <BoxShadow>[
+              BoxShadow(
+                color: palette.shadow.withValues(alpha: 0.045),
+                blurRadius: 16,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Icon(
+                    article.isRead
+                        ? Icons.circle_outlined
+                        : Icons.circle_rounded,
+                    size: 10,
+                    color: article.isRead
+                        ? palette.tertiaryText
+                        : theme.colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      result.sourceTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: palette.secondaryText,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    _formatSearchDate(article.publishedAt),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: palette.tertiaryText,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                article.title,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontSize: 18.5,
+                  fontWeight: FontWeight.w700,
+                  height: 1.24,
+                ),
+              ),
+              const SizedBox(height: 8),
+              RichText(
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                text: TextSpan(
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: palette.secondaryText,
+                    height: 1.52,
+                  ),
+                  children: _searchHighlightSpans(
+                    text: snippet,
+                    query: query,
+                    highlightColor: theme.colorScheme.primary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _DesktopSearchResults extends StatelessWidget {
@@ -1958,7 +2569,7 @@ class _DesktopSearchResults extends StatelessWidget {
 
   final ReaderController controller;
   final GlobalSearchResultSet results;
-  final List<_DesktopSearchEntry> entries;
+  final List<_SearchEntry> entries;
   final ScrollController scrollController;
   final List<GlobalKey> itemKeys;
   final int selectedIndex;
@@ -1977,7 +2588,7 @@ class _DesktopSearchResults extends StatelessWidget {
 
     final List<Widget> children = <Widget>[];
     for (int index = 0; index < entries.length; index += 1) {
-      final _DesktopSearchEntry entry = entries[index];
+      final _SearchEntry entry = entries[index];
       final FeedSource? source = entry.source;
       final GlobalSearchArticleResult? article = entry.article;
       if (source != null) {
@@ -2410,18 +3021,178 @@ String _formatSearchDate(DateTime dateTime) {
   return '$month-$day $hour:$minute';
 }
 
+class _MobileHeaderSearchField extends StatelessWidget {
+  const _MobileHeaderSearchField({
+    super.key,
+    required this.controller,
+    required this.focusNode,
+    required this.hintText,
+    required this.onClearOrClose,
+  });
+
+  final TextEditingController controller;
+  final FocusNode focusNode;
+  final String hintText;
+  final VoidCallback onClearOrClose;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final ThemeData theme = Theme.of(context);
+    final TextStyle textStyle = theme.textTheme.bodyMedium?.copyWith(
+          fontSize: 17,
+          fontWeight: FontWeight.w600,
+          height: 1.1,
+        ) ??
+        const TextStyle(fontSize: 17, fontWeight: FontWeight.w600);
+
+    return Container(
+      height: 40,
+      decoration: BoxDecoration(
+        color: palette.panelBackground,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: palette.border.withValues(alpha: 0.82)),
+      ),
+      padding: const EdgeInsets.fromLTRB(12, 0, 8, 0),
+      child: Row(
+        children: <Widget>[
+          Icon(
+            Icons.search_rounded,
+            size: 20,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: ValueListenableBuilder<TextEditingValue>(
+              valueListenable: controller,
+              builder: (BuildContext context, TextEditingValue value, _) {
+                return Stack(
+                  alignment: Alignment.centerLeft,
+                  children: <Widget>[
+                    if (value.text.isEmpty)
+                      IgnorePointer(
+                        child: Text(
+                          hintText,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: textStyle.copyWith(
+                            color: palette.tertiaryText,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    EditableText(
+                      controller: controller,
+                      focusNode: focusNode,
+                      style: textStyle,
+                      cursorColor: Theme.of(context).colorScheme.primary,
+                      backgroundCursorColor: palette.tertiaryText,
+                      selectionColor:
+                          palette.primarySoft.withValues(alpha: 0.70),
+                      maxLines: 1,
+                      textInputAction: TextInputAction.search,
+                    ),
+                  ],
+                );
+              },
+            ),
+          ),
+          ValueListenableBuilder<TextEditingValue>(
+            valueListenable: controller,
+            builder: (BuildContext context, TextEditingValue value, _) {
+              return Tooltip(
+                message: value.text.isEmpty ? 'Close search' : 'Clear search',
+                child: IconButton(
+                  visualDensity: VisualDensity.compact,
+                  splashRadius: 18,
+                  constraints:
+                      const BoxConstraints.tightFor(width: 32, height: 32),
+                  onPressed: onClearOrClose,
+                  icon: Icon(
+                    value.text.isEmpty
+                        ? Icons.close_rounded
+                        : Icons.backspace_outlined,
+                    size: 18,
+                    color: palette.secondaryText,
+                  ),
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MobileSearchBrandTrigger extends StatefulWidget {
+  const _MobileSearchBrandTrigger({
+    required this.enabled,
+    required this.onOpen,
+    required this.child,
+  });
+
+  final bool enabled;
+  final VoidCallback? onOpen;
+  final Widget child;
+
+  @override
+  State<_MobileSearchBrandTrigger> createState() =>
+      _MobileSearchBrandTriggerState();
+}
+
+class _MobileSearchBrandTriggerState extends State<_MobileSearchBrandTrigger> {
+  double _dragDistance = 0;
+  bool _opened = false;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!widget.enabled) {
+      return widget.child;
+    }
+
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onHorizontalDragStart: (_) {
+        _dragDistance = 0;
+        _opened = false;
+      },
+      onHorizontalDragUpdate: (DragUpdateDetails details) {
+        if (_opened) {
+          return;
+        }
+        _dragDistance += details.primaryDelta ?? 0;
+        if (_dragDistance > 30) {
+          _opened = true;
+          widget.onOpen?.call();
+        }
+      },
+      onHorizontalDragEnd: (_) {
+        _dragDistance = 0;
+        _opened = false;
+      },
+      child: widget.child,
+    );
+  }
+}
+
 class _MobileHeaderTitle extends StatelessWidget {
   const _MobileHeaderTitle({
+    super.key,
     required this.controller,
     required this.strings,
     required this.mobileRestyled,
     this.routeTitleOverride,
+    this.searchEnabled = false,
+    this.onSearchOpen,
   });
 
   final ReaderController controller;
   final AppStrings strings;
   final bool mobileRestyled;
   final String? routeTitleOverride;
+  final bool searchEnabled;
+  final VoidCallback? onSearchOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -2429,7 +3200,11 @@ class _MobileHeaderTitle extends StatelessWidget {
 
     return Row(
       children: <Widget>[
-        _BrandMark(compact: true, mobileRestyled: mobileRestyled),
+        _MobileSearchBrandTrigger(
+          enabled: searchEnabled,
+          onOpen: onSearchOpen,
+          child: _BrandMark(compact: true, mobileRestyled: mobileRestyled),
+        ),
         SizedBox(width: mobileRestyled ? 12 : 8),
         Expanded(
           child: Column(
@@ -2469,6 +3244,7 @@ class _MobileHeaderTitle extends StatelessWidget {
 
 class _MobileReaderHeaderTitle extends StatelessWidget {
   const _MobileReaderHeaderTitle({
+    super.key,
     required this.controller,
     required this.article,
     required this.strings,
@@ -2619,7 +3395,7 @@ class _HeaderSidebarToggle extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
 
     return Tooltip(
-      message: collapsed ? '灞曞紑渚ф爮' : '鏀惰捣渚ф爮',
+      message: collapsed ? 'Expand sidebar' : 'Collapse sidebar',
       child: Material(
         color: Colors.transparent,
         child: InkWell(

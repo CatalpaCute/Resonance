@@ -46,6 +46,7 @@ GlobalSearchResultSet searchGlobalContent({
   required List<Article> articles,
   required String query,
   required String Function(Article article) sourceTitleForArticle,
+  int Function(Article article)? articleScoreBoost,
   int articleLimit = 20,
   int sourceLimit = 3,
 }) {
@@ -81,10 +82,11 @@ GlobalSearchResultSet searchGlobalContent({
       <String, GlobalSearchArticleResult>{};
   for (final Article article in articles) {
     final String sourceTitle = sourceTitleForArticle(article);
-    final int score = _articleScore(article, sourceTitle, normalizedQuery);
+    int score = _articleScore(article, sourceTitle, normalizedQuery);
     if (score <= 0) {
       continue;
     }
+    score += articleScoreBoost?.call(article) ?? 0;
     articleResults[article.id] = GlobalSearchArticleResult(
       article: article,
       sourceTitle: sourceTitle,
@@ -101,7 +103,7 @@ GlobalSearchResultSet searchGlobalContent({
       final GlobalSearchArticleResult candidate = GlobalSearchArticleResult(
         article: article,
         sourceTitle: sourceTitle,
-        score: 20,
+        score: 20 + (articleScoreBoost?.call(article) ?? 0),
       );
       final GlobalSearchArticleResult? existing = articleResults[article.id];
       if (existing == null || candidate.score > existing.score) {
