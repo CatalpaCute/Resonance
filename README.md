@@ -13,7 +13,7 @@
   <a href="https://github.com/CatalpaCute/Resonance/releases"><img src="https://img.shields.io/github/v/release/CatalpaCute/Resonance?display_name=tag" alt="Latest Release" /></a>
   <img src="https://img.shields.io/badge/Flutter-3.4%2B-02569B?logo=flutter&logoColor=white" alt="Flutter 3.4+" />
   <img src="https://img.shields.io/badge/Dart-3.4%2B-0175C2?logo=dart&logoColor=white" alt="Dart 3.4+" />
-  <img src="https://img.shields.io/badge/platform-Android%20%7C%20Windows-6C757D" alt="Platforms" />
+  <img src="https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux-6C757D" alt="Platforms" />
 </p>
 
 ---
@@ -22,8 +22,8 @@
 
 ### 项目简介
 
-**Resonance（回声）** 是一个使用 Flutter 构建的 **local-first RSS 阅读器**。  
-它是一个一个轻量、安静的个人阅读工作台：管理订阅、拉取内容、筛选未读、沉浸阅读，并把阅读状态与设置保存在本地，而不是依赖账号系统或后端服务。
+**Resonance（回声）** 是一个使用 Flutter 构建的 **local RSS 阅读器**。  
+它是一个一个轻量、安静的个人阅读工作台：管理订阅、拉取内容、筛选未读、沉浸阅读，并把阅读状态与设置保存在本地。
 
 当前项目已经完成 RSS / Atom 订阅解析、本地 JSON 持久化、桌面三栏阅读工作区、移动端适配、文章富文本渲染与文本模式、主题与语言切换等核心能力，已经具备比较完整的阅读闭环。
 
