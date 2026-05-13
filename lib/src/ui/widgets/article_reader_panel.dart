@@ -18,11 +18,13 @@ class ArticleReaderPanel extends StatelessWidget {
     super.key,
     required this.controller,
     required this.compact,
+    this.animateEntrance = true,
     this.onBack,
   });
 
   final ReaderController controller;
   final bool compact;
+  final bool animateEntrance;
   final VoidCallback? onBack;
 
   @override
@@ -34,6 +36,7 @@ class ArticleReaderPanel extends StatelessWidget {
       return _DesktopArticleReader(
         controller: controller,
         article: article,
+        animateEntrance: animateEntrance,
         onBack: onBack,
         showReadLaterDone: showReadLaterDone,
         onOpenOriginal: _openOriginal,
@@ -43,6 +46,7 @@ class ArticleReaderPanel extends StatelessWidget {
     return _MobileArticleReader(
       controller: controller,
       article: article,
+      animateEntrance: animateEntrance,
       showReadLaterDone: showReadLaterDone,
       onOpenOriginal: _openOriginal,
     );
@@ -58,12 +62,14 @@ class _MobileArticleReader extends StatefulWidget {
   const _MobileArticleReader({
     required this.controller,
     required this.article,
+    required this.animateEntrance,
     required this.showReadLaterDone,
     required this.onOpenOriginal,
   });
 
   final ReaderController controller;
   final Article? article;
+  final bool animateEntrance;
   final bool showReadLaterDone;
   final Future<void> Function(String rawUrl) onOpenOriginal;
 
@@ -125,13 +131,17 @@ class _MobileArticleReaderState extends State<_MobileArticleReader> {
     final AppStrings strings = context.strings;
 
     if (article == null) {
+      final Widget emptyReader = ColoredBox(
+        color: Colors.transparent,
+        child: _EmptyReader(compact: true),
+      );
+      if (!widget.animateEntrance) {
+        return emptyReader;
+      }
       return MotionEntrance(
         signature: 'mobile-empty-reader',
         offset: const Offset(0.035, 0),
-        child: ColoredBox(
-          color: Colors.transparent,
-          child: _EmptyReader(compact: true),
-        ),
+        child: emptyReader,
       );
     }
 
@@ -140,85 +150,91 @@ class _MobileArticleReaderState extends State<_MobileArticleReader> {
     final double bottomInset = MediaQuery.viewPaddingOf(context).bottom;
     final double bottomBarHeight = _bottomBarBaseHeight + bottomInset;
 
-    return MotionEntrance(
-      signature: 'mobile-${article.id}',
-      offset: const Offset(0.035, 0),
-      child: Stack(
-        children: <Widget>[
-          Positioned.fill(
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              padding: EdgeInsets.fromLTRB(
-                20,
-                22,
-                20,
-                bottomBarHeight + 28,
-              ),
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 680),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        article.title,
-                        style:
-                            Theme.of(context).textTheme.headlineSmall?.copyWith(
-                                  fontSize: 30,
-                                  height: 1.16,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: 0,
-                                ),
-                      ),
-                      const SizedBox(height: 14),
-                      _ArticleMetaLine(
-                        sourceTitle: sourceTitle,
-                        iconUrl:
-                            widget.controller.sourceIconForArticle(article),
-                        author: article.author,
-                        publishedAt: article.publishedAt,
-                        readingTime: strings.estimatedReadingTime(readMinutes),
-                      ),
-                      const SizedBox(height: 24),
-                      _ReaderContent(
-                        article: article,
-                        compact: true,
-                        contentMode:
-                            widget.controller.settings.articleContentMode,
-                        strings: strings,
-                        onOpenUrl: widget.onOpenOriginal,
-                        onCompleteReadLater: widget.showReadLaterDone
-                            ? () => widget.controller
-                                .completeReadLaterArticle(article)
-                            : null,
-                      ),
-                    ],
-                  ),
+    final Widget reader = Stack(
+      children: <Widget>[
+        Positioned.fill(
+          child: SingleChildScrollView(
+            controller: _scrollController,
+            padding: EdgeInsets.fromLTRB(
+              20,
+              22,
+              20,
+              bottomBarHeight + 28,
+            ),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 680),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      article.title,
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontSize: 30,
+                                height: 1.16,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0,
+                              ),
+                    ),
+                    const SizedBox(height: 14),
+                    _ArticleMetaLine(
+                      sourceTitle: sourceTitle,
+                      iconUrl:
+                          widget.controller.sourceIconForArticle(article),
+                      author: article.author,
+                      publishedAt: article.publishedAt,
+                      readingTime: strings.estimatedReadingTime(readMinutes),
+                    ),
+                    const SizedBox(height: 24),
+                    _ReaderContent(
+                      article: article,
+                      compact: true,
+                      contentMode:
+                          widget.controller.settings.articleContentMode,
+                      strings: strings,
+                      onOpenUrl: widget.onOpenOriginal,
+                      onCompleteReadLater: widget.showReadLaterDone
+                          ? () => widget.controller
+                              .completeReadLaterArticle(article)
+                          : null,
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-          Positioned(
-            left: 0,
-            right: 0,
-            bottom: 0,
-            height: bottomBarHeight,
-            child: _MobileReaderBottomBar(
-              article: article,
-              progress: _progress,
-              blurEnabled: widget.controller.settings.blurEffectsEnabled,
-              baseColor: palette.shellBackground,
-              bottomInset: bottomInset,
-              onReadToggle: () => widget.controller.toggleReadState(article),
-              onStarToggle: () => widget.controller.toggleStarred(article),
-              onReadLaterToggle: () =>
-                  widget.controller.toggleSavedForLater(article),
-              onOpenOriginal: () => widget.onOpenOriginal(article.url),
-            ),
+        ),
+        Positioned(
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: bottomBarHeight,
+          child: _MobileReaderBottomBar(
+            article: article,
+            progress: _progress,
+            blurEnabled: widget.controller.settings.blurEffectsEnabled,
+            baseColor: palette.shellBackground,
+            bottomInset: bottomInset,
+            onReadToggle: () => widget.controller.toggleReadState(article),
+            onStarToggle: () => widget.controller.toggleStarred(article),
+            onReadLaterToggle: () =>
+                widget.controller.toggleSavedForLater(article),
+            onOpenOriginal: () => widget.onOpenOriginal(article.url),
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+
+    if (!widget.animateEntrance) {
+      return reader;
+    }
+
+    return MotionEntrance(
+      signature: 'mobile-${article.id}',
+      offset: const Offset(0.035, 0),
+      child: reader,
     );
   }
 
@@ -257,6 +273,7 @@ class _DesktopArticleReader extends StatefulWidget {
   const _DesktopArticleReader({
     required this.controller,
     required this.article,
+    required this.animateEntrance,
     required this.onBack,
     required this.showReadLaterDone,
     required this.onOpenOriginal,
@@ -264,6 +281,7 @@ class _DesktopArticleReader extends StatefulWidget {
 
   final ReaderController controller;
   final Article? article;
+  final bool animateEntrance;
   final VoidCallback? onBack;
   final bool showReadLaterDone;
   final Future<void> Function(String rawUrl) onOpenOriginal;
@@ -326,13 +344,17 @@ class _DesktopArticleReaderState extends State<_DesktopArticleReader> {
     final AppStrings strings = context.strings;
 
     if (article == null) {
+      final Widget emptyReader = ColoredBox(
+        color: Colors.transparent,
+        child: _EmptyReader(compact: false),
+      );
+      if (!widget.animateEntrance) {
+        return emptyReader;
+      }
       return MotionEntrance(
         signature: 'desktop-empty-reader',
         offset: const Offset(0.026, 0),
-        child: ColoredBox(
-          color: Colors.transparent,
-          child: _EmptyReader(compact: false),
-        ),
+        child: emptyReader,
       );
     }
 
@@ -344,77 +366,73 @@ class _DesktopArticleReaderState extends State<_DesktopArticleReader> {
             ? palette.chromeBackground
             : palette.canvasBackground;
 
-    return MotionEntrance(
-      signature: 'desktop-${article.id}',
-      offset: const Offset(0.026, 0),
-      child: Stack(
-        children: <Widget>[
-          Positioned.fill(
-            child: RawScrollbar(
+    final Widget reader = Stack(
+      children: <Widget>[
+        Positioned.fill(
+          child: RawScrollbar(
+            controller: _scrollController,
+            padding: const EdgeInsets.only(top: _toolbarHeight),
+            radius: const Radius.circular(999),
+            thumbColor: palette.secondaryText.withValues(alpha: 0.32),
+            child: DesktopSmoothScroll(
               controller: _scrollController,
-              padding: const EdgeInsets.only(top: _toolbarHeight),
-              radius: const Radius.circular(999),
-              thumbColor: palette.secondaryText.withValues(alpha: 0.32),
-              child: DesktopSmoothScroll(
-                controller: _scrollController,
-                keyboardScrollId: 'article-reader',
-                keyboardScrollOrder: 2,
-                child: ScrollConfiguration(
-                  behavior: ScrollConfiguration.of(context)
-                      .copyWith(scrollbars: false),
-                  child: SingleChildScrollView(
-                    physics: DesktopSmoothScroll.physics,
-                    controller: _scrollController,
-                    padding: const EdgeInsets.fromLTRB(
-                      34,
-                      _toolbarHeight + 36,
-                      34,
-                      42,
-                    ),
-                    child: Align(
-                      alignment: Alignment.topCenter,
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: 760),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Text(
-                              article.title,
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .headlineMedium
-                                  ?.copyWith(
-                                    fontSize: 34,
-                                    height: 1.18,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: 0,
-                                  ),
-                            ),
-                            const SizedBox(height: 16),
-                            _ArticleMetaLine(
-                              sourceTitle: sourceTitle,
-                              iconUrl: widget.controller
-                                  .sourceIconForArticle(article),
-                              author: article.author,
-                              publishedAt: article.publishedAt,
-                              readingTime:
-                                  strings.estimatedReadingTime(readMinutes),
-                            ),
-                            const SizedBox(height: 26),
-                            _ReaderContent(
-                              article: article,
-                              compact: false,
-                              contentMode:
-                                  widget.controller.settings.articleContentMode,
-                              strings: strings,
-                              onOpenUrl: widget.onOpenOriginal,
-                              onCompleteReadLater: widget.showReadLaterDone
-                                  ? () => widget.controller
-                                      .completeReadLaterArticle(article)
-                                  : null,
-                            ),
-                          ],
-                        ),
+              keyboardScrollId: 'article-reader',
+              keyboardScrollOrder: 2,
+              child: ScrollConfiguration(
+                behavior: ScrollConfiguration.of(context)
+                    .copyWith(scrollbars: false),
+                child: SingleChildScrollView(
+                  physics: DesktopSmoothScroll.physics,
+                  controller: _scrollController,
+                  padding: const EdgeInsets.fromLTRB(
+                    34,
+                    _toolbarHeight + 36,
+                    34,
+                    42,
+                  ),
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 760),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Text(
+                            article.title,
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineMedium
+                                ?.copyWith(
+                                  fontSize: 34,
+                                  height: 1.18,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0,
+                                ),
+                          ),
+                          const SizedBox(height: 16),
+                          _ArticleMetaLine(
+                            sourceTitle: sourceTitle,
+                            iconUrl: widget.controller
+                                .sourceIconForArticle(article),
+                            author: article.author,
+                            publishedAt: article.publishedAt,
+                            readingTime:
+                                strings.estimatedReadingTime(readMinutes),
+                          ),
+                          const SizedBox(height: 26),
+                          _ReaderContent(
+                            article: article,
+                            compact: false,
+                            contentMode:
+                                widget.controller.settings.articleContentMode,
+                            strings: strings,
+                            onOpenUrl: widget.onOpenOriginal,
+                            onCompleteReadLater: widget.showReadLaterDone
+                                ? () => widget.controller
+                                    .completeReadLaterArticle(article)
+                                : null,
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -422,27 +440,37 @@ class _DesktopArticleReaderState extends State<_DesktopArticleReader> {
               ),
             ),
           ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            height: _toolbarHeight,
-            child: _DesktopReaderToolbar(
-              article: article,
-              sourceTitle: sourceTitle,
-              progress: _progress,
-              blurEnabled: widget.controller.settings.blurEffectsEnabled,
-              baseColor: toolbarBaseColor,
-              onBack: widget.onBack,
-              onReadToggle: () => widget.controller.toggleReadState(article),
-              onStarToggle: () => widget.controller.toggleStarred(article),
-              onReadLaterToggle: () =>
-                  widget.controller.toggleSavedForLater(article),
-              onOpenOriginal: () => widget.onOpenOriginal(article.url),
-            ),
+        ),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          height: _toolbarHeight,
+          child: _DesktopReaderToolbar(
+            article: article,
+            sourceTitle: sourceTitle,
+            progress: _progress,
+            blurEnabled: widget.controller.settings.blurEffectsEnabled,
+            baseColor: toolbarBaseColor,
+            onBack: widget.onBack,
+            onReadToggle: () => widget.controller.toggleReadState(article),
+            onStarToggle: () => widget.controller.toggleStarred(article),
+            onReadLaterToggle: () =>
+                widget.controller.toggleSavedForLater(article),
+            onOpenOriginal: () => widget.onOpenOriginal(article.url),
           ),
-        ],
-      ),
+        ),
+      ],
+    );
+
+    if (!widget.animateEntrance) {
+      return reader;
+    }
+
+    return MotionEntrance(
+      signature: 'desktop-${article.id}',
+      offset: const Offset(0.026, 0),
+      child: reader,
     );
   }
 

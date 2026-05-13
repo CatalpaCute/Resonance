@@ -15,6 +15,7 @@ class ArticleListPanel extends StatefulWidget {
     super.key,
     required this.controller,
     required this.compact,
+    this.animateEntrance = true,
     this.mobileRestyled = false,
     this.topContent,
     this.scrollController,
@@ -25,6 +26,7 @@ class ArticleListPanel extends StatefulWidget {
 
   final ReaderController controller;
   final bool compact;
+  final bool animateEntrance;
   final bool mobileRestyled;
   final Widget? topContent;
   final ScrollController? scrollController;
@@ -365,6 +367,10 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
         ],
       ),
     );
+
+    if (!widget.animateEntrance) {
+      return content;
+    }
 
     return MotionEntrance(
       signature: <String>[

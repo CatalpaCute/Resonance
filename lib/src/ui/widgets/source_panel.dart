@@ -432,18 +432,33 @@ class CompactSourceFilterHeader extends StatelessWidget {
                         icon: const Icon(Icons.refresh_rounded, size: 16),
                         label: Text(strings.refreshAll),
                       ),
-                      FilterChip(
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        visualDensity: VisualDensity.compact,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 10,
+                      OutlinedButton(
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 18,
+                            vertical: 10,
+                          ),
+                          backgroundColor: controller.showOnlyUnread
+                              ? palette.primarySoft
+                              : Colors.transparent,
+                          foregroundColor: controller.showOnlyUnread
+                              ? theme.colorScheme.primary
+                              : null,
+                          side: BorderSide(
+                            color: controller.showOnlyUnread
+                                ? theme.colorScheme.primary.withValues(
+                                    alpha: 0.24,
+                                  )
+                                : palette.border,
+                          ),
                         ),
-                        label: Text(strings.unreadOnly),
-                        selected: controller.showOnlyUnread,
-                        onSelected: (bool value) {
-                          controller.setShowOnlyUnread(value);
+                        onPressed: () {
+                          controller.setShowOnlyUnread(
+                            !controller.showOnlyUnread,
+                          );
                         },
+                        child: Text(strings.unreadOnly),
                       ),
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(

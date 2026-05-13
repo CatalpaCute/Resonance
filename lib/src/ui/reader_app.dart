@@ -126,12 +126,15 @@ class _ReaderHomeState extends State<ReaderHome> {
   final FocusNode _mobileSearchFocusNode = FocusNode();
   final TextEditingController _mobileSearchController = TextEditingController();
   final ScrollController _compactHomeListController = ScrollController();
+  final ScrollController _compactBookmarksListController = ScrollController();
+  final ScrollController _mobileSearchResultsController = ScrollController();
   late final PageController _phonePageController;
 
   bool _compactFilterExpanded = false;
   bool _compactRailCollapsed = true;
   bool _mobileSearchActive = false;
   int _mobileSearchSelectedIndex = -1;
+  String _lastMobileSearchQuery = '';
   bool _desktopSettingsOpen = false;
   String? _settingsSubPageTitle;
   bool _lastCompactLayout = true;
@@ -173,6 +176,8 @@ class _ReaderHomeState extends State<ReaderHome> {
     _mobileSearchController.dispose();
     _mobileSearchFocusNode.dispose();
     _compactHomeListController.dispose();
+    _compactBookmarksListController.dispose();
+    _mobileSearchResultsController.dispose();
     _searchFocusNode.dispose();
     super.dispose();
   }
@@ -195,10 +200,16 @@ class _ReaderHomeState extends State<ReaderHome> {
     if (!_mobileSearchActive || !mounted) {
       return;
     }
+    final bool queryChanged =
+        _mobileSearchController.text != _lastMobileSearchQuery;
+    _lastMobileSearchQuery = _mobileSearchController.text;
     setState(() {
       _mobileSearchSelectedIndex =
           _mobileSearchEntriesForCurrentPage().isEmpty ? -1 : 0;
     });
+    if (queryChanged && _mobileSearchResultsController.hasClients) {
+      _mobileSearchResultsController.jumpTo(0);
+    }
   }
 
   bool _handleMobileSearchKeyboard(KeyEvent event) {
@@ -260,6 +271,7 @@ class _ReaderHomeState extends State<ReaderHome> {
     setState(() {
       _mobileSearchActive = false;
       _mobileSearchSelectedIndex = -1;
+      _lastMobileSearchQuery = '';
     });
     _mobileSearchController.clear();
   }
@@ -1002,6 +1014,7 @@ class _ReaderHomeState extends State<ReaderHome> {
           results: _mobileSearchResultsForCurrentPage(),
           entries: _mobileSearchEntriesForCurrentPage(),
           query: _mobileSearchController.text,
+          scrollController: _mobileSearchResultsController,
           onSourceSelected: _openSearchSource,
           onArticleSelected: _openSearchArticle,
         );
@@ -1014,6 +1027,7 @@ class _ReaderHomeState extends State<ReaderHome> {
         list: ArticleListPanel(
           controller: controller,
           compact: true,
+          animateEntrance: false,
           mobileRestyled: mobileRestyled,
           scrollController: _compactHomeListController,
           topContent: CompactSourceFilterHeader(
@@ -1030,6 +1044,7 @@ class _ReaderHomeState extends State<ReaderHome> {
         reader: ArticleReaderPanel(
           controller: controller,
           compact: true,
+          animateEntrance: false,
           onBack: controller.closeCompactReader,
         ),
       );
@@ -1041,6 +1056,7 @@ class _ReaderHomeState extends State<ReaderHome> {
           results: _mobileSearchResultsForCurrentPage(),
           entries: _mobileSearchEntriesForCurrentPage(),
           query: _mobileSearchController.text,
+          scrollController: _mobileSearchResultsController,
           onSourceSelected: _openSearchSource,
           onArticleSelected: _openSearchArticle,
         );
@@ -1052,6 +1068,7 @@ class _ReaderHomeState extends State<ReaderHome> {
         topContent: mobileRestyled
             ? CompactBookmarkFilterHeader(controller: controller)
             : null,
+        scrollController: _compactBookmarksListController,
       );
     }
     return ArticleListPanel(
@@ -1105,6 +1122,7 @@ class _ReaderHomeState extends State<ReaderHome> {
         results: _mobileSearchResultsForCurrentPage(),
         entries: _mobileSearchEntriesForCurrentPage(),
         query: _mobileSearchController.text,
+        scrollController: _mobileSearchResultsController,
         onSourceSelected: _openSearchSource,
         onArticleSelected: _openSearchArticle,
       );
@@ -1143,6 +1161,7 @@ class _ReaderHomeState extends State<ReaderHome> {
         results: _mobileSearchResultsForCurrentPage(),
         entries: _mobileSearchEntriesForCurrentPage(),
         query: _mobileSearchController.text,
+        scrollController: _mobileSearchResultsController,
         onSourceSelected: _openSearchSource,
         onArticleSelected: _openSearchArticle,
       );
@@ -1161,6 +1180,7 @@ class _ReaderHomeState extends State<ReaderHome> {
       topContent: mobileRestyled
           ? CompactBookmarkFilterHeader(controller: controller)
           : null,
+      scrollController: _compactBookmarksListController,
     );
   }
 
@@ -1239,6 +1259,11 @@ class _ReaderHomeState extends State<ReaderHome> {
     if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
       return true;
     }
+    if (_mobileSearchActive &&
+        (controller.currentRoute == AppRouteId.allArticles ||
+            controller.currentRoute == AppRouteId.bookmarks)) {
+      return true;
+    }
     if (controller.currentRoute == AppRouteId.allArticles &&
         _compactFilterExpanded) {
       return true;
@@ -1259,6 +1284,13 @@ class _ReaderHomeState extends State<ReaderHome> {
   Future<void> _handleCompactBack() async {
     if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
       Navigator.of(context).pop();
+      return;
+    }
+
+    if (_mobileSearchActive &&
+        (controller.currentRoute == AppRouteId.allArticles ||
+            controller.currentRoute == AppRouteId.bookmarks)) {
+      _closeMobileSearch();
       return;
     }
 
@@ -1331,7 +1363,8 @@ class _ReaderHomeState extends State<ReaderHome> {
 
     if (_mobileSearchActive &&
         route != AppRouteId.allArticles &&
-        route != AppRouteId.bookmarks) {
+        route != AppRouteId.bookmarks &&
+        route != AppRouteId.readerDetail) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) {
           _closeMobileSearch();
@@ -1391,17 +1424,7 @@ class _CompactReaderDeck extends StatelessWidget {
             ignoring: showReader,
             child: TickerMode(
               enabled: !showReader,
-              child: AnimatedSlide(
-                duration: duration,
-                curve: kFluidMotionCurve,
-                offset: showReader ? const Offset(-0.025, 0) : Offset.zero,
-                child: AnimatedOpacity(
-                  duration: duration,
-                  curve: kFluidMotionCurve,
-                  opacity: showReader ? 0 : 1,
-                  child: list,
-                ),
-              ),
+              child: list,
             ),
           ),
         ),
@@ -1411,22 +1434,17 @@ class _CompactReaderDeck extends StatelessWidget {
             child: AnimatedSlide(
               duration: duration,
               curve: kFluidMotionCurve,
-              offset: showReader ? Offset.zero : const Offset(0.075, 0),
-              child: AnimatedOpacity(
-                duration: duration,
-                curve: kFluidMotionCurve,
-                opacity: showReader ? 1 : 0,
-                child: ColoredBox(
-                  color: _mobilePageBackgroundOf(context),
-                  child: TickerMode(
-                    enabled: showReader,
-                    child: reader,
-                  ),
+              offset: showReader ? Offset.zero : const Offset(1.02, 0),
+              child: ColoredBox(
+                color: _mobilePageBackgroundOf(context),
+                child: TickerMode(
+                  enabled: showReader,
+                  child: reader,
                 ),
+                  ),
               ),
             ),
           ),
-        ),
       ],
     );
   }
@@ -1578,189 +1596,232 @@ class _ShellHeader extends StatelessWidget {
           bottom: BorderSide(color: palette.divider),
         ),
       ),
-      child: Row(
+      child: Stack(
         children: <Widget>[
-          if (compact)
-            Padding(
-              padding: EdgeInsets.only(
-                left: mobileRestyled ? 10 : 8,
-                right: mobileRestyled ? 6 : 4,
-              ),
-              // In the reader route this slot becomes page back; otherwise the
-              // compact rail keeps behaving like desktop with an in-place
-              // sidebar toggle instead of opening a second drawer layer.
-              child: compactReading || compactSettings
-                  ? IconButton(
-                      onPressed: compactReading
-                          ? controller.closeCompactReader
-                          : onSettingsBack,
-                      icon: const Icon(Icons.arrow_back_rounded),
-                      splashRadius: 18,
-                      tooltip:
-                          MaterialLocalizations.of(context).backButtonTooltip,
-                    )
-                  : showSidebarToggle
-                      ? _HeaderSidebarToggle(
-                          collapsed: sidebarCollapsed,
-                          onTap: onSidebarToggle,
-                        )
-                      : showMenuButton
-                          ? IconButton(
-                              onPressed: onMenuPressed,
-                              icon: const Icon(Icons.menu_rounded),
-                              splashRadius: 18,
-                              tooltip: strings.subscriptionManagement,
-                            )
-                          : SizedBox(width: mobileRestyled ? 6 : 4),
-            )
-          else
-            const SizedBox(width: 12),
-          if (!compact)
-            Padding(
-              padding: const EdgeInsets.only(right: 10),
-              child: Row(
-                children: <Widget>[
-                  const _BrandMark(compact: false),
-                  if (showSidebarToggle) ...<Widget>[
-                    const SizedBox(width: 10),
-                    _HeaderSidebarToggle(
-                      collapsed: sidebarCollapsed,
-                      onTap: onSidebarToggle,
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          Expanded(
-            child: compact
-                ? AnimatedSwitcher(
-                    duration: _shellMotionDuration,
-                    switchInCurve: _shellMotionCurve,
-                    switchOutCurve: _shellMotionCurve,
-                    transitionBuilder: (Widget child, Animation<double> anim) {
-                      return FadeTransition(
-                        opacity: anim,
-                        child: SlideTransition(
-                          position: Tween<Offset>(
-                            begin: const Offset(0.04, 0),
-                            end: Offset.zero,
-                          ).animate(anim),
-                          child: child,
+          AnimatedSlide(
+            duration: _shellMotionDuration,
+            curve: _shellMotionCurve,
+            offset: compact && mobileSearchActive && mobileSearchEnabled
+                ? const Offset(0.08, 0)
+                : Offset.zero,
+            child: AnimatedOpacity(
+              duration: _shellMotionDuration,
+              curve: _shellMotionCurve,
+              opacity:
+                  compact && mobileSearchActive && mobileSearchEnabled ? 0 : 1,
+              child: IgnorePointer(
+                ignoring: compact && mobileSearchActive && mobileSearchEnabled,
+                child: Row(
+                  children: <Widget>[
+                    if (compact)
+                      Padding(
+                        padding: EdgeInsets.only(
+                          left: mobileRestyled ? 10 : 8,
+                          right: mobileRestyled ? 6 : 4,
                         ),
-                      );
-                    },
-                    child: mobileSearchActive && mobileSearchEnabled
-                        ? _MobileHeaderSearchField(
-                            key: const ValueKey<String>('mobile-search'),
-                            controller: mobileSearchController,
-                            focusNode: mobileSearchFocusNode,
-                            hintText: strings.searchArticlesOrSources,
-                            onClearOrClose: onMobileSearchClearOrClose,
-                          )
-                        : compactReading
-                            ? _MobileReaderHeaderTitle(
-                                key: const ValueKey<String>('mobile-reader'),
-                                controller: controller,
-                                article: selectedArticle,
-                                strings: strings,
-                                mobileRestyled: mobileRestyled,
+                        // In the reader route this slot becomes page back; otherwise the
+                        // compact rail keeps behaving like desktop with an in-place
+                        // sidebar toggle instead of opening a second drawer layer.
+                        child: compactReading || compactSettings
+                            ? IconButton(
+                                onPressed: compactReading
+                                    ? controller.closeCompactReader
+                                    : onSettingsBack,
+                                icon: const Icon(Icons.arrow_back_rounded),
+                                splashRadius: 18,
+                                tooltip: MaterialLocalizations.of(context)
+                                    .backButtonTooltip,
                               )
-                            : compactSettings
-                                ? _MobileHeaderTitle(
-                                    key: const ValueKey<String>(
-                                      'mobile-settings',
-                                    ),
-                                    controller: controller,
-                                    strings: strings,
-                                    mobileRestyled: mobileRestyled,
-                                    routeTitleOverride: settingsSubPageTitle,
+                            : showSidebarToggle
+                                ? _HeaderSidebarToggle(
+                                    collapsed: sidebarCollapsed,
+                                    onTap: onSidebarToggle,
                                   )
-                                : _MobileHeaderTitle(
-                                    key: const ValueKey<String>(
-                                      'mobile-title',
-                                    ),
-                                    controller: controller,
-                                    strings: strings,
-                                    mobileRestyled: mobileRestyled,
-                                    searchEnabled: mobileSearchEnabled,
-                                    onSearchOpen: onMobileSearchOpen,
+                                : showMenuButton
+                                    ? IconButton(
+                                        onPressed: onMenuPressed,
+                                        icon: const Icon(Icons.menu_rounded),
+                                        splashRadius: 18,
+                                        tooltip: strings.subscriptionManagement,
+                                      )
+                                    : SizedBox(width: mobileRestyled ? 6 : 4),
+                      )
+                    else
+                      const SizedBox(width: 12),
+                    if (!compact)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 10),
+                        child: Row(
+                          children: <Widget>[
+                            const _BrandMark(compact: false),
+                            if (showSidebarToggle) ...<Widget>[
+                              const SizedBox(width: 10),
+                              _HeaderSidebarToggle(
+                                collapsed: sidebarCollapsed,
+                                onTap: onSidebarToggle,
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    Expanded(
+                      child: compact
+                          ? AnimatedSwitcher(
+                              duration: _shellMotionDuration,
+                              switchInCurve: _shellMotionCurve,
+                              switchOutCurve: _shellMotionCurve,
+                              transitionBuilder:
+                                  (Widget child, Animation<double> anim) {
+                                return FadeTransition(
+                                  opacity: anim,
+                                  child: SlideTransition(
+                                    position: Tween<Offset>(
+                                      begin: const Offset(0.04, 0),
+                                      end: Offset.zero,
+                                    ).animate(anim),
+                                    child: child,
                                   ),
-                  )
-                : Stack(
-                    alignment: Alignment.center,
-                    children: <Widget>[
-                      Positioned.fill(
-                        child: DragToMoveArea(
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: Row(
-                              children: <Widget>[
-                                Text(
-                                  strings.appName,
-                                  style: Theme.of(context)
-                                      .textTheme
-                                      .titleSmall
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                ),
-                                const SizedBox(width: 16),
-                                Flexible(
-                                  child: Text(
-                                    controller.currentRouteTitle,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(
-                                          color: palette.secondaryText,
+                                );
+                              },
+                              child: compactReading
+                                  ? _MobileReaderHeaderTitle(
+                                      key: const ValueKey<String>(
+                                          'mobile-reader'),
+                                      controller: controller,
+                                      article: selectedArticle,
+                                      strings: strings,
+                                      mobileRestyled: mobileRestyled,
+                                    )
+                                  : compactSettings
+                                      ? _MobileHeaderTitle(
+                                          key: const ValueKey<String>(
+                                            'mobile-settings',
+                                          ),
+                                          controller: controller,
+                                          strings: strings,
+                                          mobileRestyled: mobileRestyled,
+                                          routeTitleOverride:
+                                              settingsSubPageTitle,
+                                        )
+                                      : _MobileHeaderTitle(
+                                          key: const ValueKey<String>(
+                                            'mobile-title',
+                                          ),
+                                          controller: controller,
+                                          strings: strings,
+                                          mobileRestyled: mobileRestyled,
+                                          searchEnabled: mobileSearchEnabled,
+                                          onSearchOpen: onMobileSearchOpen,
                                         ),
+                            )
+                          : Stack(
+                              alignment: Alignment.center,
+                              children: <Widget>[
+                                Positioned.fill(
+                                  child: DragToMoveArea(
+                                    child: Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: Row(
+                                        children: <Widget>[
+                                          Text(
+                                            strings.appName,
+                                            style: Theme.of(context)
+                                                .textTheme
+                                                .titleSmall
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                          const SizedBox(width: 16),
+                                          Flexible(
+                                            child: Text(
+                                              controller.currentRouteTitle,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: Theme.of(context)
+                                                  .textTheme
+                                                  .bodySmall
+                                                  ?.copyWith(
+                                                    color:
+                                                        palette.secondaryText,
+                                                  ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
+                                ),
+                                _DesktopSearchField(
+                                  controller: controller,
+                                  hintText: strings.searchArticlesOrSources,
+                                  focusNode: searchFocusNode,
+                                  resultsForQuery: desktopSearchResultsForQuery,
                                 ),
                               ],
                             ),
-                          ),
-                        ),
-                      ),
-                      _DesktopSearchField(
-                        controller: controller,
-                        hintText: strings.searchArticlesOrSources,
-                        focusNode: searchFocusNode,
-                        resultsForQuery: desktopSearchResultsForQuery,
-                      ),
-                    ],
-                  ),
+                    ),
+                    if (compact && !compactReading)
+                      AnimatedSwitcher(
+                        duration: _shellMotionDuration,
+                        switchInCurve: _shellMotionCurve,
+                        switchOutCurve: _shellMotionCurve,
+                        child: mobileSearchActive && mobileSearchEnabled
+                            ? const SizedBox(
+                                key: ValueKey<String>(
+                                    'mobile-search-stat-hidden'),
+                                width: 12,
+                              )
+                            : Padding(
+                                key: const ValueKey<String>('mobile-stat'),
+                                padding: EdgeInsets.only(
+                                  right: mobileRestyled ? 12 : 10,
+                                ),
+                                child: _CompactStat(
+                                  mobileRestyled: mobileRestyled,
+                                  text: strings.unreadCountStat(
+                                    controller.totalUnreadCount,
+                                  ),
+                                ),
+                              ),
+                      )
+                    else if (compact && compactReading)
+                      const SizedBox(width: 12),
+                    if (_useWindowsWindowChrome && !compact)
+                      _WindowActions(brightness: Theme.of(context).brightness)
+                    else if (!compact)
+                      const SizedBox(width: 10),
+                  ],
+                ),
+              ),
+            ),
           ),
-          if (compact && !compactReading)
-            AnimatedSwitcher(
-              duration: _shellMotionDuration,
-              switchInCurve: _shellMotionCurve,
-              switchOutCurve: _shellMotionCurve,
-              child: mobileSearchActive && mobileSearchEnabled
-                  ? const SizedBox(
-                      key: ValueKey<String>('mobile-search-stat-hidden'),
-                      width: 12,
-                    )
-                  : Padding(
-                      key: const ValueKey<String>('mobile-stat'),
-                      padding: EdgeInsets.only(
-                        right: mobileRestyled ? 12 : 10,
-                      ),
-                      child: _CompactStat(
-                        mobileRestyled: mobileRestyled,
-                        text: strings.unreadCountStat(
-                          controller.totalUnreadCount,
-                        ),
+          if (compact && mobileSearchEnabled)
+            Positioned.fill(
+              child: IgnorePointer(
+                ignoring: !mobileSearchActive,
+                child: AnimatedSlide(
+                  duration: _shellMotionDuration,
+                  curve: _shellMotionCurve,
+                  offset:
+                      mobileSearchActive ? Offset.zero : const Offset(-0.04, 0),
+                  child: AnimatedOpacity(
+                    duration: _shellMotionDuration,
+                    curve: _shellMotionCurve,
+                    opacity: mobileSearchActive ? 1 : 0,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(24, 9, 24, 9),
+                      child: _MobileHeaderSearchField(
+                        controller: mobileSearchController,
+                        focusNode: mobileSearchFocusNode,
+                        hintText: strings.searchArticlesOrSources,
+                        onClearOrClose: onMobileSearchClearOrClose,
                       ),
                     ),
-            )
-          else if (compact && compactReading)
-            const SizedBox(width: 12),
-          if (_useWindowsWindowChrome && !compact)
-            _WindowActions(brightness: Theme.of(context).brightness)
-          else if (!compact)
-            const SizedBox(width: 10),
+                  ),
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -2285,6 +2346,7 @@ class _MobileSearchResultsPanel extends StatelessWidget {
     required this.results,
     required this.entries,
     required this.query,
+    required this.scrollController,
     required this.onSourceSelected,
     required this.onArticleSelected,
   });
@@ -2293,6 +2355,7 @@ class _MobileSearchResultsPanel extends StatelessWidget {
   final GlobalSearchResultSet results;
   final List<_SearchEntry> entries;
   final String query;
+  final ScrollController scrollController;
   final ValueChanged<FeedSource> onSourceSelected;
   final ValueChanged<Article> onArticleSelected;
 
@@ -2307,6 +2370,8 @@ class _MobileSearchResultsPanel extends StatelessWidget {
       signature: 'mobile-search-${results.query}',
       offset: const Offset(0, 0.018),
       child: ListView.separated(
+        controller: scrollController,
+        key: PageStorageKey<String>('mobile-search-results-${results.query}'),
         padding: const EdgeInsets.fromLTRB(10, 12, 10, 18),
         itemCount: entries.length,
         separatorBuilder: (_, __) => const SizedBox(height: 12),
@@ -3023,7 +3088,6 @@ String _formatSearchDate(DateTime dateTime) {
 
 class _MobileHeaderSearchField extends StatelessWidget {
   const _MobileHeaderSearchField({
-    super.key,
     required this.controller,
     required this.focusNode,
     required this.hintText,
