@@ -1,6 +1,9 @@
+import 'dart:math';
 import 'dart:ui';
 
+import 'package:file_selector/file_selector.dart';
 import 'package:flutter/foundation.dart';
+import 'package:image/image.dart' as img;
 
 import '../localization/app_language.dart';
 import '../localization/app_strings.dart';
@@ -9,6 +12,7 @@ import '../models/article.dart';
 import '../models/auto_refresh.dart';
 import '../models/feed_source.dart';
 import '../models/reader_settings.dart';
+import '../models/user_profile.dart';
 import '../services/auto_refresh_engine.dart';
 import '../services/json_store.dart';
 import '../services/rss_service.dart';
@@ -64,6 +68,8 @@ class ReaderController extends ChangeNotifier {
   bool _compactReaderOpen = false;
   AppRouteId _lastWorkspaceRoute = AppRouteId.allArticles;
   double _articleListPaneWidth = 360;
+  CurrentUserSession _currentUserSession = const CurrentUserSession.signedOut();
+  UserProfile? _currentUser;
   String? _errorMessage;
   String? _statusMessage;
   final Set<String> _refreshingFeedIds = <String>{};
@@ -80,6 +86,18 @@ class ReaderController extends ChangeNotifier {
   bool get isBusy => _isBusy;
   bool get compactReaderOpen => _compactReaderOpen;
   double get articleListPaneWidth => _articleListPaneWidth;
+  bool get isSignedIn => _currentUserSession.isSignedIn;
+  UserProfile? get currentUser => _currentUser;
+  String get currentIdentityCodeDisplay =>
+      _currentUser?.identityCode ?? _currentUserSession.identityCode ?? '';
+  String get currentUserDisplayName {
+    final String displayName = _currentUser?.displayName.trim() ?? '';
+    if (displayName.isNotEmpty) {
+      return displayName;
+    }
+    return _strings.accountUnnamedUser;
+  }
+
   String? get errorMessage => _errorMessage;
   String? get statusMessage => _statusMessage;
   Locale? get appLocale => _settings.appLanguageMode.explicitLocale;
@@ -185,6 +203,7 @@ class ReaderController extends ChangeNotifier {
       _setArticles(persisted.articles, dirty: false);
       _setSettings(persisted.settings, dirty: false);
       _clearDirtyFlags();
+      await _loadUserState();
       _currentRoute = _settings.startupRoute;
       _lastWorkspaceRoute = _currentRoute;
       _activeSourceId = null;
@@ -246,6 +265,7 @@ class ReaderController extends ChangeNotifier {
     _setArticles(persisted.articles, dirty: false);
     _setSettings(persisted.settings, dirty: false);
     _clearDirtyFlags();
+    await _loadUserState();
 
     if (_activeSourceId != null && _feedById(_activeSourceId) == null) {
       _activeSourceId = null;
@@ -443,6 +463,11 @@ class ReaderController extends ChangeNotifier {
     await _persistSettings();
   }
 
+  Future<void> setAppearanceMode(AppearanceMode mode) async {
+    _setSettings(_settings.copyWith(appearanceMode: mode));
+    await _persistSettings();
+  }
+
   Future<void> setArticleListDensity(ArticleListDensity density) async {
     _setSettings(_settings.copyWith(articleListDensity: density));
     await _persistSettings();
@@ -461,6 +486,129 @@ class ReaderController extends ChangeNotifier {
   Future<void> setAppLanguageMode(AppLanguageMode mode) async {
     _setSettings(_settings.copyWith(appLanguageMode: mode));
     await _persistSettings();
+  }
+
+  Future<void> generateIdentityAndSignIn() async {
+    _errorMessage = null;
+    try {
+      final String identityCode = await _generateAvailableIdentityCode();
+      await _signInResolvedIdentityCode(
+        identityCode,
+        statusMessage: _strings.accountGeneratedAndSignedIn,
+      );
+    } on StateError catch (_) {
+      _errorMessage = _strings.accountIdentityCodeGenerationFailed;
+      notifyListeners();
+    } catch (error) {
+      _errorMessage = '$error';
+      notifyListeners();
+    }
+  }
+
+  Future<void> signInWithIdentityCode(String rawCode) async {
+    final String identityCode = rawCode.trim();
+    if (!isValidIdentityCode(identityCode)) {
+      _errorMessage = _strings.accountIdentityCodeInvalid;
+      notifyListeners();
+      return;
+    }
+
+    try {
+      await _signInResolvedIdentityCode(
+        identityCode,
+        statusMessage: _strings.accountSignedIn,
+      );
+    } catch (error) {
+      _errorMessage = '$error';
+      notifyListeners();
+    }
+  }
+
+  Future<void> signOutUser() async {
+    _errorMessage = null;
+    try {
+      _currentUserSession = const CurrentUserSession.signedOut();
+      _currentUser = null;
+      await _store.clearCurrentUserSession();
+      _statusMessage = _strings.accountSignedOut;
+    } catch (error) {
+      _errorMessage = '$error';
+    }
+    notifyListeners();
+  }
+
+  Future<void> updateUserDisplayName(String value) async {
+    final UserProfile? profile = _currentUser;
+    if (profile == null) {
+      return;
+    }
+
+    _errorMessage = null;
+    try {
+      final UserProfile nextProfile = profile.copyWith(
+        displayName: value.trim(),
+        updatedAt: DateTime.now(),
+      );
+      await _store.saveUserProfile(nextProfile);
+      _currentUser = nextProfile;
+      _statusMessage = _strings.accountDisplayNameUpdated;
+    } catch (error) {
+      _errorMessage = '$error';
+    }
+    notifyListeners();
+  }
+
+  Future<void> pickAndSaveUserAvatar() async {
+    final UserProfile? profile = _currentUser;
+    if (profile == null) {
+      return;
+    }
+    if (kIsWeb) {
+      _errorMessage = _strings.accountAvatarUnsupported;
+      notifyListeners();
+      return;
+    }
+
+    _errorMessage = null;
+    try {
+      final XFile? pickedFile = await openFile(
+        acceptedTypeGroups: <XTypeGroup>[
+          const XTypeGroup(
+            label: 'images',
+            extensions: <String>[
+              'jpg',
+              'jpeg',
+              'png',
+              'webp',
+              'bmp',
+              'gif',
+            ],
+          ),
+        ],
+      );
+      if (pickedFile == null) {
+        return;
+      }
+
+      final Uint8List avatarBytes =
+          _buildCenteredSquareAvatar(await pickedFile.readAsBytes());
+      final String avatarPath = await _store.saveUserAvatar(
+        profile.identityCode,
+        avatarBytes,
+      );
+      final UserProfile nextProfile = profile.copyWith(
+        avatarPath: avatarPath,
+        updatedAt: DateTime.now(),
+      );
+      await _store.saveUserProfile(nextProfile);
+      _currentUser = nextProfile;
+      _statusMessage = _strings.accountAvatarUpdated;
+    } on FormatException catch (_) {
+      _errorMessage = _strings.accountAvatarUnsupported;
+    } catch (error) {
+      _errorMessage = '$error';
+    }
+    notifyListeners();
   }
 
   void setArticleListPaneWidth(double width) {
@@ -803,6 +951,18 @@ class ReaderController extends ChangeNotifier {
     await selectArticle(article, openInReaderRoute: true);
   }
 
+  Future<void> _loadUserState() async {
+    _currentUserSession = await _store.loadCurrentUserSession();
+    final String? identityCode = _currentUserSession.identityCode;
+    if (identityCode == null || identityCode.isEmpty) {
+      _currentUser = null;
+      return;
+    }
+
+    _currentUser = await _store.loadUserProfile(identityCode) ??
+        await _createUserProfile(identityCode);
+  }
+
   // Keep read-heavy indexes in sync at mutation boundaries so UI getters stay cheap.
   void _setFeeds(List<FeedSource> feeds, {bool dirty = true}) {
     _feeds = feeds;
@@ -989,6 +1149,34 @@ class ReaderController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<String> _generateAvailableIdentityCode() async {
+    for (int attempt = 0; attempt < 20; attempt += 1) {
+      final String identityCode = generateIdentityCode();
+      final UserProfile? existing = await _store.loadUserProfile(identityCode);
+      if (existing == null) {
+        return identityCode;
+      }
+    }
+    throw StateError(_strings.accountIdentityCodeGenerationFailed);
+  }
+
+  Future<void> _signInResolvedIdentityCode(
+    String identityCode, {
+    required String statusMessage,
+  }) async {
+    _errorMessage = null;
+    final UserProfile profile = await _store.loadUserProfile(identityCode) ??
+        await _createUserProfile(identityCode);
+    final CurrentUserSession session = CurrentUserSession(
+      identityCode: identityCode,
+    );
+    await _store.saveCurrentUserSession(session);
+    _currentUserSession = session;
+    _currentUser = profile;
+    _statusMessage = statusMessage;
+    notifyListeners();
+  }
+
   Future<void> _runBusy(
     String status,
     Future<void> Function() action,
@@ -1021,5 +1209,33 @@ class ReaderController extends ChangeNotifier {
   String _makeId(String prefix) {
     final int micros = DateTime.now().microsecondsSinceEpoch;
     return '${prefix}_$micros';
+  }
+
+  Future<UserProfile> _createUserProfile(String identityCode) async {
+    final UserProfile profile = UserProfile.createEmpty(identityCode);
+    await _store.saveUserProfile(profile);
+    return profile;
+  }
+
+  Uint8List _buildCenteredSquareAvatar(Uint8List sourceBytes) {
+    final img.Image? decoded = img.decodeImage(sourceBytes);
+    if (decoded == null) {
+      throw FormatException(_strings.accountAvatarUnsupported);
+    }
+
+    final int squareSize = min(decoded.width, decoded.height);
+    final int cropX = ((decoded.width - squareSize) / 2).round();
+    final int cropY = ((decoded.height - squareSize) / 2).round();
+    final img.Image cropped = img.copyCrop(
+      decoded,
+      x: cropX,
+      y: cropY,
+      width: squareSize,
+      height: squareSize,
+    );
+    final img.Image resized = squareSize > 512
+        ? img.copyResize(cropped, width: 512, height: 512)
+        : cropped;
+    return Uint8List.fromList(img.encodeJpg(resized, quality: 88));
   }
 }

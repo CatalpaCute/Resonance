@@ -4,6 +4,7 @@ import '../../localization/app_strings.dart';
 import '../../models/app_route.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
+import 'user_avatar.dart';
 
 const Duration _sidebarAnimationDuration = Duration(milliseconds: 280);
 const Curve _sidebarAnimationCurve = Cubic(0.18, 0.92, 0.28, 1.0);
@@ -337,6 +338,12 @@ class _ProfileCard extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final AppStrings strings = context.strings;
+    final bool signedIn = controller.isSignedIn;
+    final String title =
+        signedIn ? controller.currentUserDisplayName : strings.localReader;
+    final String subtitle = signedIn
+        ? controller.currentIdentityCodeDisplay
+        : controller.startupSummary;
 
     return Material(
       color: Colors.transparent,
@@ -364,10 +371,17 @@ class _ProfileCard extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: <Widget>[
-                  _ProfileAvatar(
-                    avatar: avatar,
-                    fallbackIcon: Icons.settings_rounded,
-                  ),
+                  avatar ??
+                      UserAvatar(
+                        size: 28,
+                        avatarPath: controller.currentUser?.avatarPath,
+                        displayName:
+                            signedIn ? controller.currentUserDisplayName : null,
+                        icon: signedIn
+                            ? Icons.person_rounded
+                            : Icons.settings_rounded,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                   _SidebarReveal(
                     visible: !collapsed,
                     maxWidth: 110,
@@ -380,7 +394,7 @@ class _ProfileCard extends StatelessWidget {
                           mainAxisSize: MainAxisSize.min,
                           children: <Widget>[
                             Text(
-                              strings.localReader,
+                              title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodyMedium?.copyWith(
@@ -389,7 +403,7 @@ class _ProfileCard extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              controller.startupSummary,
+                              subtitle,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: theme.textTheme.bodySmall?.copyWith(
@@ -407,37 +421,6 @@ class _ProfileCard extends StatelessWidget {
           ),
         ),
       ),
-    );
-  }
-}
-
-class _ProfileAvatar extends StatelessWidget {
-  const _ProfileAvatar({
-    required this.fallbackIcon,
-    this.avatar,
-  });
-
-  final IconData fallbackIcon;
-  final Widget? avatar;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    return Container(
-      width: 28,
-      height: 28,
-      decoration: BoxDecoration(
-        color: theme.colorScheme.primary.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      clipBehavior: Clip.antiAlias,
-      alignment: Alignment.center,
-      child: avatar ??
-          Icon(
-            fallbackIcon,
-            size: 17,
-            color: theme.colorScheme.primary,
-          ),
     );
   }
 }

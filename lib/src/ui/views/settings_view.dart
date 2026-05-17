@@ -10,6 +10,7 @@ import '../../localization/app_strings.dart';
 import '../../models/reader_settings.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
+import 'account_settings_view.dart';
 import '../widgets/desktop_smooth_scroll.dart';
 
 const double _settingsWideBreakpoint = 980;
@@ -283,6 +284,10 @@ class SettingsViewState extends State<SettingsView> {
   }) {
     switch (category) {
       case _SettingsCategory.syncAccount:
+        return AccountSettingsView(
+          controller: controller,
+          wideLayout: wideLayout,
+        );
       case _SettingsCategory.ai:
         return _PlaceholderSettingsCategory(category: category);
       case _SettingsCategory.autoRefreshNotifications:
@@ -317,39 +322,31 @@ class SettingsViewState extends State<SettingsView> {
         _SettingsFlatSection(
           title: strings.subscriptionNotificationModeTitle,
           subtitle: strings.subscriptionNotificationModeHint,
-          child: SegmentedButton<SubscriptionNotificationMode>(
+          child: _SettingsChoiceBar<SubscriptionNotificationMode>(
             direction: compact ? Axis.vertical : Axis.horizontal,
-            segments: <ButtonSegment<SubscriptionNotificationMode>>[
-              ButtonSegment<SubscriptionNotificationMode>(
+            value: controller.settings.subscriptionNotificationMode,
+            options: <_SettingsChoiceOption<SubscriptionNotificationMode>>[
+              _SettingsChoiceOption<SubscriptionNotificationMode>(
                 value: SubscriptionNotificationMode.sourceSummary,
-                label: Text(
-                  strings.subscriptionNotificationModeLabel(
-                    SubscriptionNotificationMode.sourceSummary,
-                  ),
+                label: strings.subscriptionNotificationModeLabel(
+                  SubscriptionNotificationMode.sourceSummary,
                 ),
               ),
-              ButtonSegment<SubscriptionNotificationMode>(
+              _SettingsChoiceOption<SubscriptionNotificationMode>(
                 value: SubscriptionNotificationMode.perArticle,
-                label: Text(
-                  strings.subscriptionNotificationModeLabel(
-                    SubscriptionNotificationMode.perArticle,
-                  ),
+                label: strings.subscriptionNotificationModeLabel(
+                  SubscriptionNotificationMode.perArticle,
                 ),
               ),
-              ButtonSegment<SubscriptionNotificationMode>(
+              _SettingsChoiceOption<SubscriptionNotificationMode>(
                 value: SubscriptionNotificationMode.minimal,
-                label: Text(
-                  strings.subscriptionNotificationModeLabel(
-                    SubscriptionNotificationMode.minimal,
-                  ),
+                label: strings.subscriptionNotificationModeLabel(
+                  SubscriptionNotificationMode.minimal,
                 ),
               ),
             ],
-            selected: <SubscriptionNotificationMode>{
-              controller.settings.subscriptionNotificationMode,
-            },
-            onSelectionChanged: (Set<SubscriptionNotificationMode> values) {
-              controller.setSubscriptionNotificationMode(values.first);
+            onChanged: (SubscriptionNotificationMode value) {
+              controller.setSubscriptionNotificationMode(value);
             },
           ),
         ),
@@ -369,45 +366,39 @@ class SettingsViewState extends State<SettingsView> {
         _buildStartupSection(context, compact: compact),
         _SettingsFlatSection(
           title: strings.visualTheme,
-          child: Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: AppTheme.themeIds.map((String id) {
-              final bool selected = controller.settings.themeId == id;
-              return ChoiceChip(
-                label: Text(AppTheme.displayName(id)),
-                selected: selected,
-                onSelected: (_) {
-                  controller.setThemeId(id);
-                },
-              );
-            }).toList(),
+          subtitle: strings.visualThemeHint,
+          child: _ThemePresetSelector(
+            wideLayout: wideLayout,
+            appearanceMode: controller.settings.appearanceMode,
+            selectedThemeId: controller.settings.themeId,
+            onAppearanceModeChanged: (AppearanceMode value) {
+              controller.setAppearanceMode(value);
+            },
+            onThemeSelected: (String value) {
+              controller.setThemeId(value);
+            },
           ),
         ),
         _SettingsFlatSection(
           title: strings.articleDisplayMode,
           subtitle: strings.articleDisplayModeHint,
-          child: SegmentedButton<ArticleContentMode>(
+          child: _SettingsChoiceBar<ArticleContentMode>(
             direction: compact ? Axis.vertical : Axis.horizontal,
-            segments: <ButtonSegment<ArticleContentMode>>[
-              ButtonSegment<ArticleContentMode>(
+            value: controller.settings.articleContentMode,
+            options: <_SettingsChoiceOption<ArticleContentMode>>[
+              _SettingsChoiceOption<ArticleContentMode>(
                 value: ArticleContentMode.rich,
-                label: Text(
-                  strings.articleContentModeLabel(ArticleContentMode.rich),
-                ),
+                label: strings.articleContentModeLabel(ArticleContentMode.rich),
               ),
-              ButtonSegment<ArticleContentMode>(
+              _SettingsChoiceOption<ArticleContentMode>(
                 value: ArticleContentMode.textOnly,
-                label: Text(
-                  strings.articleContentModeLabel(ArticleContentMode.textOnly),
+                label: strings.articleContentModeLabel(
+                  ArticleContentMode.textOnly,
                 ),
               ),
             ],
-            selected: <ArticleContentMode>{
-              controller.settings.articleContentMode,
-            },
-            onSelectionChanged: (Set<ArticleContentMode> values) {
-              controller.setArticleContentMode(values.first);
+            onChanged: (ArticleContentMode value) {
+              controller.setArticleContentMode(value);
             },
           ),
         ),
@@ -416,31 +407,25 @@ class SettingsViewState extends State<SettingsView> {
           _SettingsFlatSection(
             title: strings.mobileWorkspaceLayout,
             subtitle: strings.mobileWorkspaceLayoutHint,
-            child: SegmentedButton<MobileWorkspaceMode>(
+            child: _SettingsChoiceBar<MobileWorkspaceMode>(
               direction: Axis.vertical,
-              segments: <ButtonSegment<MobileWorkspaceMode>>[
-                ButtonSegment<MobileWorkspaceMode>(
+              value: controller.settings.mobileWorkspaceMode,
+              options: <_SettingsChoiceOption<MobileWorkspaceMode>>[
+                _SettingsChoiceOption<MobileWorkspaceMode>(
                   value: MobileWorkspaceMode.singlePane,
-                  label: Text(
-                    strings.mobileWorkspaceModeLabel(
-                      MobileWorkspaceMode.singlePane,
-                    ),
+                  label: strings.mobileWorkspaceModeLabel(
+                    MobileWorkspaceMode.singlePane,
                   ),
                 ),
-                ButtonSegment<MobileWorkspaceMode>(
+                _SettingsChoiceOption<MobileWorkspaceMode>(
                   value: MobileWorkspaceMode.multiPane,
-                  label: Text(
-                    strings.mobileWorkspaceModeLabel(
-                      MobileWorkspaceMode.multiPane,
-                    ),
+                  label: strings.mobileWorkspaceModeLabel(
+                    MobileWorkspaceMode.multiPane,
                   ),
                 ),
               ],
-              selected: <MobileWorkspaceMode>{
-                controller.settings.mobileWorkspaceMode,
-              },
-              onSelectionChanged: (Set<MobileWorkspaceMode> values) {
-                controller.setMobileWorkspaceMode(values.first);
+              onChanged: (MobileWorkspaceMode value) {
+                controller.setMobileWorkspaceMode(value);
               },
             ),
           ),
@@ -449,53 +434,43 @@ class SettingsViewState extends State<SettingsView> {
           _SettingsFlatSection(
             title: strings.desktopWorkspaceLayout,
             subtitle: strings.desktopWorkspaceLayoutHint,
-            child: SegmentedButton<DesktopWorkspaceMode>(
-              segments: <ButtonSegment<DesktopWorkspaceMode>>[
-                ButtonSegment<DesktopWorkspaceMode>(
+            child: _SettingsChoiceBar<DesktopWorkspaceMode>(
+              value: controller.settings.desktopWorkspaceMode,
+              options: <_SettingsChoiceOption<DesktopWorkspaceMode>>[
+                _SettingsChoiceOption<DesktopWorkspaceMode>(
                   value: DesktopWorkspaceMode.threePane,
-                  label: Text(
-                    strings.desktopWorkspaceModeLabel(
-                      DesktopWorkspaceMode.threePane,
-                    ),
+                  label: strings.desktopWorkspaceModeLabel(
+                    DesktopWorkspaceMode.threePane,
                   ),
                 ),
-                ButtonSegment<DesktopWorkspaceMode>(
+                _SettingsChoiceOption<DesktopWorkspaceMode>(
                   value: DesktopWorkspaceMode.focusedReader,
-                  label: Text(
-                    strings.desktopWorkspaceModeLabel(
-                      DesktopWorkspaceMode.focusedReader,
-                    ),
+                  label: strings.desktopWorkspaceModeLabel(
+                    DesktopWorkspaceMode.focusedReader,
                   ),
                 ),
               ],
-              selected: <DesktopWorkspaceMode>{
-                controller.settings.desktopWorkspaceMode,
-              },
-              onSelectionChanged: (Set<DesktopWorkspaceMode> values) {
-                controller.setDesktopWorkspaceMode(values.first);
+              onChanged: (DesktopWorkspaceMode value) {
+                controller.setDesktopWorkspaceMode(value);
               },
             ),
           ),
           _SettingsFlatSection(
             title: strings.desktopContentSurface,
             subtitle: strings.desktopContentSurfaceHint,
-            child: SegmentedButton<DesktopContentSurfaceMode>(
-              segments: DesktopContentSurfaceMode.values
+            child: _SettingsChoiceBar<DesktopContentSurfaceMode>(
+              value: controller.settings.desktopContentSurfaceMode,
+              options: DesktopContentSurfaceMode.values
                   .map(
                     (DesktopContentSurfaceMode mode) =>
-                        ButtonSegment<DesktopContentSurfaceMode>(
+                        _SettingsChoiceOption<DesktopContentSurfaceMode>(
                       value: mode,
-                      label: Text(
-                        strings.desktopContentSurfaceModeLabel(mode),
-                      ),
+                      label: strings.desktopContentSurfaceModeLabel(mode),
                     ),
                   )
                   .toList(),
-              selected: <DesktopContentSurfaceMode>{
-                controller.settings.desktopContentSurfaceMode,
-              },
-              onSelectionChanged: (Set<DesktopContentSurfaceMode> values) {
-                controller.setDesktopContentSurfaceMode(values.first);
+              onChanged: (DesktopContentSurfaceMode value) {
+                controller.setDesktopContentSurfaceMode(value);
               },
             ),
           ),
@@ -528,51 +503,44 @@ class SettingsViewState extends State<SettingsView> {
         _SettingsFlatSection(
           title: strings.interfaceLanguage,
           subtitle: strings.interfaceLanguageHint,
-          child: DropdownButtonFormField<AppLanguageMode>(
-            initialValue: controller.settings.appLanguageMode,
-            decoration: const InputDecoration(
-              border: OutlineInputBorder(),
-            ),
-            items: AppLanguageMode.values.map((AppLanguageMode mode) {
-              return DropdownMenuItem<AppLanguageMode>(
-                value: mode,
-                child: Text(strings.languageModeLabel(mode)),
-              );
-            }).toList(),
-            onChanged: (AppLanguageMode? value) {
-              if (value != null) {
-                controller.setAppLanguageMode(value);
-              }
+          child: _SettingsChoiceBar<AppLanguageMode>(
+            direction: compact ? Axis.vertical : Axis.horizontal,
+            value: controller.settings.appLanguageMode,
+            options: AppLanguageMode.values
+                .map(
+                  (AppLanguageMode mode) =>
+                      _SettingsChoiceOption<AppLanguageMode>(
+                    value: mode,
+                    label: strings.languageModeLabel(mode),
+                  ),
+                )
+                .toList(),
+            onChanged: (AppLanguageMode value) {
+              controller.setAppLanguageMode(value);
             },
           ),
         ),
         _SettingsFlatSection(
           title: strings.readingDensity,
-          child: SegmentedButton<ArticleListDensity>(
+          child: _SettingsChoiceBar<ArticleListDensity>(
             direction: compact ? Axis.vertical : Axis.horizontal,
-            segments: <ButtonSegment<ArticleListDensity>>[
-              ButtonSegment<ArticleListDensity>(
+            value: controller.settings.articleListDensity,
+            options: <_SettingsChoiceOption<ArticleListDensity>>[
+              _SettingsChoiceOption<ArticleListDensity>(
                 value: ArticleListDensity.comfortable,
-                label: Text(
-                  strings.articleDensityLabel(
-                    ArticleListDensity.comfortable,
-                  ),
+                label: strings.articleDensityLabel(
+                  ArticleListDensity.comfortable,
                 ),
               ),
-              ButtonSegment<ArticleListDensity>(
+              _SettingsChoiceOption<ArticleListDensity>(
                 value: ArticleListDensity.compact,
-                label: Text(
-                  strings.articleDensityLabel(
-                    ArticleListDensity.compact,
-                  ),
+                label: strings.articleDensityLabel(
+                  ArticleListDensity.compact,
                 ),
               ),
             ],
-            selected: <ArticleListDensity>{
-              controller.settings.articleListDensity,
-            },
-            onSelectionChanged: (Set<ArticleListDensity> values) {
-              controller.setArticleListDensity(values.first);
+            onChanged: (ArticleListDensity value) {
+              controller.setArticleListDensity(value);
             },
           ),
         ),
@@ -1121,6 +1089,411 @@ class _GitHubMarkPainter extends CustomPainter {
   @override
   bool shouldRepaint(_GitHubMarkPainter oldDelegate) {
     return oldDelegate.color != color;
+  }
+}
+
+class _SettingsChoiceOption<T> {
+  const _SettingsChoiceOption({
+    required this.value,
+    required this.label,
+    this.icon,
+  });
+
+  final T value;
+  final String label;
+  final IconData? icon;
+}
+
+class _SettingsChoiceBar<T> extends StatelessWidget {
+  const _SettingsChoiceBar({
+    required this.value,
+    required this.options,
+    required this.onChanged,
+    this.direction = Axis.horizontal,
+  });
+
+  final T value;
+  final List<_SettingsChoiceOption<T>> options;
+  final ValueChanged<T> onChanged;
+  final Axis direction;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final List<Widget> items = options
+        .map(
+          (_SettingsChoiceOption<T> option) => _SettingsChoiceItem<T>(
+            option: option,
+            selected: option.value == value,
+            onTap: () => onChanged(option.value),
+          ),
+        )
+        .toList();
+
+    return Container(
+      decoration: BoxDecoration(
+        color: palette.panelMutedBackground.withValues(alpha: 0.78),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: palette.border.withValues(alpha: 0.9)),
+      ),
+      padding: const EdgeInsets.all(4),
+      child: direction == Axis.horizontal
+          ? Row(
+              children: <Widget>[
+                for (int index = 0;
+                    index < items.length;
+                    index += 1) ...<Widget>[
+                  if (index > 0) const SizedBox(width: 6),
+                  Expanded(child: items[index]),
+                ],
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                for (int index = 0;
+                    index < items.length;
+                    index += 1) ...<Widget>[
+                  if (index > 0) const SizedBox(height: 6),
+                  items[index],
+                ],
+              ],
+            ),
+    );
+  }
+}
+
+class _SettingsChoiceItem<T> extends StatelessWidget {
+  const _SettingsChoiceItem({
+    required this.option,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final _SettingsChoiceOption<T> option;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Material(
+      color: Colors.transparent,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          decoration: BoxDecoration(
+            color: selected ? palette.panelBackground : Colors.transparent,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: selected
+                  ? theme.colorScheme.primary.withValues(alpha: 0.34)
+                  : Colors.transparent,
+            ),
+            boxShadow: selected
+                ? <BoxShadow>[
+                    BoxShadow(
+                      color: palette.shadow.withValues(alpha: 0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : const <BoxShadow>[],
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              if (option.icon != null) ...<Widget>[
+                Icon(
+                  option.icon,
+                  size: 16,
+                  color: selected
+                      ? theme.colorScheme.primary
+                      : palette.secondaryText,
+                ),
+                const SizedBox(width: 8),
+              ],
+              Flexible(
+                child: Text(
+                  option.label,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.labelLarge?.copyWith(
+                    fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                    color: selected
+                        ? theme.colorScheme.onSurface
+                        : palette.secondaryText,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemePresetSelector extends StatelessWidget {
+  const _ThemePresetSelector({
+    required this.wideLayout,
+    required this.appearanceMode,
+    required this.selectedThemeId,
+    required this.onAppearanceModeChanged,
+    required this.onThemeSelected,
+  });
+
+  final bool wideLayout;
+  final AppearanceMode appearanceMode;
+  final String selectedThemeId;
+  final ValueChanged<AppearanceMode> onAppearanceModeChanged;
+  final ValueChanged<String> onThemeSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final Brightness previewBrightness = AppTheme.resolveBrightness(
+      appearanceMode,
+      MediaQuery.platformBrightnessOf(context),
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        _SettingsChoiceBar<AppearanceMode>(
+          value: appearanceMode,
+          options: <_SettingsChoiceOption<AppearanceMode>>[
+            _SettingsChoiceOption<AppearanceMode>(
+              value: AppearanceMode.light,
+              label: context.strings.appearanceModeLabel(AppearanceMode.light),
+              icon: Icons.light_mode_rounded,
+            ),
+            _SettingsChoiceOption<AppearanceMode>(
+              value: AppearanceMode.dark,
+              label: context.strings.appearanceModeLabel(AppearanceMode.dark),
+              icon: Icons.dark_mode_rounded,
+            ),
+            _SettingsChoiceOption<AppearanceMode>(
+              value: AppearanceMode.system,
+              label: context.strings.appearanceModeLabel(AppearanceMode.system),
+              icon: Icons.devices_rounded,
+            ),
+          ],
+          onChanged: onAppearanceModeChanged,
+        ),
+        const SizedBox(height: 14),
+        LayoutBuilder(
+          builder: (BuildContext context, BoxConstraints constraints) {
+            const double spacing = 12;
+            final int columns = wideLayout
+                ? math.max(3, (constraints.maxWidth / 172).floor())
+                : 2;
+            final double itemWidth =
+                (constraints.maxWidth - spacing * (columns - 1)) / columns;
+
+            return Wrap(
+              spacing: spacing,
+              runSpacing: spacing,
+              children: AppTheme.themeIds.map((String themeId) {
+                return SizedBox(
+                  width: itemWidth,
+                  child: _ThemePresetCard(
+                    themeId: themeId,
+                    brightness: previewBrightness,
+                    selected: themeId == selectedThemeId,
+                    onTap: () => onThemeSelected(themeId),
+                  ),
+                );
+              }).toList(),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _ThemePresetCard extends StatelessWidget {
+  const _ThemePresetCard({
+    required this.themeId,
+    required this.brightness,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String themeId;
+  final Brightness brightness;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData previewTheme = AppTheme.themeFor(
+      themeId,
+      brightness: brightness,
+    );
+    final ReaderPalette previewPalette =
+        previewTheme.extension<ReaderPalette>()!;
+    final ThemeData theme = Theme.of(context);
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(18),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: selected
+                ? palette.primarySoft.withValues(alpha: 0.38)
+                : palette.panelMutedBackground.withValues(alpha: 0.44),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(
+              color: selected
+                  ? theme.colorScheme.primary.withValues(alpha: 0.62)
+                  : palette.border,
+              width: selected ? 1.4 : 1,
+            ),
+            boxShadow: selected
+                ? <BoxShadow>[
+                    BoxShadow(
+                      color: palette.shadow.withValues(alpha: 0.1),
+                      blurRadius: 18,
+                      offset: const Offset(0, 8),
+                    ),
+                  ]
+                : const <BoxShadow>[],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              SizedBox(
+                height: 78,
+                child: Stack(
+                  children: <Widget>[
+                    Positioned.fill(
+                      child: _ThemePreviewFrame(
+                        palette: previewPalette,
+                        scheme: previewTheme.colorScheme,
+                      ),
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        width: 22,
+                        height: 22,
+                        decoration: BoxDecoration(
+                          color: selected
+                              ? theme.colorScheme.primary
+                              : previewTheme.colorScheme.primary,
+                          shape: BoxShape.circle,
+                        ),
+                        child: selected
+                            ? Icon(
+                                Icons.check_rounded,
+                                size: 14,
+                                color: theme.colorScheme.onPrimary,
+                              )
+                            : null,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                context.strings.themePresetName(themeId),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemePreviewFrame extends StatelessWidget {
+  const _ThemePreviewFrame({
+    required this.palette,
+    required this.scheme,
+  });
+
+  final ReaderPalette palette;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: palette.canvasBackground,
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: palette.border.withValues(alpha: 0.7)),
+      ),
+      child: Stack(
+        children: <Widget>[
+          Positioned(
+            top: 10,
+            left: 10,
+            right: 10,
+            child: Container(
+              height: 10,
+              decoration: BoxDecoration(
+                color: palette.panelBackground,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+          Positioned(
+            top: 28,
+            left: 10,
+            right: 42,
+            child: Container(
+              height: 26,
+              decoration: BoxDecoration(
+                color: palette.panelBackground,
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: <BoxShadow>[
+                  BoxShadow(
+                    color: palette.shadow.withValues(alpha: 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            left: 10,
+            right: 10,
+            bottom: 10,
+            child: Container(
+              height: 12,
+              decoration: BoxDecoration(
+                color: palette.panelMutedBackground,
+                borderRadius: BorderRadius.circular(999),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

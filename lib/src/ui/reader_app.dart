@@ -62,13 +62,32 @@ class _ReaderAppState extends State<ReaderApp> {
         return DynamicColorBuilder(
           builder: (
             ColorScheme? lightDynamic,
-            ColorScheme? _,
+            ColorScheme? darkDynamic,
           ) {
-            final ThemeData theme = AppTheme.themeFor(
+            final Brightness systemBrightness =
+                WidgetsBinding.instance.platformDispatcher.platformBrightness;
+            final ThemeData lightTheme = AppTheme.themeFor(
               controller.settings.themeId,
-              materialYouColorScheme: lightDynamic,
+              brightness: Brightness.light,
+              materialYouLightColorScheme: lightDynamic,
+              materialYouDarkColorScheme: darkDynamic,
             );
-            final bool isDark = theme.brightness == Brightness.dark;
+            final ThemeData darkTheme = AppTheme.themeFor(
+              controller.settings.themeId,
+              brightness: Brightness.dark,
+              materialYouLightColorScheme: lightDynamic,
+              materialYouDarkColorScheme: darkDynamic,
+            );
+            final ThemeMode themeMode =
+                AppTheme.themeModeFor(controller.settings.appearanceMode);
+            final Brightness effectiveBrightness = themeMode == ThemeMode.system
+                ? systemBrightness
+                : themeMode == ThemeMode.dark
+                    ? Brightness.dark
+                    : Brightness.light;
+            final ThemeData activeTheme =
+                effectiveBrightness == Brightness.dark ? darkTheme : lightTheme;
+            final bool isDark = activeTheme.brightness == Brightness.dark;
             final Brightness overlayBrightness =
                 isDark ? Brightness.light : Brightness.dark;
 
@@ -92,7 +111,9 @@ class _ReaderAppState extends State<ReaderApp> {
               supportedLocales: supportedAppLocales,
               localeListResolutionCallback: AppStrings.resolveLocaleList,
               localizationsDelegates: GlobalMaterialLocalizations.delegates,
-              theme: theme,
+              theme: lightTheme,
+              darkTheme: darkTheme,
+              themeMode: themeMode,
               builder: (BuildContext context, Widget? child) {
                 if (_useWindowsWindowChrome && child != null) {
                   return VirtualWindowFrame(child: child);

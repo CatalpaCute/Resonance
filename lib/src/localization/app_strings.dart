@@ -260,6 +260,37 @@ class AppStrings {
     }
   }
 
+  String appearanceModeLabel(AppearanceMode mode) {
+    switch (mode) {
+      case AppearanceMode.light:
+        return _text(zhCn: '浅色', zhHant: '淺色', en: 'Light');
+      case AppearanceMode.dark:
+        return _text(zhCn: '深色', zhHant: '深色', en: 'Dark');
+      case AppearanceMode.system:
+        return _text(zhCn: '跟随系统', zhHant: '跟隨系統', en: 'Follow System');
+    }
+  }
+
+  String themePresetName(String themeId) {
+    switch (themeId) {
+      case 'warm_default':
+        return _text(zhCn: '暖灰默认', zhHant: '暖灰預設', en: 'Warm Default');
+      case 'deep_default':
+        return _text(zhCn: '深棕默认', zhHant: '深棕預設', en: 'Deep Default');
+      case 'neutral_minimal':
+        return _text(zhCn: '中性极简', zhHant: '中性極簡', en: 'Neutral Minimal');
+      case 'material_you_light':
+        return _text(
+            zhCn: 'Material You', zhHant: 'Material You', en: 'Material You');
+      case 'wechat_green':
+        return _text(zhCn: '微信绿', zhHant: '微信綠', en: 'WeChat Green');
+      case 'ink_black_white':
+        return _text(zhCn: '墨水黑白', zhHant: '墨水黑白', en: 'Ink Black & White');
+      default:
+        return _text(zhCn: '暖灰默认', zhHant: '暖灰預設', en: 'Warm Default');
+    }
+  }
+
   String get allArticles =>
       _text(zhCn: '全部文章', zhHant: '全部文章', en: 'All Articles');
   String get sources => _text(zhCn: '订阅源', zhHant: '訂閱源', en: 'Sources');
@@ -376,6 +407,11 @@ class AppStrings {
   String get startupPage =>
       _text(zhCn: '启动页', zhHant: '啟動頁', en: 'Startup Page');
   String get visualTheme => _text(zhCn: '视觉主题', zhHant: '視覺主題', en: 'Theme');
+  String get visualThemeHint => _text(
+        zhCn: '选择主题预设，并决定是否跟随系统的明暗模式。',
+        zhHant: '選擇主題預設，並決定是否跟隨系統的明暗模式。',
+        en: 'Choose a theme preset and decide whether it follows the system appearance.',
+      );
   String get articleDisplayMode =>
       _text(zhCn: '文章显示', zhHant: '文章顯示', en: 'Article Display');
   String get articleDisplayModeHint => _text(
@@ -894,6 +930,156 @@ class AppStrings {
         zhCn: '仅影响宽屏手机、横屏和 Pad；手机版窄屏固定使用底部导航。',
         zhHant: '僅影響寬屏手機、橫屏和 Pad；手機版窄屏固定使用底部導覽。',
         en: 'Only affects wide phones, landscape, and tablets. Narrow phone layouts always use bottom navigation.',
+      );
+  String get accountPageTitle => _text(
+        zhCn: 'Resonance 账号',
+        zhHant: 'Resonance 帳號',
+        en: 'Resonance Account',
+      );
+  String get accountSignedOutHint => _text(
+        zhCn: '先生成一个身份代码，或输入你已有的代码。现在先只保存在本机，后面会为云服务预留接口。',
+        zhHant: '先產生一個身分代碼，或輸入你已有的代碼。現在先只保存在本機，後面會為雲服務預留介面。',
+        en: 'Generate an identity code or enter one you already have. This version keeps everything local and reserves space for future cloud services.',
+      );
+  String get accountGenerateCode => _text(
+        zhCn: '生成用户代码',
+        zhHant: '產生使用者代碼',
+        en: 'Generate My Code',
+      );
+  String get accountEnterCode => _text(
+        zhCn: '输入我的代码',
+        zhHant: '輸入我的代碼',
+        en: 'Enter My Code',
+      );
+  String get accountApplyIdentityCode => _text(
+        zhCn: '保存并应用',
+        zhHant: '儲存並套用',
+        en: 'Save and Apply',
+      );
+  String get accountIdentityCodeLabel => _text(
+        zhCn: '身份代码',
+        zhHant: '身分代碼',
+        en: 'Identity Code',
+      );
+  String get accountIdentityCodeHint => _text(
+        zhCn: '输入 14 位字母或数字',
+        zhHant: '輸入 14 位字母或數字',
+        en: 'Enter 14 letters or numbers',
+      );
+  String get accountIdentityCodeInvalid => _text(
+        zhCn: '身份代码格式不对，需要正好 14 位字母或数字。',
+        zhHant: '身分代碼格式不正確，需要剛好 14 位字母或數字。',
+        en: 'The identity code must be exactly 14 letters or numbers.',
+      );
+  String get accountIdentityCodeCopied => _text(
+        zhCn: '身份代码已复制',
+        zhHant: '身分代碼已複製',
+        en: 'Identity code copied',
+      );
+  String get accountCopyIdentityCode => _text(
+        zhCn: '复制身份代码',
+        zhHant: '複製身分代碼',
+        en: 'Copy identity code',
+      );
+  String get accountUnnamedUser => _text(
+        zhCn: '未命名用户',
+        zhHant: '未命名使用者',
+        en: 'Unnamed User',
+      );
+  String get accountGeneratedAndSignedIn => _text(
+        zhCn: '用户代码已生成，已经切换到这个身份。',
+        zhHant: '使用者代碼已產生，已經切換到這個身分。',
+        en: 'Your identity code is ready and this profile is now active.',
+      );
+  String get accountSignedIn => _text(
+        zhCn: '身份代码已应用。',
+        zhHant: '身分代碼已套用。',
+        en: 'Identity code applied.',
+      );
+  String get accountSignedOut => _text(
+        zhCn: '已退出当前身份。',
+        zhHant: '已退出目前身分。',
+        en: 'Signed out of the current identity.',
+      );
+  String get accountDisplayNameLabel => _text(
+        zhCn: '用户名',
+        zhHant: '使用者名稱',
+        en: 'User Name',
+      );
+  String get accountDisplayNameHint => _text(
+        zhCn: '给这个身份起一个名字',
+        zhHant: '替這個身分取一個名字',
+        en: 'Name this identity',
+      );
+  String get accountEditDisplayName => _text(
+        zhCn: '修改用户名',
+        zhHant: '修改使用者名稱',
+        en: 'Edit User Name',
+      );
+  String get accountDisplayNameUpdated => _text(
+        zhCn: '用户名已更新。',
+        zhHant: '使用者名稱已更新。',
+        en: 'User name updated.',
+      );
+  String get accountAvatarLabel => _text(
+        zhCn: '头像',
+        zhHant: '頭像',
+        en: 'Avatar',
+      );
+  String get accountAvatarHint => _text(
+        zhCn: '选一张图片，会自动从中间裁成 1:1。',
+        zhHant: '選一張圖片，會自動從中間裁成 1:1。',
+        en: 'Choose an image and it will be auto-cropped to 1:1 from the center.',
+      );
+  String get accountChangeAvatar => _text(
+        zhCn: '更换头像',
+        zhHant: '更換頭像',
+        en: 'Change Avatar',
+      );
+  String get accountAvatarUpdated => _text(
+        zhCn: '头像已更新。',
+        zhHant: '頭像已更新。',
+        en: 'Avatar updated.',
+      );
+  String get accountAvatarUnsupported => _text(
+        zhCn: '这张图片暂时没法处理，请换一张常见格式的图片。',
+        zhHant: '這張圖片暫時無法處理，請換一張常見格式的圖片。',
+        en: 'This image could not be processed. Please choose a common image format.',
+      );
+  String get accountPersonalInfoTitle => _text(
+        zhCn: '个人信息',
+        zhHant: '個人資訊',
+        en: 'Personal Info',
+      );
+  String get accountPersonalInfoHint => _text(
+        zhCn: '这里只管理你当前身份的用户名、头像和身份代码。',
+        zhHant: '這裡只管理你目前身分的使用者名稱、頭像和身分代碼。',
+        en: 'Manage the name, avatar, and identity code of the current profile here.',
+      );
+  String get accountCloudServiceTitle => _text(
+        zhCn: '云服务',
+        zhHant: '雲服務',
+        en: 'Cloud Services',
+      );
+  String get accountCloudServiceHint => _text(
+        zhCn: '这一块先预留给后续同步和远程能力。',
+        zhHant: '這一塊先預留給後續同步和遠端能力。',
+        en: 'This section is reserved for future sync and remote capabilities.',
+      );
+  String get accountCloudServiceReserved => _text(
+        zhCn: '云服务接口暂未接入。这一版只管理本地身份档案，后续再把同步和远程能力接进来。',
+        zhHant: '雲服務介面暫未接入。這一版只管理本地身分檔案，後續再把同步和遠端能力接進來。',
+        en: 'Cloud services are not connected yet. This version manages a local identity profile and leaves room for future sync.',
+      );
+  String get accountSignOut => _text(
+        zhCn: '退出当前身份',
+        zhHant: '退出目前身分',
+        en: 'Sign Out',
+      );
+  String get accountIdentityCodeGenerationFailed => _text(
+        zhCn: '连续生成了多次都撞上已有代码，请再试一次。',
+        zhHant: '連續產生多次都碰上已有代碼，請再試一次。',
+        en: 'Several generated codes were already in use. Please try again.',
       );
 }
 

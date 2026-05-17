@@ -34,6 +34,12 @@ enum ArticleListDensity {
   compact,
 }
 
+enum AppearanceMode {
+  light,
+  dark,
+  system,
+}
+
 enum ArticleContentMode {
   rich,
   textOnly,
@@ -55,6 +61,7 @@ class ReaderSettings {
   const ReaderSettings({
     required this.startupHomeMode,
     required this.themeId,
+    required this.appearanceMode,
     required this.mobileSidebarMode,
     required this.mobileWorkspaceMode,
     required this.desktopWorkspaceMode,
@@ -72,6 +79,7 @@ class ReaderSettings {
 
   final StartupHomeMode startupHomeMode;
   final String themeId;
+  final AppearanceMode appearanceMode;
   final MobileSidebarMode mobileSidebarMode;
   final MobileWorkspaceMode mobileWorkspaceMode;
   final DesktopWorkspaceMode desktopWorkspaceMode;
@@ -92,6 +100,7 @@ class ReaderSettings {
   static const ReaderSettings defaults = ReaderSettings(
     startupHomeMode: StartupHomeMode.allArticles,
     themeId: 'warm_default',
+    appearanceMode: AppearanceMode.system,
     mobileSidebarMode: MobileSidebarMode.adaptive,
     mobileWorkspaceMode: MobileWorkspaceMode.singlePane,
     desktopWorkspaceMode: DesktopWorkspaceMode.threePane,
@@ -121,6 +130,7 @@ class ReaderSettings {
   ReaderSettings copyWith({
     StartupHomeMode? startupHomeMode,
     String? themeId,
+    AppearanceMode? appearanceMode,
     MobileSidebarMode? mobileSidebarMode,
     MobileWorkspaceMode? mobileWorkspaceMode,
     DesktopWorkspaceMode? desktopWorkspaceMode,
@@ -138,18 +148,17 @@ class ReaderSettings {
     return ReaderSettings(
       startupHomeMode: startupHomeMode ?? this.startupHomeMode,
       themeId: themeId ?? this.themeId,
+      appearanceMode: appearanceMode ?? this.appearanceMode,
       mobileSidebarMode: mobileSidebarMode ?? this.mobileSidebarMode,
       mobileWorkspaceMode: mobileWorkspaceMode ?? this.mobileWorkspaceMode,
-      desktopWorkspaceMode:
-          desktopWorkspaceMode ?? this.desktopWorkspaceMode,
+      desktopWorkspaceMode: desktopWorkspaceMode ?? this.desktopWorkspaceMode,
       desktopContentSurfaceMode:
           desktopContentSurfaceMode ?? this.desktopContentSurfaceMode,
       autoRefreshMode: autoRefreshMode ?? this.autoRefreshMode,
-      globalAutoRefreshIntervalMinutes:
-          normalizeAutoRefreshInterval(
-            globalAutoRefreshIntervalMinutes ??
-                this.globalAutoRefreshIntervalMinutes,
-          ),
+      globalAutoRefreshIntervalMinutes: normalizeAutoRefreshInterval(
+        globalAutoRefreshIntervalMinutes ??
+            this.globalAutoRefreshIntervalMinutes,
+      ),
       subscriptionNotificationMode:
           subscriptionNotificationMode ?? this.subscriptionNotificationMode,
       sourceFilterHintDismissed:
@@ -167,6 +176,7 @@ class ReaderSettings {
     return <String, dynamic>{
       'startupHomeMode': startupHomeMode.name,
       'themeId': themeId,
+      'appearanceMode': appearanceMode.name,
       'mobileSidebarMode': mobileSidebarMode.name,
       'mobileWorkspaceMode': mobileWorkspaceMode.name,
       'desktopWorkspaceMode': desktopWorkspaceMode.name,
@@ -190,12 +200,17 @@ class ReaderSettings {
         orElse: () => defaults.startupHomeMode,
       ),
       themeId: json['themeId'] as String? ?? defaults.themeId,
+      appearanceMode: AppearanceMode.values.firstWhere(
+        (AppearanceMode value) => value.name == json['appearanceMode'],
+        orElse: () => defaults.appearanceMode,
+      ),
       mobileSidebarMode: MobileSidebarMode.values.firstWhere(
         (MobileSidebarMode value) => value.name == json['mobileSidebarMode'],
         orElse: () => defaults.mobileSidebarMode,
       ),
       mobileWorkspaceMode: MobileWorkspaceMode.values.firstWhere(
-        (MobileWorkspaceMode value) => value.name == json['mobileWorkspaceMode'],
+        (MobileWorkspaceMode value) =>
+            value.name == json['mobileWorkspaceMode'],
         orElse: () => defaults.mobileWorkspaceMode,
       ),
       desktopWorkspaceMode: DesktopWorkspaceMode.values.firstWhere(
@@ -211,9 +226,11 @@ class ReaderSettings {
       autoRefreshMode: AutoRefreshMode.values.firstWhere(
         (AutoRefreshMode value) => value.name == json['autoRefreshMode'],
         orElse: () {
-          final bool legacyEnabled =
-              json['autoRefreshEnabled'] as bool? ?? defaults.autoRefreshEnabled;
-          return legacyEnabled ? AutoRefreshMode.partial : AutoRefreshMode.allOff;
+          final bool legacyEnabled = json['autoRefreshEnabled'] as bool? ??
+              defaults.autoRefreshEnabled;
+          return legacyEnabled
+              ? AutoRefreshMode.partial
+              : AutoRefreshMode.allOff;
         },
       ),
       globalAutoRefreshIntervalMinutes: normalizeAutoRefreshInterval(
@@ -226,8 +243,7 @@ class ReaderSettings {
             value.name == json['subscriptionNotificationMode'],
         orElse: () => defaults.subscriptionNotificationMode,
       ),
-      sourceFilterHintDismissed:
-          json['sourceFilterHintDismissed'] as bool? ??
+      sourceFilterHintDismissed: json['sourceFilterHintDismissed'] as bool? ??
           defaults.sourceFilterHintDismissed,
       desktopSidebarCollapsed: json['desktopSidebarCollapsed'] as bool? ??
           defaults.desktopSidebarCollapsed,

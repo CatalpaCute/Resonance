@@ -1,11 +1,13 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:path_provider/path_provider.dart';
 
 import '../models/article.dart';
 import '../models/feed_source.dart';
 import '../models/reader_settings.dart';
+import '../models/user_profile.dart';
 
 class PersistedReaderState {
   const PersistedReaderState({
@@ -20,10 +22,21 @@ class PersistedReaderState {
 }
 
 class JsonStore {
+  JsonStore({
+    Future<Directory> Function()? documentsDirectoryResolver,
+  }) : _documentsDirectoryResolver =
+            documentsDirectoryResolver ?? getApplicationDocumentsDirectory;
+
   static const String _appFolderName = 'rsstool';
+  static const String _usersFolderName = 'users';
   static const String _feedsFileName = 'feeds.json';
   static const String _articlesFileName = 'articles.json';
   static const String _settingsFileName = 'reader_settings.json';
+  static const String _currentUserFileName = 'current_user.json';
+  static const String _profileFileName = 'profile.json';
+  static const String _avatarFileName = 'avatar.jpg';
+
+  final Future<Directory> Function() _documentsDirectoryResolver;
 
   Future<PersistedReaderState> load() async {
     final Directory root = await _ensureRoot();
@@ -66,8 +79,81 @@ class JsonStore {
     await _writeAtomically(file, _prettyJson(settings.toJson()));
   }
 
+  Future<CurrentUserSession> loadCurrentUserSession() async {
+    final Directory root = await _ensureRoot();
+    final File file = File(_path(root, _currentUserFileName));
+    if (!await file.exists()) {
+      return const CurrentUserSession.signedOut();
+    }
+    final String content = await file.readAsString();
+    if (content.trim().isEmpty) {
+      return const CurrentUserSession.signedOut();
+    }
+    final Object? raw = jsonDecode(content);
+    if (raw is! Map<String, dynamic>) {
+      return const CurrentUserSession.signedOut();
+    }
+    return CurrentUserSession.fromJson(raw);
+  }
+
+  Future<void> saveCurrentUserSession(CurrentUserSession session) async {
+    final Directory root = await _ensureRoot();
+    final File file = File(_path(root, _currentUserFileName));
+    await _writeAtomically(file, _prettyJson(session.toJson()));
+  }
+
+  Future<void> clearCurrentUserSession() async {
+    final Directory root = await _ensureRoot();
+    final File file = File(_path(root, _currentUserFileName));
+    if (await file.exists()) {
+      await file.delete();
+    }
+  }
+
+  Future<UserProfile?> loadUserProfile(String identityCode) async {
+    final Directory root = await _ensureRoot();
+    final File file =
+        File(_path(_userDirectory(root, identityCode), _profileFileName));
+    if (!await file.exists()) {
+      return null;
+    }
+    final String content = await file.readAsString();
+    if (content.trim().isEmpty) {
+      return null;
+    }
+    final Object? raw = jsonDecode(content);
+    if (raw is! Map<String, dynamic>) {
+      return null;
+    }
+    return UserProfile.fromJson(raw);
+  }
+
+  Future<void> saveUserProfile(UserProfile profile) async {
+    final Directory root = await _ensureRoot();
+    final Directory userDirectory = _userDirectory(root, profile.identityCode);
+    if (!userDirectory.existsSync()) {
+      await userDirectory.create(recursive: true);
+    }
+    final File file = File(_path(userDirectory, _profileFileName));
+    await _writeAtomically(file, _prettyJson(profile.toJson()));
+  }
+
+  Future<String> saveUserAvatar(
+    String identityCode,
+    Uint8List bytes,
+  ) async {
+    final Directory root = await _ensureRoot();
+    final Directory userDirectory = _userDirectory(root, identityCode);
+    if (!userDirectory.existsSync()) {
+      await userDirectory.create(recursive: true);
+    }
+    final File file = File(_path(userDirectory, _avatarFileName));
+    await _writeBytesAtomically(file, bytes);
+    return file.path;
+  }
+
   Future<Directory> _ensureRoot() async {
-    final Directory documentsDir = await getApplicationDocumentsDirectory();
+    final Directory documentsDir = await _documentsDirectoryResolver();
     final Directory appRoot = Directory(_path(documentsDir, _appFolderName));
     if (!appRoot.existsSync()) {
       await appRoot.create(recursive: true);
@@ -112,6 +198,15 @@ class JsonStore {
     return '${directory.path}${Platform.pathSeparator}$name';
   }
 
+  Directory _userDirectory(Directory root, String identityCode) {
+    return Directory(
+      _path(
+        Directory(_path(root, _usersFolderName)),
+        identityCode,
+      ),
+    );
+  }
+
   Future<void> _writeAtomically(File file, String content) async {
     // 设计意图：
     // Android 后台 Worker 和前台恢复流程会共享同一套 JSON 存储。
@@ -119,6 +214,16 @@ class JsonStore {
     // 这里统一改成“先写临时文件，再原子替换正式文件”，把半写状态隔离掉。
     final File tempFile = File('${file.path}.tmp');
     await tempFile.writeAsString(content, flush: true);
+
+    if (await file.exists()) {
+      await file.delete();
+    }
+    await tempFile.rename(file.path);
+  }
+
+  Future<void> _writeBytesAtomically(File file, List<int> bytes) async {
+    final File tempFile = File('${file.path}.tmp');
+    await tempFile.writeAsBytes(bytes, flush: true);
 
     if (await file.exists()) {
       await file.delete();

@@ -8,6 +8,7 @@ void main() {
       const ReaderSettings settings = ReaderSettings(
         startupHomeMode: StartupHomeMode.bookmarks,
         themeId: 'deep_default',
+        appearanceMode: AppearanceMode.system,
         mobileSidebarMode: MobileSidebarMode.rail,
         mobileWorkspaceMode: MobileWorkspaceMode.multiPane,
         desktopWorkspaceMode: DesktopWorkspaceMode.focusedReader,

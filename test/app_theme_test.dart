@@ -6,21 +6,24 @@ void main() {
   group('AppTheme', () {
     test('exposes the WeChat green theme', () {
       expect(AppTheme.themeIds, contains('wechat_green'));
-      expect(AppTheme.displayName('wechat_green'), '微信绿');
+      expect(AppTheme.displayName('wechat_green'), 'WeChat Green');
     });
 
     test('exposes the ink black and white theme', () {
       expect(AppTheme.themeIds, contains('ink_black_white'));
-      expect(AppTheme.displayName('ink_black_white'), '墨水黑白');
+      expect(AppTheme.displayName('ink_black_white'), 'Ink Black & White');
     });
 
     test('exposes the Material You theme', () {
       expect(AppTheme.themeIds, contains('material_you_light'));
-      expect(AppTheme.displayName('material_you_light'), '材料你');
+      expect(AppTheme.displayName('material_you_light'), 'Material You');
     });
 
     test('builds the Material You theme palette', () {
-      final ThemeData theme = AppTheme.themeFor('material_you_light');
+      final ThemeData theme = AppTheme.themeFor(
+        'material_you_light',
+        brightness: Brightness.light,
+      );
       final ReaderPalette? palette = theme.extension<ReaderPalette>();
 
       expect(theme.useMaterial3, isTrue);
@@ -63,7 +66,8 @@ void main() {
 
       final ThemeData theme = AppTheme.themeFor(
         'material_you_light',
-        materialYouColorScheme: dynamicScheme,
+        brightness: Brightness.light,
+        materialYouLightColorScheme: dynamicScheme,
       );
       final ReaderPalette? palette = theme.extension<ReaderPalette>();
 
@@ -77,7 +81,10 @@ void main() {
     });
 
     test('builds the WeChat green theme palette', () {
-      final ThemeData theme = AppTheme.themeFor('wechat_green');
+      final ThemeData theme = AppTheme.themeFor(
+        'wechat_green',
+        brightness: Brightness.light,
+      );
       final ReaderPalette? palette = theme.extension<ReaderPalette>();
 
       expect(theme.brightness, Brightness.light);
@@ -99,7 +106,10 @@ void main() {
     });
 
     test('builds the ink black and white theme palette', () {
-      final ThemeData theme = AppTheme.themeFor('ink_black_white');
+      final ThemeData theme = AppTheme.themeFor(
+        'ink_black_white',
+        brightness: Brightness.light,
+      );
       final ReaderPalette? palette = theme.extension<ReaderPalette>();
 
       expect(theme.brightness, Brightness.light);
@@ -154,7 +164,7 @@ void main() {
     test('provides coordinated link colors for every theme', () {
       const Map<String, Color> expectedLinkColors = <String, Color>{
         'warm_default': Color(0xFF8F7658),
-        'deep_default': Color(0xFFE0C49A),
+        'deep_default': Color(0xFF8F6540),
         'neutral_minimal': Color(0xFF3F4850),
         'material_you_light': Color(0xFF6750A4),
         'wechat_green': Color(0xFF047A3D),
@@ -163,8 +173,10 @@ void main() {
 
       expect(AppTheme.themeIds, expectedLinkColors.keys);
       for (final MapEntry<String, Color> entry in expectedLinkColors.entries) {
-        final ReaderPalette? palette =
-            AppTheme.themeFor(entry.key).extension<ReaderPalette>();
+        final ReaderPalette? palette = AppTheme.themeFor(
+          entry.key,
+          brightness: Brightness.light,
+        ).extension<ReaderPalette>();
 
         expect(palette, isNotNull);
         expect(palette!.linkText, entry.value);
