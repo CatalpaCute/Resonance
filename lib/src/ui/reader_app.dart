@@ -702,12 +702,37 @@ class _ReaderHomeState extends State<ReaderHome> {
                                 child: IgnorePointer(
                                   ignoring: !_desktopSettingsOpen,
                                   child: AnimatedSwitcher(
-                                    duration: _shellMotionDuration,
-                                    reverseDuration: const Duration(
-                                      milliseconds: 220,
+                                    duration: const Duration(
+                                      milliseconds: 360,
                                     ),
-                                    switchInCurve: _shellMotionCurve,
-                                    switchOutCurve: Curves.easeOutCubic,
+                                    reverseDuration: const Duration(
+                                      milliseconds: 260,
+                                    ),
+                                    switchInCurve: const Cubic(
+                                      0.16,
+                                      1,
+                                      0.3,
+                                      1,
+                                    ),
+                                    switchOutCurve: const Cubic(
+                                      0.4,
+                                      0,
+                                      1,
+                                      1,
+                                    ),
+                                    layoutBuilder: (
+                                      Widget? currentChild,
+                                      List<Widget> previousChildren,
+                                    ) {
+                                      return Stack(
+                                        fit: StackFit.expand,
+                                        children: <Widget>[
+                                          ...previousChildren,
+                                          if (currentChild != null)
+                                            currentChild,
+                                        ],
+                                      );
+                                    },
                                     transitionBuilder: (
                                       Widget child,
                                       Animation<double> animation,
@@ -715,26 +740,36 @@ class _ReaderHomeState extends State<ReaderHome> {
                                       final Animation<double> fade =
                                           CurvedAnimation(
                                         parent: animation,
-                                        curve: Curves.easeOutCubic,
+                                        curve: const Interval(0.0, 0.82),
                                       );
                                       final Animation<double> scale =
                                           Tween<double>(
-                                        begin: 0.975,
+                                        begin: 0.94,
                                         end: 1,
                                       ).animate(
                                         CurvedAnimation(
                                           parent: animation,
-                                          curve: _shellMotionCurve,
+                                          curve: const Cubic(
+                                            0.16,
+                                            1,
+                                            0.3,
+                                            1,
+                                          ),
                                         ),
                                       );
                                       final Animation<Offset> slide =
                                           Tween<Offset>(
-                                        begin: const Offset(0, 0.018),
+                                        begin: const Offset(0, 0.05),
                                         end: Offset.zero,
                                       ).animate(
                                         CurvedAnimation(
                                           parent: animation,
-                                          curve: _shellMotionCurve,
+                                          curve: const Cubic(
+                                            0.16,
+                                            1,
+                                            0.3,
+                                            1,
+                                          ),
                                         ),
                                       );
 
@@ -1706,8 +1741,8 @@ class _ShellHeader extends StatelessWidget {
                                             icon:
                                                 const Icon(Icons.menu_rounded),
                                             splashRadius: 18,
-                                            tooltip: strings
-                                                .subscriptionManagement,
+                                            tooltip:
+                                                strings.subscriptionManagement,
                                           )
                                         : const SizedBox.shrink(),
                           ),
@@ -3610,10 +3645,26 @@ class _MorphingHeaderTextState extends State<_MorphingHeaderText>
             ClipRect(
               child: ColorFiltered(
                 colorFilter: const ColorFilter.matrix(<double>[
-                  1, 0, 0, 0, 0,
-                  0, 1, 0, 0, 0,
-                  0, 0, 1, 0, 0,
-                  0, 0, 0, 255, -132,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  1,
+                  0,
+                  0,
+                  0,
+                  0,
+                  0,
+                  255,
+                  -132,
                 ]),
                 child: Stack(
                   alignment: Alignment.centerLeft,

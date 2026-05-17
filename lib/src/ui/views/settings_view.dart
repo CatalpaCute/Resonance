@@ -123,22 +123,32 @@ class SettingsViewState extends State<SettingsView> {
                             color: palette.divider.withValues(alpha: 0.72),
                           ),
                           Expanded(
-                            child: _SettingsDetailPane(
-                              keyboardScrollId: 'settings-detail-wide',
-                              title: _categoryTitle(strings, activeCategory),
-                              trailing: widget.onClose == null
-                                  ? null
-                                  : IconButton(
+                            child: Stack(
+                              children: <Widget>[
+                                _SettingsDetailPane(
+                                  keyboardScrollId: 'settings-detail-wide',
+                                  title: _categoryTitle(
+                                    strings,
+                                    activeCategory,
+                                  ),
+                                  child: _buildCategoryContent(
+                                    context,
+                                    category: activeCategory,
+                                    wideLayout: true,
+                                  ),
+                                ),
+                                if (widget.onClose != null)
+                                  Positioned(
+                                    top: 16,
+                                    right: 16,
+                                    child: IconButton(
                                       tooltip: MaterialLocalizations.of(context)
                                           .closeButtonTooltip,
                                       onPressed: widget.onClose,
                                       icon: const Icon(Icons.close_rounded),
                                     ),
-                              child: _buildCategoryContent(
-                                context,
-                                category: activeCategory,
-                                wideLayout: true,
-                              ),
+                                  ),
+                              ],
                             ),
                           ),
                         ],
@@ -1120,14 +1130,12 @@ class _SettingsDetailPane extends StatelessWidget {
     required this.title,
     required this.child,
     this.compact = false,
-    this.trailing,
   });
 
   final String keyboardScrollId;
   final String title;
   final Widget child;
   final bool compact;
-  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -1151,7 +1159,6 @@ class _SettingsDetailPane extends StatelessWidget {
                       : Theme.of(context).textTheme.headlineMedium,
                 ),
               ),
-              if (trailing != null) trailing!,
             ],
           ),
           SizedBox(height: compact ? 14 : 20),
