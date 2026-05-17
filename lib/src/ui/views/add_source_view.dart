@@ -188,66 +188,7 @@ class _AddSourceViewState extends State<AddSourceView> {
                         ),
                       )
                     else
-                      ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxHeight: compact ? 420 : 520,
-                        ),
-                        child: DesktopSmoothReorderableListViewBuilder(
-                          keyboardScrollId: 'subscription-list',
-                          keyboardScrollOrder: 1,
-                          buildDefaultDragHandles: false,
-                          itemCount: widget.controller.feeds.length,
-                          onReorder: (int oldIndex, int newIndex) async {
-                            await widget.controller.moveFeed(
-                              oldIndex,
-                              newIndex,
-                            );
-                          },
-                          proxyDecorator: (
-                            Widget child,
-                            int index,
-                            Animation<double> animation,
-                          ) {
-                            return Material(
-                              color: Colors.transparent,
-                              child: child,
-                            );
-                          },
-                          itemBuilder: (BuildContext context, int index) {
-                            final FeedSource feed =
-                                widget.controller.feeds[index];
-                            final bool autoRefreshEnabled = widget.controller
-                                .isFeedEffectivelyAutoRefreshEnabled(feed);
-                            final bool notificationEnabled = widget.controller
-                                .isFeedEffectivelyNotificationEnabled(feed);
-                            return _ManagedFeedTile(
-                              key: ValueKey<String>(feed.id),
-                              index: index,
-                              feed: feed,
-                              compact: compact,
-                              count: widget.controller
-                                  .articleCountForSource(feed.id),
-                              unread: widget.controller
-                                  .unreadCountForSource(feed.id),
-                              autoRefreshEnabled: autoRefreshEnabled,
-                              notificationEnabled: notificationEnabled,
-                              autoRefreshSummary:
-                                  widget.controller.settings.autoRefreshMode ==
-                                          AutoRefreshMode.allOn
-                                      ? strings.autoRefreshGlobalSummary(
-                                          widget.controller.settings
-                                              .globalAutoRefreshIntervalMinutes,
-                                        )
-                                      : strings.autoRefreshIntervalSummary(
-                                          feed.autoRefreshIntervalMinutes,
-                                        ),
-                              onActionSelected: (String action) async {
-                                await _handleFeedAction(feed, action);
-                              },
-                            );
-                          },
-                        ),
-                      ),
+                      _buildManagedFeedList(compact: compact, strings: strings),
                   ],
                 ),
               );
@@ -286,6 +227,83 @@ class _AddSourceViewState extends State<AddSourceView> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildManagedFeedList({
+    required bool compact,
+    required AppStrings strings,
+  }) {
+    Widget buildItem(BuildContext context, int index) {
+      final FeedSource feed = widget.controller.feeds[index];
+      final bool autoRefreshEnabled =
+          widget.controller.isFeedEffectivelyAutoRefreshEnabled(feed);
+      final bool notificationEnabled =
+          widget.controller.isFeedEffectivelyNotificationEnabled(feed);
+      return _ManagedFeedTile(
+        key: ValueKey<String>(feed.id),
+        index: index,
+        feed: feed,
+        compact: compact,
+        count: widget.controller.articleCountForSource(feed.id),
+        unread: widget.controller.unreadCountForSource(feed.id),
+        autoRefreshEnabled: autoRefreshEnabled,
+        notificationEnabled: notificationEnabled,
+        autoRefreshSummary:
+            widget.controller.settings.autoRefreshMode == AutoRefreshMode.allOn
+                ? strings.autoRefreshGlobalSummary(
+                    widget.controller.settings.globalAutoRefreshIntervalMinutes,
+                  )
+                : strings.autoRefreshIntervalSummary(
+                    feed.autoRefreshIntervalMinutes,
+                  ),
+        onActionSelected: (String action) async {
+          await _handleFeedAction(feed, action);
+        },
+      );
+    }
+
+    Widget proxyDecorator(
+      Widget child,
+      int index,
+      Animation<double> animation,
+    ) {
+      return Material(
+        color: Colors.transparent,
+        child: child,
+      );
+    }
+
+    if (compact) {
+      // Mobile should have one continuous page scroll. The reorderable list is
+      // shrink-wrapped so source rows sit directly in the page flow instead of
+      // creating a second, invisible scroll window.
+      return ReorderableListView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        buildDefaultDragHandles: false,
+        itemCount: widget.controller.feeds.length,
+        onReorder: (int oldIndex, int newIndex) async {
+          await widget.controller.moveFeed(oldIndex, newIndex);
+        },
+        proxyDecorator: proxyDecorator,
+        itemBuilder: buildItem,
+      );
+    }
+
+    return ConstrainedBox(
+      constraints: const BoxConstraints(maxHeight: 520),
+      child: DesktopSmoothReorderableListViewBuilder(
+        keyboardScrollId: 'subscription-list',
+        keyboardScrollOrder: 1,
+        buildDefaultDragHandles: false,
+        itemCount: widget.controller.feeds.length,
+        onReorder: (int oldIndex, int newIndex) async {
+          await widget.controller.moveFeed(oldIndex, newIndex);
+        },
+        proxyDecorator: proxyDecorator,
+        itemBuilder: buildItem,
+      ),
     );
   }
 
