@@ -1682,32 +1682,36 @@ class _ShellHeader extends StatelessWidget {
                           left: mobileRestyled ? 10 : 8,
                           right: mobileRestyled ? 6 : 4,
                         ),
-                        // In the reader route this slot becomes page back; otherwise the
-                        // compact rail keeps behaving like desktop with an in-place
-                        // sidebar toggle instead of opening a second drawer layer.
-                        child: compactReading || compactSettings
-                            ? IconButton(
-                                onPressed: compactReading
-                                    ? controller.closeCompactReader
-                                    : onSettingsBack,
-                                icon: const Icon(Icons.arrow_back_rounded),
-                                splashRadius: 18,
-                                tooltip: MaterialLocalizations.of(context)
-                                    .backButtonTooltip,
-                              )
-                            : showSidebarToggle
-                                ? _HeaderSidebarToggle(
-                                    collapsed: sidebarCollapsed,
-                                    onTap: onSidebarToggle,
+                        child: SizedBox(
+                          width: mobileRestyled ? 36 : 34,
+                          child: Center(
+                            child: compactReading || compactSettings
+                                ? IconButton(
+                                    onPressed: compactReading
+                                        ? controller.closeCompactReader
+                                        : onSettingsBack,
+                                    icon: const Icon(Icons.arrow_back_rounded),
+                                    splashRadius: 18,
+                                    tooltip: MaterialLocalizations.of(context)
+                                        .backButtonTooltip,
                                   )
-                                : showMenuButton
-                                    ? IconButton(
-                                        onPressed: onMenuPressed,
-                                        icon: const Icon(Icons.menu_rounded),
-                                        splashRadius: 18,
-                                        tooltip: strings.subscriptionManagement,
+                                : showSidebarToggle
+                                    ? _HeaderSidebarToggle(
+                                        collapsed: sidebarCollapsed,
+                                        onTap: onSidebarToggle,
                                       )
-                                    : SizedBox(width: mobileRestyled ? 6 : 4),
+                                    : showMenuButton
+                                        ? IconButton(
+                                            onPressed: onMenuPressed,
+                                            icon:
+                                                const Icon(Icons.menu_rounded),
+                                            splashRadius: 18,
+                                            tooltip: strings
+                                                .subscriptionManagement,
+                                          )
+                                        : const SizedBox.shrink(),
+                          ),
+                        ),
                       )
                     else
                       const SizedBox(width: 12),
@@ -1788,22 +1792,25 @@ class _ShellHeader extends StatelessWidget {
                               ],
                             ),
                     ),
-                    if (compact && !compactReading)
-                      AnimatedSwitcher(
-                        duration: _shellMotionDuration,
-                        switchInCurve: _shellMotionCurve,
-                        switchOutCurve: _shellMotionCurve,
-                        child: mobileSearchActive && mobileSearchEnabled
-                            ? const SizedBox(
-                                key: ValueKey<String>(
-                                    'mobile-search-stat-hidden'),
-                                width: 12,
-                              )
-                            : Padding(
-                                key: const ValueKey<String>('mobile-stat'),
-                                padding: EdgeInsets.only(
-                                  right: mobileRestyled ? 12 : 10,
-                                ),
+                    if (compact)
+                      SizedBox(
+                        width: mobileRestyled ? 104 : 96,
+                        child: AnimatedOpacity(
+                          duration: _shellMotionDuration,
+                          curve: _shellMotionCurve,
+                          opacity: (!compactReading &&
+                                  !(mobileSearchActive && mobileSearchEnabled))
+                              ? 1
+                              : 0,
+                          child: IgnorePointer(
+                            ignoring: compactReading ||
+                                (mobileSearchActive && mobileSearchEnabled),
+                            child: Padding(
+                              padding: EdgeInsets.only(
+                                right: mobileRestyled ? 12 : 10,
+                              ),
+                              child: Align(
+                                alignment: Alignment.centerRight,
                                 child: _CompactStat(
                                   mobileRestyled: mobileRestyled,
                                   text: strings.unreadCountStat(
@@ -1811,9 +1818,10 @@ class _ShellHeader extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                      )
-                    else if (compact && compactReading)
-                      const SizedBox(width: 12),
+                            ),
+                          ),
+                        ),
+                      ),
                     if (_useWindowsWindowChrome && !compact)
                       _WindowActions(brightness: Theme.of(context).brightness)
                     else if (!compact)
@@ -3462,13 +3470,13 @@ class _CompactHeaderIdentity extends StatelessWidget {
 
     return Row(
       children: <Widget>[
-        _MobileSearchBrandTrigger(
-          enabled: searchEnabled,
-          onOpen: onSearchOpen,
-          child: AnimatedSlide(
-            duration: _shellMotionDuration,
-            curve: _shellMotionCurve,
-            offset: compactReading ? const Offset(0.02, 0) : Offset.zero,
+        AnimatedSlide(
+          duration: _shellMotionDuration,
+          curve: _shellMotionCurve,
+          offset: compactReading ? const Offset(0.02, 0) : Offset.zero,
+          child: _MobileSearchBrandTrigger(
+            enabled: searchEnabled,
+            onOpen: onSearchOpen,
             child: _BrandMark(
               compact: true,
               mobileRestyled: mobileRestyled,
@@ -3583,9 +3591,9 @@ class _MorphingHeaderTextState extends State<_MorphingHeaderText>
             Curves.easeOutCubic.transform(_controller.value).clamp(0.0, 1.0);
         final double currentBlur = _gooeyBlurFor(value);
         final double previousBlur = _gooeyBlurFor(1 - value);
-        final double currentOpacity = math.pow(value, 0.4).toDouble();
+        final double currentOpacity = math.pow(value, 0.58).toDouble();
         final double previousOpacity =
-            math.pow((1 - value).clamp(0.0, 1.0), 0.4).toDouble();
+            math.pow((1 - value).clamp(0.0, 1.0), 0.58).toDouble();
 
         return Stack(
           alignment: Alignment.centerLeft,
@@ -3599,17 +3607,34 @@ class _MorphingHeaderTextState extends State<_MorphingHeaderText>
                 style: widget.style,
               ),
             ),
-            _MorphingTextLayer(
-              text: previousText,
-              style: widget.style,
-              blurSigma: previousBlur,
-              opacity: previousOpacity,
-            ),
-            _MorphingTextLayer(
-              text: _currentText,
-              style: widget.style,
-              blurSigma: currentBlur,
-              opacity: currentOpacity,
+            ClipRect(
+              child: ColorFiltered(
+                colorFilter: const ColorFilter.matrix(<double>[
+                  1, 0, 0, 0, 0,
+                  0, 1, 0, 0, 0,
+                  0, 0, 1, 0, 0,
+                  0, 0, 0, 255, -132,
+                ]),
+                child: Stack(
+                  alignment: Alignment.centerLeft,
+                  children: <Widget>[
+                    _MorphingTextLayer(
+                      text: previousText,
+                      style: widget.style,
+                      blurSigma: previousBlur,
+                      opacity: previousOpacity,
+                      translateX: lerpDouble(0, -6, value) ?? 0,
+                    ),
+                    _MorphingTextLayer(
+                      text: _currentText,
+                      style: widget.style,
+                      blurSigma: currentBlur,
+                      opacity: currentOpacity,
+                      translateX: lerpDouble(6, 0, value) ?? 0,
+                    ),
+                  ],
+                ),
+              ),
             ),
           ],
         );
@@ -3619,7 +3644,7 @@ class _MorphingHeaderTextState extends State<_MorphingHeaderText>
 
   double _gooeyBlurFor(double fraction) {
     final double safeFraction = fraction.clamp(0.001, 1.0);
-    return math.min((8 / safeFraction) - 8, 20).toDouble();
+    return math.min((6 / safeFraction) - 6, 10).toDouble();
   }
 }
 
@@ -3629,12 +3654,14 @@ class _MorphingTextLayer extends StatelessWidget {
     required this.style,
     required this.blurSigma,
     required this.opacity,
+    required this.translateX,
   });
 
   final String text;
   final TextStyle? style;
   final double blurSigma;
   final double opacity;
+  final double translateX;
 
   @override
   Widget build(BuildContext context) {
@@ -3652,9 +3679,12 @@ class _MorphingTextLayer extends StatelessWidget {
       );
     }
 
-    return Opacity(
-      opacity: opacity.clamp(0.0, 1.0),
-      child: child,
+    return Transform.translate(
+      offset: Offset(translateX, 0),
+      child: Opacity(
+        opacity: opacity.clamp(0.0, 1.0),
+        child: child,
+      ),
     );
   }
 }
