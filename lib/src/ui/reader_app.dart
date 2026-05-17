@@ -695,11 +695,72 @@ class _ReaderHomeState extends State<ReaderHome> {
                                 ],
                               ),
                             ),
-                            if (!compact && _desktopSettingsOpen)
+                            if (!compact)
                               Positioned.fill(
-                                child: SettingsView(
-                                  controller: controller,
-                                  onClose: _closeDesktopSettings,
+                                child: IgnorePointer(
+                                  ignoring: !_desktopSettingsOpen,
+                                  child: AnimatedSwitcher(
+                                    duration: _shellMotionDuration,
+                                    reverseDuration: const Duration(
+                                      milliseconds: 220,
+                                    ),
+                                    switchInCurve: _shellMotionCurve,
+                                    switchOutCurve: Curves.easeOutCubic,
+                                    transitionBuilder: (
+                                      Widget child,
+                                      Animation<double> animation,
+                                    ) {
+                                      final Animation<double> fade =
+                                          CurvedAnimation(
+                                        parent: animation,
+                                        curve: Curves.easeOutCubic,
+                                      );
+                                      final Animation<double> scale =
+                                          Tween<double>(
+                                        begin: 0.975,
+                                        end: 1,
+                                      ).animate(
+                                        CurvedAnimation(
+                                          parent: animation,
+                                          curve: _shellMotionCurve,
+                                        ),
+                                      );
+                                      final Animation<Offset> slide =
+                                          Tween<Offset>(
+                                        begin: const Offset(0, 0.018),
+                                        end: Offset.zero,
+                                      ).animate(
+                                        CurvedAnimation(
+                                          parent: animation,
+                                          curve: _shellMotionCurve,
+                                        ),
+                                      );
+
+                                      return FadeTransition(
+                                        opacity: fade,
+                                        child: SlideTransition(
+                                          position: slide,
+                                          child: ScaleTransition(
+                                            scale: scale,
+                                            child: child,
+                                          ),
+                                        ),
+                                      );
+                                    },
+                                    child: _desktopSettingsOpen
+                                        ? SettingsView(
+                                            key: const ValueKey<String>(
+                                              'desktop-settings-overlay',
+                                            ),
+                                            controller: controller,
+                                            onClose: _closeDesktopSettings,
+                                          )
+                                        : const SizedBox.shrink(
+                                            key: ValueKey<String>(
+                                              'desktop-settings-empty',
+                                            ),
+                                          ),
+                                  ),
                                 ),
                               ),
                           ],
@@ -1441,10 +1502,10 @@ class _CompactReaderDeck extends StatelessWidget {
                   enabled: showReader,
                   child: reader,
                 ),
-                  ),
               ),
             ),
           ),
+        ),
       ],
     );
   }
