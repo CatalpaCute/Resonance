@@ -2094,23 +2094,25 @@ class _DesktopSearchFieldState extends State<_DesktopSearchField> {
                     ),
                     child: ConstrainedBox(
                       constraints: const BoxConstraints(maxHeight: 560),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          Flexible(
-                            child: _DesktopSearchResults(
-                              controller: widget.controller,
-                              results: results,
-                              entries: entries,
-                              scrollController: _resultsScrollController,
-                              itemKeys: _resultItemKeys,
-                              selectedIndex: _selectedIndex,
-                              onSourceSelected: _openSource,
-                              onArticleSelected: _openArticle,
+                      child: _SearchSurfaceMotion(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            Flexible(
+                              child: _DesktopSearchResults(
+                                controller: widget.controller,
+                                results: results,
+                                entries: entries,
+                                scrollController: _resultsScrollController,
+                                itemKeys: _resultItemKeys,
+                                selectedIndex: _selectedIndex,
+                                onSourceSelected: _openSource,
+                                onArticleSelected: _openArticle,
+                              ),
                             ),
-                          ),
-                          _DesktopSearchFooter(),
-                        ],
+                            _DesktopSearchFooter(),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -2336,6 +2338,18 @@ class _SearchEntry {
 
   final FeedSource? source;
   final GlobalSearchArticleResult? article;
+
+  String get stableKey {
+    final FeedSource? source = this.source;
+    if (source != null) {
+      return 'source-${source.id}';
+    }
+    final GlobalSearchArticleResult? article = this.article;
+    if (article != null) {
+      return 'article-${article.article.id}';
+    }
+    return 'empty';
+  }
 }
 
 List<_SearchEntry> _searchEntries(
@@ -2396,35 +2410,164 @@ class _MobileSearchResultsPanel extends StatelessWidget {
     return MotionEntrance(
       signature: 'mobile-search-${results.query}',
       offset: const Offset(0, 0.018),
-      child: ListView.separated(
-        controller: scrollController,
-        key: PageStorageKey<String>('mobile-search-results-${results.query}'),
-        padding: const EdgeInsets.fromLTRB(10, 12, 10, 18),
-        itemCount: entries.length,
-        separatorBuilder: (_, __) => const SizedBox(height: 12),
-        itemBuilder: (BuildContext context, int index) {
-          final _SearchEntry entry = entries[index];
-          final FeedSource? source = entry.source;
-          final GlobalSearchArticleResult? article = entry.article;
-          if (source != null) {
-            return _MobileSearchSourceCard(
-              source: source,
-              articleCount: controller.articleCountForSource(source.id),
-              unreadCount: controller.unreadCountForSource(source.id),
-              onTap: () => onSourceSelected(source),
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 260),
+        curve: kFluidMotionCurve,
+        alignment: Alignment.topCenter,
+        child: ListView.separated(
+          controller: scrollController,
+          key: PageStorageKey<String>(
+            'mobile-search-results-${results.query}',
+          ),
+          padding: const EdgeInsets.fromLTRB(10, 12, 10, 18),
+          itemCount: entries.length,
+          separatorBuilder: (_, __) => const SizedBox(height: 12),
+          itemBuilder: (BuildContext context, int index) {
+            final _SearchEntry entry = entries[index];
+            final FeedSource? source = entry.source;
+            final GlobalSearchArticleResult? article = entry.article;
+            final Widget child;
+            if (source != null) {
+              child = _MobileSearchSourceCard(
+                source: source,
+                articleCount: controller.articleCountForSource(source.id),
+                unreadCount: controller.unreadCountForSource(source.id),
+                onTap: () => onSourceSelected(source),
+              );
+            } else if (article != null) {
+              child = _MobileSearchArticleCard(
+                result: article,
+                query: query,
+                onTap: () => onArticleSelected(article.article),
+              );
+            } else {
+              child = const SizedBox.shrink();
+            }
+            return _SearchResultItemMotion(
+              key: ValueKey<String>(
+                'mobile-${results.query}-$index-${entry.stableKey}',
+              ),
+              index: index,
+              child: child,
             );
-          }
-          if (article == null) {
-            return const SizedBox.shrink();
-          }
-          return _MobileSearchArticleCard(
-            result: article,
-            query: query,
-            onTap: () => onArticleSelected(article.article),
-          );
-        },
-        physics: const BouncingScrollPhysics(),
-        keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+          },
+          physics: const BouncingScrollPhysics(),
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+        ),
+      ),
+    );
+  }
+}
+
+class _SearchSurfaceMotion extends StatelessWidget {
+  const _SearchSurfaceMotion({
+    required this.child,
+  });
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool disableAnimations =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    if (disableAnimations) {
+      return child;
+    }
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 260),
+      curve: kFluidMotionCurve,
+      builder: (BuildContext context, double value, Widget? child) {
+        return Opacity(
+          opacity: value,
+          child: ClipRect(
+            child: Align(
+              alignment: Alignment.topCenter,
+              heightFactor: value.clamp(0.001, 1),
+              child: child,
+            ),
+          ),
+        );
+      },
+      child: AnimatedSize(
+        duration: const Duration(milliseconds: 260),
+        curve: kFluidMotionCurve,
+        alignment: Alignment.topCenter,
+        child: child,
+      ),
+    );
+  }
+}
+
+class _SearchResultItemMotion extends StatefulWidget {
+  const _SearchResultItemMotion({
+    super.key,
+    required this.index,
+    required this.child,
+  });
+
+  final int index;
+  final Widget child;
+
+  @override
+  State<_SearchResultItemMotion> createState() =>
+      _SearchResultItemMotionState();
+}
+
+class _SearchResultItemMotionState extends State<_SearchResultItemMotion>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final Animation<double> _opacity;
+  late final Animation<Offset> _offset;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    );
+    final CurvedAnimation curved = CurvedAnimation(
+      parent: _controller,
+      curve: kFluidMotionCurve,
+    );
+    _opacity = Tween<double>(begin: 0, end: 1).animate(curved);
+    _offset = Tween<Offset>(
+      begin: const Offset(0, 0.08),
+      end: Offset.zero,
+    ).animate(curved);
+
+    final bool disableAnimations = WidgetsBinding
+        .instance.platformDispatcher.accessibilityFeatures.disableAnimations;
+    if (disableAnimations) {
+      _controller.value = 1;
+      return;
+    }
+    Future<void>.delayed(_staggerDelayFor(widget.index), () {
+      if (mounted) {
+        _controller.forward();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Duration _staggerDelayFor(int index) {
+    return Duration(milliseconds: index.clamp(0, 8) * 34);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _opacity,
+      child: SlideTransition(
+        position: _offset,
+        child: widget.child,
       ),
     );
   }
@@ -2685,26 +2828,36 @@ class _DesktopSearchResults extends StatelessWidget {
       final GlobalSearchArticleResult? article = entry.article;
       if (source != null) {
         children.add(
-          KeyedSubtree(
-            key: itemKeys[index],
-            child: _DesktopSearchSourceTile(
-              source: source,
-              articleCount: controller.articleCountForSource(source.id),
-              unreadCount: controller.unreadCountForSource(source.id),
-              selected: selectedIndex == index,
-              onTap: () => onSourceSelected(source),
+          _SearchResultItemMotion(
+            key:
+                ValueKey<String>('desktop-${results.query}-${entry.stableKey}'),
+            index: index,
+            child: KeyedSubtree(
+              key: itemKeys[index],
+              child: _DesktopSearchSourceTile(
+                source: source,
+                articleCount: controller.articleCountForSource(source.id),
+                unreadCount: controller.unreadCountForSource(source.id),
+                selected: selectedIndex == index,
+                onTap: () => onSourceSelected(source),
+              ),
             ),
           ),
         );
       } else if (article != null) {
         children.add(
-          KeyedSubtree(
-            key: itemKeys[index],
-            child: _DesktopSearchArticleTile(
-              result: article,
-              query: results.query,
-              selected: selectedIndex == index,
-              onTap: () => onArticleSelected(article.article),
+          _SearchResultItemMotion(
+            key:
+                ValueKey<String>('desktop-${results.query}-${entry.stableKey}'),
+            index: index,
+            child: KeyedSubtree(
+              key: itemKeys[index],
+              child: _DesktopSearchArticleTile(
+                result: article,
+                query: results.query,
+                selected: selectedIndex == index,
+                onTap: () => onArticleSelected(article.article),
+              ),
             ),
           ),
         );
