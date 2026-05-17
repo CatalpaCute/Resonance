@@ -1,9 +1,11 @@
+import 'dart:ui';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:window_manager/window_manager.dart';
+import 'dart:math' as math;
 
 import '../localization/app_language.dart';
 import '../localization/app_strings.dart';
@@ -1727,53 +1729,17 @@ class _ShellHeader extends StatelessWidget {
                       ),
                     Expanded(
                       child: compact
-                          ? AnimatedSwitcher(
-                              duration: _shellMotionDuration,
-                              switchInCurve: _shellMotionCurve,
-                              switchOutCurve: _shellMotionCurve,
-                              transitionBuilder:
-                                  (Widget child, Animation<double> anim) {
-                                return FadeTransition(
-                                  opacity: anim,
-                                  child: SlideTransition(
-                                    position: Tween<Offset>(
-                                      begin: const Offset(0.04, 0),
-                                      end: Offset.zero,
-                                    ).animate(anim),
-                                    child: child,
-                                  ),
-                                );
-                              },
-                              child: compactReading
-                                  ? _MobileReaderHeaderTitle(
-                                      key: const ValueKey<String>(
-                                          'mobile-reader'),
-                                      controller: controller,
-                                      article: selectedArticle,
-                                      strings: strings,
-                                      mobileRestyled: mobileRestyled,
-                                    )
-                                  : compactSettings
-                                      ? _MobileHeaderTitle(
-                                          key: const ValueKey<String>(
-                                            'mobile-settings',
-                                          ),
-                                          controller: controller,
-                                          strings: strings,
-                                          mobileRestyled: mobileRestyled,
-                                          routeTitleOverride:
-                                              settingsSubPageTitle,
-                                        )
-                                      : _MobileHeaderTitle(
-                                          key: const ValueKey<String>(
-                                            'mobile-title',
-                                          ),
-                                          controller: controller,
-                                          strings: strings,
-                                          mobileRestyled: mobileRestyled,
-                                          searchEnabled: mobileSearchEnabled,
-                                          onSearchOpen: onMobileSearchOpen,
-                                        ),
+                          ? _CompactHeaderIdentity(
+                              controller: controller,
+                              strings: strings,
+                              mobileRestyled: mobileRestyled,
+                              compactReading: compactReading,
+                              compactSettings: compactSettings,
+                              selectedArticle: selectedArticle,
+                              settingsSubPageTitle: settingsSubPageTitle,
+                              searchEnabled:
+                                  mobileSearchEnabled && !compactReading,
+                              onSearchOpen: onMobileSearchOpen,
                             )
                           : Stack(
                               alignment: Alignment.center,
@@ -3301,34 +3267,60 @@ class _MobileSearchBrandTriggerState extends State<_MobileSearchBrandTrigger> {
   }
 }
 
-class _MobileHeaderTitle extends StatelessWidget {
-  const _MobileHeaderTitle({
-    super.key,
+class _CompactHeaderIdentity extends StatelessWidget {
+  const _CompactHeaderIdentity({
     required this.controller,
     required this.strings,
     required this.mobileRestyled,
-    this.routeTitleOverride,
-    this.searchEnabled = false,
+    required this.compactReading,
+    required this.compactSettings,
+    required this.searchEnabled,
+    required this.selectedArticle,
+    this.settingsSubPageTitle,
     this.onSearchOpen,
   });
 
   final ReaderController controller;
   final AppStrings strings;
   final bool mobileRestyled;
-  final String? routeTitleOverride;
+  final bool compactReading;
+  final bool compactSettings;
   final bool searchEnabled;
+  final Article? selectedArticle;
+  final String? settingsSubPageTitle;
   final VoidCallback? onSearchOpen;
 
   @override
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
+    final String title;
+    final String subtitle;
+
+    if (compactReading && selectedArticle != null) {
+      title = selectedArticle!.title;
+      subtitle = controller.sourceTitleForArticle(selectedArticle!);
+    } else if (compactSettings && settingsSubPageTitle != null) {
+      title = settingsSubPageTitle!;
+      subtitle = controller.currentRouteTitle;
+    } else {
+      title = controller.currentRouteTitle;
+      subtitle = strings.appName;
+    }
 
     return Row(
       children: <Widget>[
         _MobileSearchBrandTrigger(
           enabled: searchEnabled,
           onOpen: onSearchOpen,
-          child: _BrandMark(compact: true, mobileRestyled: mobileRestyled),
+          child: AnimatedSlide(
+            duration: _shellMotionDuration,
+            curve: _shellMotionCurve,
+            offset: compactReading ? const Offset(0.02, 0) : Offset.zero,
+            child: _BrandMark(
+              compact: true,
+              mobileRestyled: mobileRestyled,
+            ),
+          ),
         ),
         SizedBox(width: mobileRestyled ? 12 : 8),
         Expanded(
@@ -3336,10 +3328,8 @@ class _MobileHeaderTitle extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              Text(
-                routeTitleOverride ?? controller.currentRouteTitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              _MorphingHeaderText(
+                text: title,
                 style: mobileRestyled
                     ? Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontSize: 20,
@@ -3349,10 +3339,8 @@ class _MobileHeaderTitle extends StatelessWidget {
                     : Theme.of(context).textTheme.titleMedium,
               ),
               SizedBox(height: mobileRestyled ? 2 : 0),
-              Text(
-                strings.appName,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+              _MorphingHeaderText(
+                text: subtitle,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: palette.secondaryText,
                       fontWeight: mobileRestyled ? FontWeight.w500 : null,
@@ -3367,105 +3355,153 @@ class _MobileHeaderTitle extends StatelessWidget {
   }
 }
 
-class _MobileReaderHeaderTitle extends StatelessWidget {
-  const _MobileReaderHeaderTitle({
-    super.key,
-    required this.controller,
-    required this.article,
-    required this.strings,
-    required this.mobileRestyled,
+class _MorphingHeaderText extends StatefulWidget {
+  const _MorphingHeaderText({
+    required this.text,
+    required this.style,
   });
 
-  final ReaderController controller;
-  final Article article;
-  final AppStrings strings;
-  final bool mobileRestyled;
+  final String text;
+  final TextStyle? style;
+
+  @override
+  State<_MorphingHeaderText> createState() => _MorphingHeaderTextState();
+}
+
+class _MorphingHeaderTextState extends State<_MorphingHeaderText>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  String? _previousText;
+  late String _currentText;
+
+  @override
+  void initState() {
+    super.initState();
+    _currentText = widget.text;
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 320),
+      value: 1,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant _MorphingHeaderText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.text == widget.text) {
+      return;
+    }
+    _previousText = _currentText;
+    _currentText = widget.text;
+    _controller.forward(from: 0).whenComplete(() {
+      if (mounted) {
+        setState(() {
+          _previousText = null;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final ReaderPalette palette = AppTheme.paletteOf(context);
-    final String sourceTitle = controller.sourceTitleForArticle(article);
+    final bool disableAnimations =
+        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
+    final String? previousText = _previousText;
 
-    return Row(
-      children: <Widget>[
-        _MobileHeaderSourceAvatar(
-          iconUrl: controller.sourceIconForArticle(article),
-          mobileRestyled: mobileRestyled,
-        ),
-        SizedBox(width: mobileRestyled ? 12 : 8),
-        Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(
-                article.title,
+    if (disableAnimations || previousText == null) {
+      return Text(
+        _currentText,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: widget.style,
+      );
+    }
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (BuildContext context, _) {
+        final double value =
+            Curves.easeOutCubic.transform(_controller.value).clamp(0.0, 1.0);
+        final double currentBlur = _gooeyBlurFor(value);
+        final double previousBlur = _gooeyBlurFor(1 - value);
+        final double currentOpacity = math.pow(value, 0.4).toDouble();
+        final double previousOpacity =
+            math.pow((1 - value).clamp(0.0, 1.0), 0.4).toDouble();
+
+        return Stack(
+          alignment: Alignment.centerLeft,
+          children: <Widget>[
+            Opacity(
+              opacity: 0,
+              child: Text(
+                _currentText,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontSize: mobileRestyled ? 18 : null,
-                      fontWeight: FontWeight.w600,
-                      height: 1.08,
-                    ),
+                style: widget.style,
               ),
-              const SizedBox(height: 2),
-              Text(
-                '${strings.appName} @ $sourceTitle',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: palette.secondaryText,
-                      fontWeight: FontWeight.w500,
-                      height: 1.1,
-                    ),
-              ),
-            ],
-          ),
-        ),
-      ],
+            ),
+            _MorphingTextLayer(
+              text: previousText,
+              style: widget.style,
+              blurSigma: previousBlur,
+              opacity: previousOpacity,
+            ),
+            _MorphingTextLayer(
+              text: _currentText,
+              style: widget.style,
+              blurSigma: currentBlur,
+              opacity: currentOpacity,
+            ),
+          ],
+        );
+      },
     );
+  }
+
+  double _gooeyBlurFor(double fraction) {
+    final double safeFraction = fraction.clamp(0.001, 1.0);
+    return math.min((8 / safeFraction) - 8, 20).toDouble();
   }
 }
 
-class _MobileHeaderSourceAvatar extends StatelessWidget {
-  const _MobileHeaderSourceAvatar({
-    required this.iconUrl,
-    required this.mobileRestyled,
+class _MorphingTextLayer extends StatelessWidget {
+  const _MorphingTextLayer({
+    required this.text,
+    required this.style,
+    required this.blurSigma,
+    required this.opacity,
   });
 
-  final String? iconUrl;
-  final bool mobileRestyled;
+  final String text;
+  final TextStyle? style;
+  final double blurSigma;
+  final double opacity;
 
   @override
   Widget build(BuildContext context) {
-    final ReaderPalette palette = AppTheme.paletteOf(context);
-    final double size = mobileRestyled ? 32 : 26;
+    Widget child = Text(
+      text,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: style,
+    );
 
-    return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: palette.primarySoft,
-        borderRadius: BorderRadius.circular(mobileRestyled ? 12 : 9),
-      ),
-      clipBehavior: Clip.antiAlias,
-      child: iconUrl == null
-          ? Icon(
-              Icons.rss_feed_rounded,
-              size: mobileRestyled ? 17 : 15,
-              color: Theme.of(context).colorScheme.primary,
-            )
-          : Image.network(
-              iconUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) {
-                return Icon(
-                  Icons.public_rounded,
-                  size: mobileRestyled ? 17 : 15,
-                  color: Theme.of(context).colorScheme.primary,
-                );
-              },
-            ),
+    if (blurSigma > 0.05) {
+      child = ImageFiltered(
+        imageFilter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+        child: child,
+      );
+    }
+
+    return Opacity(
+      opacity: opacity.clamp(0.0, 1.0),
+      child: child,
     );
   }
 }

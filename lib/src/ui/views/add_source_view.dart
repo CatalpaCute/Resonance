@@ -251,16 +251,17 @@ class _AddSourceViewState extends State<AddSourceView> {
                   ],
                 ),
               );
-              final Widget managementCard = surface == GlassCardSurface.flat
-                  ? managementContent
-                  : DecoratedBox(
-                      decoration: BoxDecoration(
-                        color: palette.panelMutedBackground,
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: palette.border),
-                      ),
-                      child: managementContent,
-                    );
+              final Widget managementCard =
+                  compact || surface == GlassCardSurface.flat
+                      ? managementContent
+                      : DecoratedBox(
+                          decoration: BoxDecoration(
+                            color: palette.panelMutedBackground,
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: palette.border),
+                          ),
+                          child: managementContent,
+                        );
 
               if (stacked) {
                 return Column(
