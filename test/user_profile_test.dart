@@ -13,6 +13,9 @@ void main() {
         lastCloudSyncAt: DateTime.parse('2026-05-17T13:05:00Z'),
         lastCloudSyncStatus: CloudSyncStatus.synced,
         lastCloudSyncMessage: 'Synced',
+        pendingCloudCreate: false,
+        pendingCloudProfileSync: true,
+        pendingCloudAvatarSync: false,
       );
 
       final UserProfile restored = UserProfile.fromJson(profile.toJson());
@@ -34,6 +37,9 @@ void main() {
       );
       expect(restored.lastCloudSyncStatus, CloudSyncStatus.synced);
       expect(restored.lastCloudSyncMessage, 'Synced');
+      expect(restored.pendingCloudCreate, isFalse);
+      expect(restored.pendingCloudProfileSync, isTrue);
+      expect(restored.pendingCloudAvatarSync, isFalse);
     });
 
     test('creates an empty local profile with timestamps', () {
@@ -51,6 +57,9 @@ void main() {
       expect(profile.lastCloudSyncAt, isNull);
       expect(profile.lastCloudSyncStatus, CloudSyncStatus.idle);
       expect(profile.lastCloudSyncMessage, isNull);
+      expect(profile.pendingCloudCreate, isFalse);
+      expect(profile.pendingCloudProfileSync, isFalse);
+      expect(profile.pendingCloudAvatarSync, isFalse);
     });
   });
 

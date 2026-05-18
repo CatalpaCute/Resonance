@@ -51,6 +51,9 @@ class UserProfile {
     required this.lastCloudSyncAt,
     required this.lastCloudSyncStatus,
     required this.lastCloudSyncMessage,
+    required this.pendingCloudCreate,
+    required this.pendingCloudProfileSync,
+    required this.pendingCloudAvatarSync,
   });
 
   final String identityCode;
@@ -61,6 +64,12 @@ class UserProfile {
   final DateTime? lastCloudSyncAt;
   final CloudSyncStatus lastCloudSyncStatus;
   final String? lastCloudSyncMessage;
+  final bool pendingCloudCreate;
+  final bool pendingCloudProfileSync;
+  final bool pendingCloudAvatarSync;
+
+  bool get hasPendingAccountSync =>
+      pendingCloudCreate || pendingCloudProfileSync || pendingCloudAvatarSync;
 
   bool get hasAvatar => avatarPath?.trim().isNotEmpty ?? false;
 
@@ -73,6 +82,9 @@ class UserProfile {
     DateTime? lastCloudSyncAt,
     CloudSyncStatus? lastCloudSyncStatus,
     String? lastCloudSyncMessage,
+    bool? pendingCloudCreate,
+    bool? pendingCloudProfileSync,
+    bool? pendingCloudAvatarSync,
     bool clearLastCloudSyncAt = false,
     bool clearLastCloudSyncMessage = false,
     bool clearAvatarPath = false,
@@ -90,6 +102,11 @@ class UserProfile {
       lastCloudSyncMessage: clearLastCloudSyncMessage
           ? null
           : (lastCloudSyncMessage ?? this.lastCloudSyncMessage),
+      pendingCloudCreate: pendingCloudCreate ?? this.pendingCloudCreate,
+      pendingCloudProfileSync:
+          pendingCloudProfileSync ?? this.pendingCloudProfileSync,
+      pendingCloudAvatarSync:
+          pendingCloudAvatarSync ?? this.pendingCloudAvatarSync,
     );
   }
 
@@ -103,6 +120,9 @@ class UserProfile {
       'lastCloudSyncAt': lastCloudSyncAt?.toIso8601String(),
       'lastCloudSyncStatus': cloudSyncStatusToJson(lastCloudSyncStatus),
       'lastCloudSyncMessage': lastCloudSyncMessage,
+      'pendingCloudCreate': pendingCloudCreate,
+      'pendingCloudProfileSync': pendingCloudProfileSync,
+      'pendingCloudAvatarSync': pendingCloudAvatarSync,
     };
   }
 
@@ -120,6 +140,10 @@ class UserProfile {
         json['lastCloudSyncStatus'] as String?,
       ),
       lastCloudSyncMessage: json['lastCloudSyncMessage'] as String?,
+      pendingCloudCreate: json['pendingCloudCreate'] as bool? ?? false,
+      pendingCloudProfileSync:
+          json['pendingCloudProfileSync'] as bool? ?? false,
+      pendingCloudAvatarSync: json['pendingCloudAvatarSync'] as bool? ?? false,
     );
   }
 
@@ -134,6 +158,9 @@ class UserProfile {
       lastCloudSyncAt: null,
       lastCloudSyncStatus: CloudSyncStatus.idle,
       lastCloudSyncMessage: null,
+      pendingCloudCreate: false,
+      pendingCloudProfileSync: false,
+      pendingCloudAvatarSync: false,
     );
   }
 }

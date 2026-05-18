@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rsstool/src/models/article.dart';
 import 'package:rsstool/src/models/feed_source.dart';
+import 'package:rsstool/src/models/user_profile.dart';
 import 'package:rsstool/src/services/json_store.dart';
 import 'package:rsstool/src/services/rss_service.dart';
 import 'package:rsstool/src/state/reader_controller.dart';
@@ -109,12 +110,31 @@ void main() {
     });
 
     test('does not keep a local identity when cloud create fails', () async {
-      cloudService.failCreateWithNetwork = true;
+      cloudService.configured = false;
 
       await controller.generateIdentityAndSignIn();
 
       expect(controller.isSignedIn, isFalse);
       expect(controller.currentUser, isNull);
+    });
+
+    test('offline create keeps a local user and auto-registers later',
+        () async {
+      cloudService.failCreateWithNetwork = true;
+
+      await controller.generateIdentityAndSignIn();
+
+      expect(controller.isSignedIn, isTrue);
+      final String identityCode = controller.currentIdentityCodeDisplay;
+      expect(identityCode, hasLength(14));
+      expect(controller.currentUser?.pendingCloudCreate, isTrue);
+
+      cloudService.failCreateWithNetwork = false;
+      await controller.handleAppResumed();
+
+      expect(cloudService.usersByIdentityCode[identityCode], isNotNull);
+      expect(controller.currentUser?.pendingCloudCreate, isFalse);
+      expect(controller.currentCloudSyncStatus, CloudSyncStatus.synced);
     });
 
     test('manual upload sends feeds before articles', () async {
@@ -161,6 +181,26 @@ void main() {
       );
     });
 
+    test('failed user-name sync is retried automatically when cloud is back',
+        () async {
+      cloudService.usersByIdentityCode['AbCd1234EfGh56'] = 'Cloud Catal';
+      await controller.signInWithIdentityCode('AbCd1234EfGh56');
+
+      cloudService.failUpdateUserWithNetwork = true;
+      await controller.updateUserDisplayName('Offline Rename');
+      expect(controller.currentUser?.pendingCloudProfileSync, isTrue);
+
+      cloudService.failUpdateUserWithNetwork = false;
+      await controller.handleAppResumed();
+
+      expect(
+        cloudService.usersByIdentityCode['AbCd1234EfGh56'],
+        'Offline Rename',
+      );
+      expect(controller.currentUser?.pendingCloudProfileSync, isFalse);
+      expect(controller.currentCloudSyncStatus, CloudSyncStatus.synced);
+    });
+
     test('manual download replaces local feeds and articles', () async {
       cloudService.usersByIdentityCode['AbCd1234EfGh56'] = 'Cloud Catal';
       cloudService.feedsByIdentityCode['AbCd1234EfGh56'] = <String, dynamic>{
@@ -178,8 +218,7 @@ void main() {
           },
         ],
       };
-      cloudService.articlesByIdentityCode['AbCd1234EfGh56'] =
-          <String, dynamic>{
+      cloudService.articlesByIdentityCode['AbCd1234EfGh56'] = <String, dynamic>{
         'identityCode': 'AbCd1234EfGh56',
         'updatedAt': '2026-05-18T12:00:00Z',
         'articles': <Map<String, dynamic>>[

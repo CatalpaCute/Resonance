@@ -70,6 +70,7 @@ class WindowsAutoRefreshService
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      unawaited(controller.handleAppResumed());
       unawaited(_rescheduleAutoRefresh());
     }
   }
@@ -86,11 +87,13 @@ class WindowsAutoRefreshService
 
   @override
   void onWindowFocus() {
+    unawaited(controller.handleAppResumed());
     unawaited(_rescheduleAutoRefresh());
   }
 
   @override
   void onWindowRestore() {
+    unawaited(controller.handleAppResumed());
     unawaited(_rescheduleAutoRefresh());
   }
 

@@ -71,6 +71,7 @@ class AndroidAutoRefreshService with WidgetsBindingObserver {
     _isHandlingResume = true;
     try {
       await controller.reloadPersistedState();
+      await controller.handleAppResumed();
       await _syncFromController(force: true);
 
       final List<FeedSource> dueFeeds = controller.dueAutoRefreshFeeds();
@@ -149,7 +150,10 @@ class AndroidAutoRefreshService with WidgetsBindingObserver {
     _foregroundTimer?.cancel();
     _foregroundTimer = null;
 
-    if (!isForeground || _disposed || controller.isBusy || _isHandlingForegroundRefresh) {
+    if (!isForeground ||
+        _disposed ||
+        controller.isBusy ||
+        _isHandlingForegroundRefresh) {
       return;
     }
 

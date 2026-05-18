@@ -49,6 +49,7 @@ class LinuxAutoRefreshService with WidgetsBindingObserver {
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.resumed) {
+      unawaited(controller.handleAppResumed());
       unawaited(_rescheduleAutoRefresh());
     }
   }

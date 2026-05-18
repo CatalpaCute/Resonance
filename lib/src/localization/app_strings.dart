@@ -1206,6 +1206,31 @@ class AppStrings {
         zhHant: '最近同步：$time',
         en: 'Last sync: $time',
       );
+  String get accountGeneratedOfflinePending => _text(
+        zhCn: '当前离线，身份代码已经先保存在本地，联网后会自动注册到折纸云。',
+        zhHant: '目前離線，身分代碼已先保存在本機，連網後會自動註冊到折紙雲。',
+        en: 'You are offline. The identity code was saved locally and will register with Origami Cloud once the app is back online.',
+      );
+  String get accountCloudCreatePending => _text(
+        zhCn: '这个身份还没有注册到折纸云，联网后会自动补传。',
+        zhHant: '這個身分還沒有註冊到折紙雲，連網後會自動補傳。',
+        en: 'This identity is not registered with Origami Cloud yet. It will sync automatically when the network is back.',
+      );
+  String get accountAvatarPendingSync => _text(
+        zhCn: '头像已经更新到本地，联网后会自动同步到折纸云。',
+        zhHant: '頭像已更新到本機，連網後會自動同步到折紙雲。',
+        en: 'The avatar was updated locally and will sync to Origami Cloud automatically when online.',
+      );
+  String get accountCloudAutoSyncCompleted => _text(
+        zhCn: '检测到联网，账号资料已经自动同步到折纸云。',
+        zhHant: '偵測到連網後，帳號資料已自動同步到折紙雲。',
+        en: 'The app is back online and account details were synced to Origami Cloud automatically.',
+      );
+  String get accountCloudAutoSyncPending => _text(
+        zhCn: '账号资料还没同步完成，应用会在下次联网后继续补传。',
+        zhHant: '帳號資料還沒同步完成，應用會在下次連網後繼續補傳。',
+        en: 'Account details are still waiting to sync. The app will retry automatically the next time it can reach the cloud.',
+      );
 }
 
 extension AppStringsBuildContextX on BuildContext {

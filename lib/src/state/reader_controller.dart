@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math';
 import 'dart:ui';
@@ -78,6 +79,7 @@ class ReaderController extends ChangeNotifier {
   String? _errorMessage;
   String? _statusMessage;
   final Set<String> _refreshingFeedIds = <String>{};
+  bool _syncingPendingAccountState = false;
 
   List<FeedSource> get feeds => _readonlyFeeds;
   List<Article> get articles => _readonlyArticles;
@@ -112,6 +114,7 @@ class ReaderController extends ChangeNotifier {
     }
     return Uri.tryParse(baseUrl)?.host;
   }
+
   CloudSyncStatus get currentCloudSyncStatus =>
       _currentUser?.lastCloudSyncStatus ?? CloudSyncStatus.idle;
   DateTime? get currentCloudSyncAt => _currentUser?.lastCloudSyncAt;
@@ -223,6 +226,7 @@ class ReaderController extends ChangeNotifier {
       _setSettings(persisted.settings, dirty: false);
       _clearDirtyFlags();
       await _loadUserState();
+      await _syncPendingAccountStateIfNeeded();
       _currentRoute = _settings.startupRoute;
       _lastWorkspaceRoute = _currentRoute;
       _activeSourceId = null;
@@ -508,13 +512,14 @@ class ReaderController extends ChangeNotifier {
   }
 
   Future<void> generateIdentityAndSignIn() async {
-    if (!_ensureOfficialCloudConfigured()) {
+    if (!_canCreateIdentityCode()) {
       return;
     }
 
     await _runUserBusyTask(() async {
       final String initialUserName = _defaultCloudUserName;
       CloudCreateUserResult? createdUser;
+      String? offlineCandidateIdentityCode;
 
       for (int attempt = 0; attempt < 20; attempt += 1) {
         final String identityCode = generateIdentityCode();
@@ -534,12 +539,23 @@ class ReaderController extends ChangeNotifier {
           if (error.kind == CloudServiceErrorKind.conflict) {
             continue;
           }
+          if (_canFallbackToOfflineCreate(error)) {
+            offlineCandidateIdentityCode = identityCode;
+            break;
+          }
           rethrow;
         }
       }
 
       if (createdUser == null) {
-        _errorMessage = _strings.accountIdentityCodeGenerationFailedCloud;
+        final UserProfile offlineProfile = await _createOfflinePendingUser(
+          identityCode: offlineCandidateIdentityCode ?? generateIdentityCode(),
+          initialUserName: initialUserName,
+        );
+        await _activateUserSession(
+          offlineProfile,
+          statusMessage: _strings.accountGeneratedOfflinePending,
+        );
         return;
       }
 
@@ -631,6 +647,8 @@ class ReaderController extends ChangeNotifier {
             lastCloudSyncAt: DateTime.now(),
             lastCloudSyncStatus: CloudSyncStatus.synced,
             lastCloudSyncMessage: _strings.accountDisplayNameUpdatedCloud,
+            pendingCloudCreate: false,
+            pendingCloudProfileSync: false,
           ),
         );
         _currentUser = nextProfile;
@@ -640,6 +658,7 @@ class ReaderController extends ChangeNotifier {
           nextProfile.copyWith(
             lastCloudSyncStatus: CloudSyncStatus.failed,
             lastCloudSyncMessage: _strings.accountUserNameSyncFailed,
+            pendingCloudProfileSync: true,
           ),
         );
         _currentUser = nextProfile;
@@ -649,6 +668,13 @@ class ReaderController extends ChangeNotifier {
         );
       }
     });
+  }
+
+  /// 设计意图：
+  /// 账号资料自动补传只挂在“重新回到前台”这个自然事件上，
+  /// 不做后台低频轮询，避免长期驻留重试。
+  Future<void> handleAppResumed() async {
+    await _syncPendingAccountStateIfNeeded();
   }
 
   Future<void> pickAndSaveUserAvatar() async {
@@ -689,12 +715,18 @@ class ReaderController extends ChangeNotifier {
         profile.identityCode,
         avatarBytes,
       );
-      final UserProfile nextProfile = await _persistUserProfile(profile.copyWith(
-        avatarPath: avatarPath,
-        updatedAt: DateTime.now(),
-      ));
+      final UserProfile nextProfile = await _persistUserProfile(
+        profile.copyWith(
+          avatarPath: avatarPath,
+          updatedAt: DateTime.now(),
+          pendingCloudAvatarSync: true,
+          lastCloudSyncStatus: CloudSyncStatus.failed,
+          lastCloudSyncMessage: _strings.accountAvatarPendingSync,
+        ),
+      );
       _currentUser = nextProfile;
       _statusMessage = _strings.accountAvatarUpdated;
+      _triggerPendingAccountSyncIfPossible();
     } on FormatException catch (_) {
       _errorMessage = _strings.accountAvatarUnsupported;
     } catch (error) {
@@ -735,6 +767,9 @@ class ReaderController extends ChangeNotifier {
         lastCloudSyncAt: DateTime.now(),
         lastCloudSyncStatus: CloudSyncStatus.synced,
         lastCloudSyncMessage: _strings.accountCloudUploadCompleted,
+        pendingCloudCreate: false,
+        pendingCloudProfileSync: false,
+        pendingCloudAvatarSync: false,
         updatedAt: DateTime.now(),
       ));
       _statusMessage = _strings.accountCloudUploadCompleted;
@@ -775,6 +810,9 @@ class ReaderController extends ChangeNotifier {
         lastCloudSyncAt: DateTime.now(),
         lastCloudSyncStatus: CloudSyncStatus.synced,
         lastCloudSyncMessage: _strings.accountCloudDownloadCompleted,
+        pendingCloudCreate: false,
+        pendingCloudProfileSync: false,
+        pendingCloudAvatarSync: false,
         updatedAt: DateTime.now(),
       ));
       _statusMessage = _strings.accountCloudDownloadCompleted;
@@ -1373,6 +1411,15 @@ class ReaderController extends ChangeNotifier {
     }
   }
 
+  bool _canCreateIdentityCode() {
+    if (_officialCloudService.isConfigured) {
+      return true;
+    }
+    _errorMessage = _strings.accountCloudUnavailable;
+    notifyListeners();
+    return false;
+  }
+
   bool _ensureOfficialCloudConfigured() {
     if (_officialCloudService.isConfigured) {
       return true;
@@ -1404,6 +1451,24 @@ class ReaderController extends ChangeNotifier {
     return profile;
   }
 
+  Future<UserProfile> _createOfflinePendingUser({
+    required String identityCode,
+    required String initialUserName,
+  }) async {
+    final DateTime now = DateTime.now();
+    final UserProfile profile = UserProfile.createEmpty(
+      identityCode,
+      now: now,
+    ).copyWith(
+      displayName: _normalizeCloudUserName(initialUserName),
+      updatedAt: now,
+      lastCloudSyncStatus: CloudSyncStatus.failed,
+      lastCloudSyncMessage: _strings.accountCloudCreatePending,
+      pendingCloudCreate: true,
+    );
+    return _persistUserProfile(profile);
+  }
+
   Future<UserProfile> _persistUserProfile(UserProfile profile) async {
     await _store.saveUserProfile(profile);
     return profile;
@@ -1425,6 +1490,8 @@ class ReaderController extends ChangeNotifier {
       lastCloudSyncAt: now,
       lastCloudSyncStatus: syncStatus,
       lastCloudSyncMessage: syncMessage,
+      pendingCloudCreate: false,
+      pendingCloudProfileSync: false,
     );
     return _persistUserProfile(nextProfile);
   }
@@ -1455,6 +1522,107 @@ class ReaderController extends ChangeNotifier {
       case CloudServiceErrorKind.invalidResponse:
       case CloudServiceErrorKind.rejected:
         return fallback;
+    }
+  }
+
+  bool _canFallbackToOfflineCreate(CloudServiceException error) {
+    return error.kind == CloudServiceErrorKind.network;
+  }
+
+  bool _shouldAutoSyncPendingAccountState() {
+    final UserProfile? profile = _currentUser;
+    return _officialCloudService.isConfigured &&
+        profile != null &&
+        profile.hasPendingAccountSync;
+  }
+
+  void _triggerPendingAccountSyncIfPossible() {
+    if (!_shouldAutoSyncPendingAccountState()) {
+      return;
+    }
+    unawaited(_syncPendingAccountStateIfNeeded());
+  }
+
+  Future<void> _syncPendingAccountStateIfNeeded() async {
+    if (_syncingPendingAccountState || !_shouldAutoSyncPendingAccountState()) {
+      return;
+    }
+    final UserProfile? currentProfile = _currentUser;
+    if (currentProfile == null) {
+      return;
+    }
+
+    _syncingPendingAccountState = true;
+    try {
+      UserProfile profile = currentProfile;
+      final String normalizedUserName =
+          _normalizeCloudUserName(profile.displayName);
+
+      if (profile.pendingCloudCreate) {
+        try {
+          await _officialCloudService.createUser(
+            profile.identityCode,
+            normalizedUserName,
+          );
+        } on CloudServiceException catch (error) {
+          if (error.kind != CloudServiceErrorKind.conflict) {
+            rethrow;
+          }
+        }
+        profile = await _persistUserProfile(profile.copyWith(
+          pendingCloudCreate: false,
+          pendingCloudProfileSync: true,
+          lastCloudSyncStatus: CloudSyncStatus.failed,
+          lastCloudSyncMessage: _strings.accountCloudCreatePending,
+        ));
+      }
+
+      if (profile.pendingCloudProfileSync) {
+        await _officialCloudService.updateUser(
+          profile.identityCode,
+          normalizedUserName,
+        );
+        profile = await _persistUserProfile(profile.copyWith(
+          pendingCloudProfileSync: false,
+        ));
+      }
+
+      if (profile.pendingCloudAvatarSync &&
+          profile.hasAvatar &&
+          profile.avatarPath != null) {
+        final File avatarFile = File(profile.avatarPath!);
+        if (await avatarFile.exists()) {
+          await _officialCloudService.uploadAvatar(
+            profile.identityCode,
+            await avatarFile.readAsBytes(),
+            'image/jpeg',
+          );
+        }
+        profile = await _persistUserProfile(profile.copyWith(
+          pendingCloudAvatarSync: false,
+        ));
+      }
+
+      profile = await _persistUserProfile(profile.copyWith(
+        lastCloudSyncAt: DateTime.now(),
+        lastCloudSyncStatus: CloudSyncStatus.synced,
+        lastCloudSyncMessage: _strings.accountCloudAutoSyncCompleted,
+      ));
+      _currentUser = profile;
+    } on CloudServiceException catch (error) {
+      final UserProfile? latest = _currentUser;
+      if (latest != null) {
+        _currentUser = await _persistUserProfile(latest.copyWith(
+          lastCloudSyncStatus: CloudSyncStatus.failed,
+          lastCloudSyncMessage: _cloudOperationMessage(
+            error,
+            fallback: _strings.accountCloudAutoSyncPending,
+          ),
+        ));
+      }
+    } finally {
+      _syncingPendingAccountState = false;
+      notifyListeners();
     }
   }
 
