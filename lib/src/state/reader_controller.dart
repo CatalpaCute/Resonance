@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:math';
 import 'dart:ui';
 
@@ -15,6 +16,7 @@ import '../models/reader_settings.dart';
 import '../models/user_profile.dart';
 import '../services/auto_refresh_engine.dart';
 import '../services/json_store.dart';
+import '../services/official_cloud_service.dart';
 import '../services/rss_service.dart';
 
 class _SourceStats {
@@ -30,11 +32,14 @@ class _SourceStats {
 class ReaderController extends ChangeNotifier {
   ReaderController({
     required JsonStore store,
+    required OfficialCloudService officialCloudService,
     required RssService rssService,
   })  : _store = store,
+        _officialCloudService = officialCloudService,
         _rssService = rssService;
 
   final JsonStore _store;
+  final OfficialCloudService _officialCloudService;
   final RssService _rssService;
   late final AutoRefreshEngine _autoRefreshEngine = AutoRefreshEngine(
     store: _store,
@@ -97,6 +102,20 @@ class ReaderController extends ChangeNotifier {
     }
     return _strings.accountUnnamedUser;
   }
+
+  bool get isOfficialCloudConfigured => _officialCloudService.isConfigured;
+  String? get officialCloudBaseUrl => _officialCloudService.baseUrl;
+  String? get officialCloudHost {
+    final String? baseUrl = officialCloudBaseUrl;
+    if (baseUrl == null || baseUrl.isEmpty) {
+      return null;
+    }
+    return Uri.tryParse(baseUrl)?.host;
+  }
+  CloudSyncStatus get currentCloudSyncStatus =>
+      _currentUser?.lastCloudSyncStatus ?? CloudSyncStatus.idle;
+  DateTime? get currentCloudSyncAt => _currentUser?.lastCloudSyncAt;
+  String? get currentCloudSyncMessage => _currentUser?.lastCloudSyncMessage;
 
   String? get errorMessage => _errorMessage;
   String? get statusMessage => _statusMessage;
@@ -489,20 +508,52 @@ class ReaderController extends ChangeNotifier {
   }
 
   Future<void> generateIdentityAndSignIn() async {
-    _errorMessage = null;
-    try {
-      final String identityCode = await _generateAvailableIdentityCode();
-      await _signInResolvedIdentityCode(
-        identityCode,
-        statusMessage: _strings.accountGeneratedAndSignedIn,
-      );
-    } on StateError catch (_) {
-      _errorMessage = _strings.accountIdentityCodeGenerationFailed;
-      notifyListeners();
-    } catch (error) {
-      _errorMessage = '$error';
-      notifyListeners();
+    if (!_ensureOfficialCloudConfigured()) {
+      return;
     }
+
+    await _runUserBusyTask(() async {
+      final String initialUserName = _defaultCloudUserName;
+      CloudCreateUserResult? createdUser;
+
+      for (int attempt = 0; attempt < 20; attempt += 1) {
+        final String identityCode = generateIdentityCode();
+        final UserProfile? localProfile = await _store.loadUserProfile(
+          identityCode,
+        );
+        if (localProfile != null) {
+          continue;
+        }
+        try {
+          createdUser = await _officialCloudService.createUser(
+            identityCode,
+            initialUserName,
+          );
+          break;
+        } on CloudServiceException catch (error) {
+          if (error.kind == CloudServiceErrorKind.conflict) {
+            continue;
+          }
+          rethrow;
+        }
+      }
+
+      if (createdUser == null) {
+        _errorMessage = _strings.accountIdentityCodeGenerationFailedCloud;
+        return;
+      }
+
+      final UserProfile profile = await _upsertCloudUserProfile(
+        identityCode: createdUser.identityCode,
+        userName: createdUser.userName,
+        syncStatus: CloudSyncStatus.synced,
+        syncMessage: _strings.accountCloudRegistrationCompleted,
+      );
+      await _activateUserSession(
+        profile,
+        statusMessage: _strings.accountGeneratedAndSignedInCloud,
+      );
+    });
   }
 
   Future<void> signInWithIdentityCode(String rawCode) async {
@@ -513,15 +564,29 @@ class ReaderController extends ChangeNotifier {
       return;
     }
 
-    try {
-      await _signInResolvedIdentityCode(
-        identityCode,
-        statusMessage: _strings.accountSignedIn,
-      );
-    } catch (error) {
-      _errorMessage = '$error';
-      notifyListeners();
+    if (!_ensureOfficialCloudConfigured()) {
+      return;
     }
+
+    await _runUserBusyTask(() async {
+      final CloudUserLookupResult result =
+          await _officialCloudService.getUser(identityCode);
+      if (!result.exists) {
+        _errorMessage = _strings.accountIdentityCodeNotFound;
+        return;
+      }
+
+      final UserProfile profile = await _upsertCloudUserProfile(
+        identityCode: identityCode,
+        userName: result.userName ?? _defaultCloudUserName,
+        syncStatus: CloudSyncStatus.synced,
+        syncMessage: _strings.accountCloudLoginLoaded,
+      );
+      await _activateUserSession(
+        profile,
+        statusMessage: _strings.accountSignedInCloud,
+      );
+    });
   }
 
   Future<void> signOutUser() async {
@@ -542,20 +607,48 @@ class ReaderController extends ChangeNotifier {
     if (profile == null) {
       return;
     }
+    if (!_ensureOfficialCloudConfigured()) {
+      return;
+    }
 
-    _errorMessage = null;
-    try {
-      final UserProfile nextProfile = profile.copyWith(
-        displayName: value.trim(),
+    await _runUserBusyTask(() async {
+      final String normalizedUserName = _normalizeCloudUserName(value);
+      UserProfile nextProfile = profile.copyWith(
+        displayName: normalizedUserName,
         updatedAt: DateTime.now(),
       );
       await _store.saveUserProfile(nextProfile);
       _currentUser = nextProfile;
-      _statusMessage = _strings.accountDisplayNameUpdated;
-    } catch (error) {
-      _errorMessage = '$error';
-    }
-    notifyListeners();
+      notifyListeners();
+
+      try {
+        await _officialCloudService.updateUser(
+          profile.identityCode,
+          normalizedUserName,
+        );
+        nextProfile = await _persistUserProfile(
+          nextProfile.copyWith(
+            lastCloudSyncAt: DateTime.now(),
+            lastCloudSyncStatus: CloudSyncStatus.synced,
+            lastCloudSyncMessage: _strings.accountDisplayNameUpdatedCloud,
+          ),
+        );
+        _currentUser = nextProfile;
+        _statusMessage = _strings.accountDisplayNameUpdatedCloud;
+      } on CloudServiceException catch (error) {
+        nextProfile = await _persistUserProfile(
+          nextProfile.copyWith(
+            lastCloudSyncStatus: CloudSyncStatus.failed,
+            lastCloudSyncMessage: _strings.accountUserNameSyncFailed,
+          ),
+        );
+        _currentUser = nextProfile;
+        _errorMessage = _cloudOperationMessage(
+          error,
+          fallback: _strings.accountUserNameSyncFailed,
+        );
+      }
+    });
   }
 
   Future<void> pickAndSaveUserAvatar() async {
@@ -596,11 +689,10 @@ class ReaderController extends ChangeNotifier {
         profile.identityCode,
         avatarBytes,
       );
-      final UserProfile nextProfile = profile.copyWith(
+      final UserProfile nextProfile = await _persistUserProfile(profile.copyWith(
         avatarPath: avatarPath,
         updatedAt: DateTime.now(),
-      );
-      await _store.saveUserProfile(nextProfile);
+      ));
       _currentUser = nextProfile;
       _statusMessage = _strings.accountAvatarUpdated;
     } on FormatException catch (_) {
@@ -609,6 +701,84 @@ class ReaderController extends ChangeNotifier {
       _errorMessage = '$error';
     }
     notifyListeners();
+  }
+
+  Future<void> uploadCurrentUserToOfficialCloud() async {
+    final UserProfile? profile = _currentUser;
+    if (profile == null) {
+      return;
+    }
+    if (!_ensureOfficialCloudConfigured()) {
+      return;
+    }
+
+    await _runUserBusyTask(() async {
+      await _officialCloudService.uploadFeeds(
+        profile.identityCode,
+        buildCloudFeedsPayload(profile.identityCode, _feeds),
+      );
+      await _officialCloudService.uploadArticles(
+        profile.identityCode,
+        buildCloudArticlesPayload(profile.identityCode, _articles),
+      );
+      if (profile.hasAvatar) {
+        final File avatarFile = File(profile.avatarPath!);
+        if (await avatarFile.exists()) {
+          await _officialCloudService.uploadAvatar(
+            profile.identityCode,
+            await avatarFile.readAsBytes(),
+            'image/jpeg',
+          );
+        }
+      }
+      _currentUser = await _persistUserProfile(profile.copyWith(
+        lastCloudSyncAt: DateTime.now(),
+        lastCloudSyncStatus: CloudSyncStatus.synced,
+        lastCloudSyncMessage: _strings.accountCloudUploadCompleted,
+        updatedAt: DateTime.now(),
+      ));
+      _statusMessage = _strings.accountCloudUploadCompleted;
+    }, onCloudErrorFallback: _strings.accountCloudUploadFailed);
+  }
+
+  Future<void> downloadCurrentUserFromOfficialCloud() async {
+    final UserProfile? profile = _currentUser;
+    if (profile == null) {
+      return;
+    }
+    if (!_ensureOfficialCloudConfigured()) {
+      return;
+    }
+
+    await _runUserBusyTask(() async {
+      final Map<String, dynamic> feedsPayload =
+          await _officialCloudService.downloadFeeds(profile.identityCode);
+      final Map<String, dynamic> articlesPayload =
+          await _officialCloudService.downloadArticles(profile.identityCode);
+      final Uint8List? avatarBytes =
+          await _officialCloudService.downloadAvatar(profile.identityCode);
+
+      final List<FeedSource> downloadedFeeds =
+          _decodeCloudFeedsPayload(feedsPayload);
+      final List<Article> downloadedArticles =
+          _decodeCloudArticlesPayload(articlesPayload);
+      final UserProfile refreshedProfile =
+          await _buildProfileWithDownloadedAvatar(
+        profile,
+        avatarBytes,
+      );
+
+      _setFeeds(downloadedFeeds);
+      _setArticles(downloadedArticles);
+      await _persistAll();
+      _currentUser = await _persistUserProfile(refreshedProfile.copyWith(
+        lastCloudSyncAt: DateTime.now(),
+        lastCloudSyncStatus: CloudSyncStatus.synced,
+        lastCloudSyncMessage: _strings.accountCloudDownloadCompleted,
+        updatedAt: DateTime.now(),
+      ));
+      _statusMessage = _strings.accountCloudDownloadCompleted;
+    }, onCloudErrorFallback: _strings.accountCloudDownloadFailed);
   }
 
   void setArticleListPaneWidth(double width) {
@@ -960,7 +1130,7 @@ class ReaderController extends ChangeNotifier {
     }
 
     _currentUser = await _store.loadUserProfile(identityCode) ??
-        await _createUserProfile(identityCode);
+        await _createLocalUserProfile(identityCode);
   }
 
   // Keep read-heavy indexes in sync at mutation boundaries so UI getters stay cheap.
@@ -1149,32 +1319,18 @@ class ReaderController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<String> _generateAvailableIdentityCode() async {
-    for (int attempt = 0; attempt < 20; attempt += 1) {
-      final String identityCode = generateIdentityCode();
-      final UserProfile? existing = await _store.loadUserProfile(identityCode);
-      if (existing == null) {
-        return identityCode;
-      }
-    }
-    throw StateError(_strings.accountIdentityCodeGenerationFailed);
-  }
-
-  Future<void> _signInResolvedIdentityCode(
-    String identityCode, {
+  Future<void> _activateUserSession(
+    UserProfile profile, {
     required String statusMessage,
   }) async {
     _errorMessage = null;
-    final UserProfile profile = await _store.loadUserProfile(identityCode) ??
-        await _createUserProfile(identityCode);
     final CurrentUserSession session = CurrentUserSession(
-      identityCode: identityCode,
+      identityCode: profile.identityCode,
     );
     await _store.saveCurrentUserSession(session);
     _currentUserSession = session;
     _currentUser = profile;
     _statusMessage = statusMessage;
-    notifyListeners();
   }
 
   Future<void> _runBusy(
@@ -1195,6 +1351,37 @@ class ReaderController extends ChangeNotifier {
     }
   }
 
+  Future<void> _runUserBusyTask(
+    Future<void> Function() action, {
+    String? onCloudErrorFallback,
+  }) async {
+    _errorMessage = null;
+    _isBusy = true;
+    notifyListeners();
+    try {
+      await action();
+    } on CloudServiceException catch (error) {
+      _errorMessage = _cloudOperationMessage(
+        error,
+        fallback: onCloudErrorFallback ?? _strings.accountCloudUnavailable,
+      );
+    } catch (error) {
+      _errorMessage = '$error';
+    } finally {
+      _isBusy = false;
+      notifyListeners();
+    }
+  }
+
+  bool _ensureOfficialCloudConfigured() {
+    if (_officialCloudService.isConfigured) {
+      return true;
+    }
+    _errorMessage = _strings.accountCloudUnavailable;
+    notifyListeners();
+    return false;
+  }
+
   String _normalizeInputUrl(String rawUrl) {
     final String trimmed = rawUrl.trim();
     if (trimmed.isEmpty) {
@@ -1211,10 +1398,110 @@ class ReaderController extends ChangeNotifier {
     return '${prefix}_$micros';
   }
 
-  Future<UserProfile> _createUserProfile(String identityCode) async {
+  Future<UserProfile> _createLocalUserProfile(String identityCode) async {
     final UserProfile profile = UserProfile.createEmpty(identityCode);
     await _store.saveUserProfile(profile);
     return profile;
+  }
+
+  Future<UserProfile> _persistUserProfile(UserProfile profile) async {
+    await _store.saveUserProfile(profile);
+    return profile;
+  }
+
+  Future<UserProfile> _upsertCloudUserProfile({
+    required String identityCode,
+    required String userName,
+    required CloudSyncStatus syncStatus,
+    required String syncMessage,
+  }) async {
+    final DateTime now = DateTime.now();
+    final UserProfile baseProfile =
+        await _store.loadUserProfile(identityCode) ??
+            UserProfile.createEmpty(identityCode, now: now);
+    final UserProfile nextProfile = baseProfile.copyWith(
+      displayName: _normalizeCloudUserName(userName),
+      updatedAt: now,
+      lastCloudSyncAt: now,
+      lastCloudSyncStatus: syncStatus,
+      lastCloudSyncMessage: syncMessage,
+    );
+    return _persistUserProfile(nextProfile);
+  }
+
+  String get _defaultCloudUserName => _strings.accountUnnamedUser;
+
+  String _normalizeCloudUserName(String rawValue) {
+    final String trimmed = rawValue.trim();
+    final String normalized = trimmed.isEmpty ? _defaultCloudUserName : trimmed;
+    if (normalized.length <= 64) {
+      return normalized;
+    }
+    return normalized.substring(0, 64);
+  }
+
+  String _cloudOperationMessage(
+    CloudServiceException error, {
+    required String fallback,
+  }) {
+    switch (error.kind) {
+      case CloudServiceErrorKind.notConfigured:
+        return _strings.accountCloudUnavailable;
+      case CloudServiceErrorKind.network:
+        return _strings.accountCloudConnectionFailed;
+      case CloudServiceErrorKind.notFound:
+        return _strings.accountIdentityCodeNotFound;
+      case CloudServiceErrorKind.conflict:
+      case CloudServiceErrorKind.invalidResponse:
+      case CloudServiceErrorKind.rejected:
+        return fallback;
+    }
+  }
+
+  List<FeedSource> _decodeCloudFeedsPayload(Map<String, dynamic> payload) {
+    final Object? rawFeeds = payload['feeds'];
+    if (rawFeeds is! List<dynamic>) {
+      return <FeedSource>[];
+    }
+    return rawFeeds
+        .whereType<Map<dynamic, dynamic>>()
+        .map((Map<dynamic, dynamic> json) {
+      return FeedSource.fromJson(Map<String, dynamic>.from(json));
+    }).toList();
+  }
+
+  List<Article> _decodeCloudArticlesPayload(Map<String, dynamic> payload) {
+    final Object? rawArticles = payload['articles'];
+    if (rawArticles is! List<dynamic>) {
+      return <Article>[];
+    }
+    return rawArticles
+        .whereType<Map<dynamic, dynamic>>()
+        .map((Map<dynamic, dynamic> json) {
+      return Article.fromJson(Map<String, dynamic>.from(json));
+    }).toList()
+      ..sort((Article a, Article b) => b.publishedAt.compareTo(a.publishedAt));
+  }
+
+  Future<UserProfile> _buildProfileWithDownloadedAvatar(
+    UserProfile profile,
+    Uint8List? avatarBytes,
+  ) async {
+    if (avatarBytes == null) {
+      await _store.deleteUserAvatar(profile.identityCode);
+      return profile.copyWith(
+        clearAvatarPath: true,
+      );
+    }
+
+    final Uint8List normalizedAvatar = _normalizeAvatarBytesAsJpg(avatarBytes);
+    final String avatarPath = await _store.saveUserAvatar(
+      profile.identityCode,
+      normalizedAvatar,
+    );
+    return profile.copyWith(
+      avatarPath: avatarPath,
+    );
   }
 
   Uint8List _buildCenteredSquareAvatar(Uint8List sourceBytes) {
@@ -1236,6 +1523,19 @@ class ReaderController extends ChangeNotifier {
     final img.Image resized = squareSize > 512
         ? img.copyResize(cropped, width: 512, height: 512)
         : cropped;
+    return Uint8List.fromList(img.encodeJpg(resized, quality: 88));
+  }
+
+  Uint8List _normalizeAvatarBytesAsJpg(Uint8List sourceBytes) {
+    final img.Image? decoded = img.decodeImage(sourceBytes);
+    if (decoded == null) {
+      throw FormatException(_strings.accountAvatarUnsupported);
+    }
+    final img.Image resized = decoded.width > 512 || decoded.height > 512
+        ? img.copyResize(decoded,
+            width: decoded.width >= decoded.height ? 512 : null,
+            height: decoded.height > decoded.width ? 512 : null)
+        : decoded;
     return Uint8List.fromList(img.encodeJpg(resized, quality: 88));
   }
 }

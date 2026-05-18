@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
 import 'src/services/json_store.dart';
+import 'src/services/official_cloud_service.dart';
 import 'src/services/rss_service.dart';
 import 'src/services/android_auto_refresh_scheduler.dart';
 import 'src/services/android_auto_refresh_service.dart';
@@ -76,6 +77,7 @@ Future<void> main() async {
 
   final controller = ReaderController(
     store: JsonStore(),
+    officialCloudService: HttpOfficialCloudService(),
     rssService: RssService(),
   );
   await controller.initialize();

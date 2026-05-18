@@ -54,6 +54,7 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
 
   Widget _buildSignedOutView(BuildContext context) {
     final AppStrings strings = context.strings;
+    final bool cloudReady = controller.isOfficialCloudConfigured;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,25 +72,34 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
               ),
               const SizedBox(height: 8),
               Text(
-                strings.accountSignedOutHint,
+                strings.accountSignedOutHintCloud,
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppTheme.paletteOf(context).secondaryText,
                     ),
               ),
+              if (!cloudReady) ...<Widget>[
+                const SizedBox(height: 12),
+                Text(
+                  strings.accountCloudUnavailable,
+                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                ),
+              ],
               const SizedBox(height: 20),
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
                 children: <Widget>[
                   FilledButton.icon(
-                    onPressed: controller.isBusy
+                    onPressed: controller.isBusy || !cloudReady
                         ? null
                         : () => controller.generateIdentityAndSignIn(),
                     icon: const Icon(Icons.auto_awesome_rounded),
                     label: Text(strings.accountGenerateCode),
                   ),
                   OutlinedButton.icon(
-                    onPressed: controller.isBusy
+                    onPressed: controller.isBusy || !cloudReady
                         ? null
                         : () {
                             setState(() {
@@ -120,7 +130,7 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                   children: <Widget>[
                     Expanded(
                       child: FilledButton(
-                        onPressed: _canSubmitIdentityCode
+                        onPressed: _canSubmitIdentityCode && cloudReady
                             ? () async {
                                 await controller.signInWithIdentityCode(
                                   _identityCodeController.text,
@@ -178,7 +188,10 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                 label: strings.accountDisplayNameLabel,
                 value: controller.currentUserDisplayName,
                 trailing: TextButton(
-                  onPressed: _showEditDisplayNameDialog,
+                  onPressed:
+                      controller.isOfficialCloudConfigured
+                          ? _showEditDisplayNameDialog
+                          : null,
                   child: Text(strings.accountEditDisplayName),
                 ),
               ),
@@ -211,23 +224,92 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
           iconColor: const Color(0xFF4285F4),
           iconBackground: const Color(0xFFDCE8FF),
           title: strings.accountCloudServiceTitle,
-          subtitle: strings.accountCloudServiceHint,
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppTheme.paletteOf(context)
-                  .panelMutedBackground
-                  .withValues(alpha: 0.72),
-              borderRadius: BorderRadius.circular(18),
-              border: Border.all(color: AppTheme.paletteOf(context).border),
-            ),
-            child: Text(
-              strings.accountCloudServiceReserved,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppTheme.paletteOf(context).secondaryText,
+          subtitle: strings.accountCloudServiceHintOfficial,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppTheme.paletteOf(context)
+                      .panelMutedBackground
+                      .withValues(alpha: 0.72),
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: AppTheme.paletteOf(context).border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(
+                      controller.isOfficialCloudConfigured
+                          ? strings.accountCloudConnected(
+                              controller.officialCloudHost ??
+                                  strings.accountCloudOfficialName,
+                            )
+                          : strings.accountCloudUnavailable,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: controller.isOfficialCloudConfigured
+                                ? null
+                                : Theme.of(context).colorScheme.error,
+                          ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      _cloudStatusText(context),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: AppTheme.paletteOf(context).secondaryText,
+                          ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      strings.accountCloudServiceBodyOfficial,
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: AppTheme.paletteOf(context).secondaryText,
+                          ),
+                    ),
+                    if (controller.currentCloudSyncAt != null) ...<Widget>[
+                      const SizedBox(height: 6),
+                      Text(
+                        strings.accountCloudLastSync(
+                          _formatSyncTime(controller.currentCloudSyncAt!),
+                        ),
+                        style:
+                            Theme.of(context).textTheme.bodySmall?.copyWith(
+                                  color:
+                                      AppTheme.paletteOf(context).secondaryText,
+                                ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: <Widget>[
+                  FilledButton.icon(
+                    onPressed: controller.isBusy ||
+                            !controller.isOfficialCloudConfigured
+                        ? null
+                        : () => controller.uploadCurrentUserToOfficialCloud(),
+                    icon: const Icon(Icons.cloud_upload_rounded),
+                    label: Text(strings.accountCloudUploadAction),
                   ),
-            ),
+                  OutlinedButton.icon(
+                    onPressed: controller.isBusy ||
+                            !controller.isOfficialCloudConfigured
+                        ? null
+                        : () =>
+                            controller.downloadCurrentUserFromOfficialCloud(),
+                    icon: const Icon(Icons.cloud_download_rounded),
+                    label: Text(strings.accountCloudDownloadAction),
+                  ),
+                ],
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 18),
@@ -378,6 +460,34 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
       return null;
     }
     return context.strings.accountIdentityCodeInvalid;
+  }
+
+  String _cloudStatusText(BuildContext context) {
+    final AppStrings strings = context.strings;
+    final String? detail = controller.currentCloudSyncMessage;
+    final String baseText;
+    switch (controller.currentCloudSyncStatus) {
+      case CloudSyncStatus.idle:
+        baseText = strings.accountCloudStatusIdle;
+        break;
+      case CloudSyncStatus.synced:
+        baseText = strings.accountCloudStatusSynced;
+        break;
+      case CloudSyncStatus.failed:
+        baseText = strings.accountCloudStatusFailed;
+        break;
+    }
+    if (detail == null || detail.trim().isEmpty) {
+      return baseText;
+    }
+    return '$baseText · $detail';
+  }
+
+  String _formatSyncTime(DateTime value) {
+    final DateTime local = value.toLocal();
+    String twoDigits(int part) => part.toString().padLeft(2, '0');
+    return '${local.year}-${twoDigits(local.month)}-${twoDigits(local.day)} '
+        '${twoDigits(local.hour)}:${twoDigits(local.minute)}';
   }
 }
 

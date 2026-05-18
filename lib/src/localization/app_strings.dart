@@ -1081,6 +1081,131 @@ class AppStrings {
         zhHant: '連續產生多次都碰上已有代碼，請再試一次。',
         en: 'Several generated codes were already in use. Please try again.',
       );
+  String get accountSignedOutHintCloud => _text(
+        zhCn: '生成用户代码会直接注册到折纸云。输入已有代码时，会先到折纸云校验，存在才允许登录。',
+        zhHant: '產生使用者代碼後會直接註冊到折紙雲。輸入已有代碼時，會先到折紙雲驗證，存在才允許登入。',
+        en: 'Generating a code will register it with Origami Cloud. Entering an existing code first checks the cloud and only signs in if it exists.',
+      );
+  String get accountGeneratedAndSignedInCloud => _text(
+        zhCn: '用户代码已创建并注册到折纸云，当前身份已登录。',
+        zhHant: '使用者代碼已建立並註冊到折紙雲，目前身分已登入。',
+        en: 'Your identity code was created, registered with Origami Cloud, and is now active.',
+      );
+  String get accountSignedInCloud => _text(
+        zhCn: '身份代码校验通过，当前身份已登录。',
+        zhHant: '身分代碼驗證通過，目前身分已登入。',
+        en: 'Identity code verified. This profile is now active.',
+      );
+  String get accountDisplayNameUpdatedCloud => _text(
+        zhCn: '用户名已更新并同步到折纸云。',
+        zhHant: '使用者名稱已更新並同步到折紙雲。',
+        en: 'User name updated and synced to Origami Cloud.',
+      );
+  String get accountCloudServiceHintOfficial => _text(
+        zhCn: '这里只接官方折纸云。手动上传会用本地覆盖云端，手动下载会用云端覆盖本地。',
+        zhHant: '這裡只接官方折紙雲。手動上傳會用本機覆蓋雲端，手動下載會用雲端覆蓋本機。',
+        en: 'This section connects only to the official Origami Cloud. Upload overwrites the cloud with local data, and download overwrites local data with the cloud copy.',
+      );
+  String get accountCloudServiceBodyOfficial => _text(
+        zhCn: '当前会显示连接状态、最近同步结果，以及手动上传和下载入口。',
+        zhHant: '目前會顯示連線狀態、最近同步結果，以及手動上傳和下載入口。',
+        en: 'This section shows the connection state, the latest sync result, and manual upload/download actions.',
+      );
+  String get accountIdentityCodeGenerationFailedCloud => _text(
+        zhCn: '连续生成了多次都遇到已存在的身份代码，请再试一次。',
+        zhHant: '連續產生多次都遇到已存在的身分代碼，請再試一次。',
+        en: 'Several generated codes were already registered. Please try again.',
+      );
+  String get accountIdentityCodeNotFound => _text(
+        zhCn: '这个身份代码在折纸云里不存在，暂时不能登录。',
+        zhHant: '這個身分代碼在折紙雲裡不存在，暫時不能登入。',
+        en: 'This identity code does not exist in Origami Cloud.',
+      );
+  String get accountCloudUnavailable => _text(
+        zhCn: '当前构建还没有接入官方折纸云，请在打包时注入官方云地址。',
+        zhHant: '目前這個建置還沒有接入官方折紙雲，請在打包時注入官方雲位址。',
+        en: 'This build is not connected to the official Origami Cloud. Inject the cloud endpoint at build time.',
+      );
+  String get accountCloudConnectionFailed => _text(
+        zhCn: '暂时连不上折纸云，请稍后再试。',
+        zhHant: '暫時連不上折紙雲，請稍後再試。',
+        en: 'The app could not reach Origami Cloud. Please try again later.',
+      );
+  String get accountUserNameSyncFailed => _text(
+        zhCn: '用户名已经改到本地，但同步到折纸云失败了。',
+        zhHant: '使用者名稱已改到本機，但同步到折紙雲失敗了。',
+        en: 'The user name was updated locally, but syncing it to Origami Cloud failed.',
+      );
+  String get accountCloudUploadFailed => _text(
+        zhCn: '上传到折纸云失败了，本地内容没有动。',
+        zhHant: '上傳到折紙雲失敗了，本機內容沒有變動。',
+        en: 'Uploading to Origami Cloud failed. Local data was left unchanged.',
+      );
+  String get accountCloudDownloadFailed => _text(
+        zhCn: '从折纸云下载失败了，本地内容没有被覆盖。',
+        zhHant: '從折紙雲下載失敗了，本機內容沒有被覆蓋。',
+        en: 'Downloading from Origami Cloud failed. Local data was not overwritten.',
+      );
+  String get accountCloudRegistrationCompleted => _text(
+        zhCn: '身份代码已经注册到折纸云。',
+        zhHant: '身分代碼已經註冊到折紙雲。',
+        en: 'The identity code has been registered with Origami Cloud.',
+      );
+  String get accountCloudLoginLoaded => _text(
+        zhCn: '已从折纸云读取当前身份信息。',
+        zhHant: '已從折紙雲讀取目前身分資料。',
+        en: 'Loaded the current profile from Origami Cloud.',
+      );
+  String get accountCloudUploadCompleted => _text(
+        zhCn: '当前订阅、文章和头像已上传到折纸云。',
+        zhHant: '目前的訂閱、文章和頭像已上傳到折紙雲。',
+        en: 'Subscriptions, articles, and avatar were uploaded to Origami Cloud.',
+      );
+  String get accountCloudDownloadCompleted => _text(
+        zhCn: '折纸云里的内容已经下载到本地。',
+        zhHant: '折紙雲裡的內容已經下載到本機。',
+        en: 'Data from Origami Cloud was downloaded to this device.',
+      );
+  String get accountCloudOfficialName => _text(
+        zhCn: '官方折纸云',
+        zhHant: '官方折紙雲',
+        en: 'Official Origami Cloud',
+      );
+  String accountCloudConnected(String endpoint) => _text(
+        zhCn: '当前连接：$endpoint',
+        zhHant: '目前連線：$endpoint',
+        en: 'Connected to: $endpoint',
+      );
+  String get accountCloudUploadAction => _text(
+        zhCn: '上传到折纸云',
+        zhHant: '上傳到折紙雲',
+        en: 'Upload to Origami Cloud',
+      );
+  String get accountCloudDownloadAction => _text(
+        zhCn: '从折纸云下载',
+        zhHant: '從折紙雲下載',
+        en: 'Download from Origami Cloud',
+      );
+  String get accountCloudStatusIdle => _text(
+        zhCn: '还没有执行过手动同步。',
+        zhHant: '還沒有執行過手動同步。',
+        en: 'No manual cloud sync has run yet.',
+      );
+  String get accountCloudStatusSynced => _text(
+        zhCn: '最近一次云同步成功。',
+        zhHant: '最近一次雲端同步成功。',
+        en: 'The latest cloud sync completed successfully.',
+      );
+  String get accountCloudStatusFailed => _text(
+        zhCn: '最近一次云同步没有成功。',
+        zhHant: '最近一次雲端同步沒有成功。',
+        en: 'The latest cloud sync did not finish successfully.',
+      );
+  String accountCloudLastSync(String time) => _text(
+        zhCn: '最近同步：$time',
+        zhHant: '最近同步：$time',
+        en: 'Last sync: $time',
+      );
 }
 
 extension AppStringsBuildContextX on BuildContext {

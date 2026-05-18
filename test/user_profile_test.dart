@@ -10,6 +10,9 @@ void main() {
         avatarPath: '/tmp/avatar.jpg',
         createdAt: DateTime.parse('2026-05-17T12:00:00Z'),
         updatedAt: DateTime.parse('2026-05-17T13:00:00Z'),
+        lastCloudSyncAt: DateTime.parse('2026-05-17T13:05:00Z'),
+        lastCloudSyncStatus: CloudSyncStatus.synced,
+        lastCloudSyncMessage: 'Synced',
       );
 
       final UserProfile restored = UserProfile.fromJson(profile.toJson());
@@ -25,6 +28,12 @@ void main() {
         restored.updatedAt.toUtc(),
         DateTime.parse('2026-05-17T13:00:00Z'),
       );
+      expect(
+        restored.lastCloudSyncAt?.toUtc(),
+        DateTime.parse('2026-05-17T13:05:00Z'),
+      );
+      expect(restored.lastCloudSyncStatus, CloudSyncStatus.synced);
+      expect(restored.lastCloudSyncMessage, 'Synced');
     });
 
     test('creates an empty local profile with timestamps', () {
@@ -39,6 +48,9 @@ void main() {
       expect(profile.avatarPath, isNull);
       expect(profile.createdAt, now);
       expect(profile.updatedAt, now);
+      expect(profile.lastCloudSyncAt, isNull);
+      expect(profile.lastCloudSyncStatus, CloudSyncStatus.idle);
+      expect(profile.lastCloudSyncMessage, isNull);
     });
   });
 

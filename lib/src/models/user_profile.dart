@@ -6,6 +6,25 @@ const String kIdentityCodeAlphabet =
 
 final RegExp _identityCodePattern = RegExp(r'^[A-Za-z0-9]{14}$');
 
+enum CloudSyncStatus {
+  idle,
+  synced,
+  failed,
+}
+
+String cloudSyncStatusToJson(CloudSyncStatus status) {
+  return status.name;
+}
+
+CloudSyncStatus cloudSyncStatusFromJson(String? raw) {
+  for (final CloudSyncStatus status in CloudSyncStatus.values) {
+    if (status.name == raw) {
+      return status;
+    }
+  }
+  return CloudSyncStatus.idle;
+}
+
 bool isValidIdentityCode(String value) {
   return _identityCodePattern.hasMatch(value);
 }
@@ -29,6 +48,9 @@ class UserProfile {
     required this.avatarPath,
     required this.createdAt,
     required this.updatedAt,
+    required this.lastCloudSyncAt,
+    required this.lastCloudSyncStatus,
+    required this.lastCloudSyncMessage,
   });
 
   final String identityCode;
@@ -36,6 +58,9 @@ class UserProfile {
   final String? avatarPath;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final DateTime? lastCloudSyncAt;
+  final CloudSyncStatus lastCloudSyncStatus;
+  final String? lastCloudSyncMessage;
 
   bool get hasAvatar => avatarPath?.trim().isNotEmpty ?? false;
 
@@ -45,6 +70,11 @@ class UserProfile {
     String? avatarPath,
     DateTime? createdAt,
     DateTime? updatedAt,
+    DateTime? lastCloudSyncAt,
+    CloudSyncStatus? lastCloudSyncStatus,
+    String? lastCloudSyncMessage,
+    bool clearLastCloudSyncAt = false,
+    bool clearLastCloudSyncMessage = false,
     bool clearAvatarPath = false,
   }) {
     return UserProfile(
@@ -53,6 +83,13 @@ class UserProfile {
       avatarPath: clearAvatarPath ? null : (avatarPath ?? this.avatarPath),
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      lastCloudSyncAt: clearLastCloudSyncAt
+          ? null
+          : (lastCloudSyncAt ?? this.lastCloudSyncAt),
+      lastCloudSyncStatus: lastCloudSyncStatus ?? this.lastCloudSyncStatus,
+      lastCloudSyncMessage: clearLastCloudSyncMessage
+          ? null
+          : (lastCloudSyncMessage ?? this.lastCloudSyncMessage),
     );
   }
 
@@ -63,6 +100,9 @@ class UserProfile {
       'avatarPath': avatarPath,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
+      'lastCloudSyncAt': lastCloudSyncAt?.toIso8601String(),
+      'lastCloudSyncStatus': cloudSyncStatusToJson(lastCloudSyncStatus),
+      'lastCloudSyncMessage': lastCloudSyncMessage,
     };
   }
 
@@ -74,6 +114,12 @@ class UserProfile {
       avatarPath: json['avatarPath'] as String?,
       createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? now,
       updatedAt: DateTime.tryParse(json['updatedAt'] as String? ?? '') ?? now,
+      lastCloudSyncAt:
+          DateTime.tryParse(json['lastCloudSyncAt'] as String? ?? ''),
+      lastCloudSyncStatus: cloudSyncStatusFromJson(
+        json['lastCloudSyncStatus'] as String?,
+      ),
+      lastCloudSyncMessage: json['lastCloudSyncMessage'] as String?,
     );
   }
 
@@ -85,6 +131,9 @@ class UserProfile {
       avatarPath: null,
       createdAt: createdAt,
       updatedAt: createdAt,
+      lastCloudSyncAt: null,
+      lastCloudSyncStatus: CloudSyncStatus.idle,
+      lastCloudSyncMessage: null,
     );
   }
 }

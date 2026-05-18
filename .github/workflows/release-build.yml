@@ -9,6 +9,7 @@ permissions:
 
 env:
   FLUTTER_VERSION: "3.41.9"
+  OFFICIAL_CLOUD_BASE_URL: ${{ vars.OFFICIAL_CLOUD_BASE_URL }}
 
 concurrency:
   group: release-build-${{ github.event.release.id }}
@@ -81,8 +82,17 @@ jobs:
           fi
           echo "value=$app_version" >> "$GITHUB_OUTPUT"
 
+      - name: Check official cloud endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${OFFICIAL_CLOUD_BASE_URL:-}" ]; then
+            echo "Missing required Actions variable: OFFICIAL_CLOUD_BASE_URL" >&2
+            exit 1
+          fi
+
       - name: Build Android APKs
-        run: flutter build apk --release --split-per-abi --dart-define=APP_VERSION=${{ steps.app_version.outputs.value }}
+        run: flutter build apk --release --split-per-abi --dart-define=APP_VERSION=${{ steps.app_version.outputs.value }} --dart-define=OFFICIAL_CLOUD_BASE_URL=${{ env.OFFICIAL_CLOUD_BASE_URL }}
 
       - name: Package Android artifacts
         shell: bash
@@ -96,7 +106,7 @@ jobs:
           armv7_artifact="${artifact_base}-armeabi-v7a.apk"
           x64_artifact="${artifact_base}-x86_64.apk"
 
-          flutter build apk --release --dart-define=APP_VERSION=${{ steps.app_version.outputs.value }}
+          flutter build apk --release --dart-define=APP_VERSION=${{ steps.app_version.outputs.value }} --dart-define=OFFICIAL_CLOUD_BASE_URL=${{ env.OFFICIAL_CLOUD_BASE_URL }}
 
           cp build/app/outputs/flutter-apk/app-release.apk "$universal_artifact"
           cp build/app/outputs/flutter-apk/app-arm64-v8a-release.apk "$arm64_artifact"
@@ -182,8 +192,17 @@ jobs:
           fi
           echo "value=$app_version" >> "$GITHUB_OUTPUT"
 
+      - name: Check official cloud endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${OFFICIAL_CLOUD_BASE_URL:-}" ]; then
+            echo "Missing required Actions variable: OFFICIAL_CLOUD_BASE_URL" >&2
+            exit 1
+          fi
+
       - name: Build Linux
-        run: flutter build linux --release --dart-define=APP_VERSION=${{ steps.app_version.outputs.value }}
+        run: flutter build linux --release --dart-define=APP_VERSION=${{ steps.app_version.outputs.value }} --dart-define=OFFICIAL_CLOUD_BASE_URL=${{ env.OFFICIAL_CLOUD_BASE_URL }}
 
       - name: Package Linux output
         shell: bash
@@ -251,8 +270,15 @@ jobs:
           $appVersion = $versionLine.Matches[0].Groups[1].Value.Trim()
           "value=$appVersion" | Out-File -FilePath $env:GITHUB_OUTPUT -Append -Encoding utf8
 
+      - name: Check official cloud endpoint
+        shell: pwsh
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:OFFICIAL_CLOUD_BASE_URL)) {
+            throw "Missing required Actions variable: OFFICIAL_CLOUD_BASE_URL"
+          }
+
       - name: Build Windows
-        run: flutter build windows --release --dart-define=APP_VERSION=${{ steps.app_version.outputs.value }}
+        run: flutter build windows --release --dart-define=APP_VERSION=${{ steps.app_version.outputs.value }} --dart-define=OFFICIAL_CLOUD_BASE_URL=${{ env.OFFICIAL_CLOUD_BASE_URL }}
 
       - name: Package Windows output
         shell: pwsh

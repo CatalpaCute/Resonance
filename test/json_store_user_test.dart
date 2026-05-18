@@ -90,5 +90,20 @@ void main() {
       expect(firstPath, secondPath);
       expect(File(secondPath).readAsBytesSync(), <int>[4, 5]);
     });
+
+    test('deleting avatar removes the local avatar file only', () async {
+      final UserProfile profile = UserProfile.createEmpty('AbCd1234EfGh56');
+
+      await store.saveUserProfile(profile);
+      final String avatarPath = await store.saveUserAvatar(
+        profile.identityCode,
+        Uint8List.fromList(<int>[1, 2, 3]),
+      );
+
+      await store.deleteUserAvatar(profile.identityCode);
+
+      expect(File(avatarPath).existsSync(), isFalse);
+      expect(await store.loadUserProfile(profile.identityCode), isNotNull);
+    });
   });
 }

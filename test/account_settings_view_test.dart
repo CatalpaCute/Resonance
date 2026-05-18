@@ -10,17 +10,22 @@ import 'package:rsstool/src/state/reader_controller.dart';
 import 'package:rsstool/src/theme/app_theme.dart';
 import 'package:rsstool/src/ui/views/account_settings_view.dart';
 
+import 'test_support/fake_official_cloud_service.dart';
+
 void main() {
   group('AccountSettingsView', () {
     late Directory documentsDir;
     late ReaderController controller;
+    late FakeOfficialCloudService cloudService;
 
     setUp(() async {
       documentsDir = await Directory.systemTemp.createTemp('rsstool_account_');
+      cloudService = FakeOfficialCloudService();
       controller = ReaderController(
         store: JsonStore(
           documentsDirectoryResolver: () async => documentsDir,
         ),
+        officialCloudService: cloudService,
         rssService: RssService(),
       );
       await controller.initialize();
@@ -67,6 +72,7 @@ void main() {
     testWidgets('shows profile and cloud cards after signing in', (
       WidgetTester tester,
     ) async {
+      cloudService.usersByIdentityCode['AbCd1234EfGh56'] = 'Cloud Catal';
       await tester.runAsync(() async {
         await controller.signInWithIdentityCode('AbCd1234EfGh56');
       });
@@ -79,6 +85,24 @@ void main() {
       expect(find.text('Cloud Services'), findsOneWidget);
       expect(find.text('Sign Out'), findsOneWidget);
       expect(find.text('AbCd1234EfGh56'), findsAtLeastNWidgets(1));
+    });
+
+    testWidgets('disables cloud sign-in actions when endpoint is not injected',
+        (WidgetTester tester) async {
+      cloudService.configured = false;
+
+      await tester.pumpWidget(_buildHarness(controller: controller));
+
+      final FilledButton generateButton = tester.widget<FilledButton>(
+        find.widgetWithText(FilledButton, 'Generate My Code'),
+      );
+      expect(generateButton.onPressed, isNull);
+      expect(
+        find.text(
+          'This build is not connected to the official Origami Cloud. Inject the cloud endpoint at build time.',
+        ),
+        findsOneWidget,
+      );
     });
   });
 }

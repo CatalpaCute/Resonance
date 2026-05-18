@@ -152,6 +152,15 @@ class JsonStore {
     return file.path;
   }
 
+  Future<void> deleteUserAvatar(String identityCode) async {
+    final Directory root = await _ensureRoot();
+    final File file =
+        File(_path(_userDirectory(root, identityCode), _avatarFileName));
+    if (await file.exists()) {
+      await file.delete();
+    }
+  }
+
   Future<Directory> _ensureRoot() async {
     final Directory documentsDir = await _documentsDirectoryResolver();
     final Directory appRoot = Directory(_path(documentsDir, _appFolderName));
