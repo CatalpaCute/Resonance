@@ -12,6 +12,7 @@ import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
 import 'account_settings_view.dart';
 import '../widgets/desktop_smooth_scroll.dart';
+import '../widgets/motion.dart';
 
 const double _settingsWideBreakpoint = 980;
 const Curve _settingsSpringCurve = Cubic(0.18, 1.18, 0.28, 1.0);
@@ -57,10 +58,19 @@ class SettingsViewState extends State<SettingsView> {
     }
 
     final _SettingsCategory? activeCategory = _activeCategory;
-    if (activeCategory == null) {
-      return _buildCompactCategoryList(context, strings);
-    }
-    return _buildCompactCategoryDetail(context, strings, activeCategory);
+    return FluidAnimatedSwitcher(
+      slideOffset: const Offset(0.04, 0),
+      child: KeyedSubtree(
+        key: ValueKey<String>(
+          activeCategory == null
+              ? 'settings-category-list'
+              : 'settings-category-${activeCategory.name}',
+        ),
+        child: activeCategory == null
+            ? _buildCompactCategoryList(context, strings)
+            : _buildCompactCategoryDetail(context, strings, activeCategory),
+      ),
+    );
   }
 
   Widget _buildWideSettings(BuildContext context, AppStrings strings) {

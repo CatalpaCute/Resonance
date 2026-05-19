@@ -1161,7 +1161,10 @@ class _ReaderHomeState extends State<ReaderHome> {
         reader: ArticleReaderPanel(
           controller: controller,
           compact: true,
-          animateEntrance: false,
+          // Keep the deck slide as the main page motion, but still allow the
+          // reader body itself to replay its light entrance so opening an
+          // article doesn't feel like an instant hard swap.
+          animateEntrance: true,
           onBack: controller.closeCompactReader,
         ),
       );
