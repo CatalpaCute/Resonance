@@ -23,6 +23,7 @@ dependencies:
   xml: ^6.6.1
   dynamic_color: ^1.8.1
   file_selector: ^1.1.0
+  font_awesome_flutter: ^10.10.0
   image: ^4.8.0
 
 dev_dependencies:

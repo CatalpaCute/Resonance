@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -79,7 +80,7 @@ class SettingsViewState extends State<SettingsView> {
         _activeCategory ?? _SettingsCategory.autoRefreshNotifications;
     final bool blurEnabled = controller.settings.blurEffectsEnabled;
     final Color barrierColor = palette.shadow.withValues(
-      alpha: blurEnabled ? 0.14 : 0.08,
+      alpha: blurEnabled ? 0.09 : 0.06,
     );
 
     return Stack(
@@ -91,8 +92,8 @@ class SettingsViewState extends State<SettingsView> {
             child: ClipRect(
               child: BackdropFilter(
                 filter: ImageFilter.blur(
-                  sigmaX: blurEnabled ? 22 : 0,
-                  sigmaY: blurEnabled ? 22 : 0,
+                  sigmaX: blurEnabled ? 14 : 0,
+                  sigmaY: blurEnabled ? 14 : 0,
                 ),
                 child: ColoredBox(
                   color: barrierColor,
@@ -384,7 +385,6 @@ class SettingsViewState extends State<SettingsView> {
         _buildStartupSection(context, compact: compact),
         _SettingsFlatSection(
           title: strings.visualTheme,
-          subtitle: strings.visualThemeHint,
           child: _ThemePresetSelector(
             wideLayout: wideLayout,
             appearanceMode: controller.settings.appearanceMode,
@@ -399,7 +399,6 @@ class SettingsViewState extends State<SettingsView> {
         ),
         _SettingsFlatSection(
           title: strings.articleDisplayMode,
-          subtitle: strings.articleDisplayModeHint,
           child: _SettingsChoiceBar<ArticleContentMode>(
             direction: compact ? Axis.vertical : Axis.horizontal,
             value: controller.settings.articleContentMode,
@@ -424,7 +423,6 @@ class SettingsViewState extends State<SettingsView> {
           _buildMobileSidebarSection(context, compact: compact),
           _SettingsFlatSection(
             title: strings.mobileWorkspaceLayout,
-            subtitle: strings.mobileWorkspaceLayoutHint,
             child: _SettingsChoiceBar<MobileWorkspaceMode>(
               direction: Axis.vertical,
               value: controller.settings.mobileWorkspaceMode,
@@ -475,7 +473,6 @@ class SettingsViewState extends State<SettingsView> {
           ),
           _SettingsFlatSection(
             title: strings.desktopContentSurface,
-            subtitle: strings.desktopContentSurfaceHint,
             child: _SettingsChoiceBar<DesktopContentSurfaceMode>(
               value: controller.settings.desktopContentSurfaceMode,
               options: DesktopContentSurfaceMode.values
@@ -520,7 +517,6 @@ class SettingsViewState extends State<SettingsView> {
         ),
         _SettingsFlatSection(
           title: strings.interfaceLanguage,
-          subtitle: strings.interfaceLanguageHint,
           child: _SettingsChoiceBar<AppLanguageMode>(
             direction: compact ? Axis.vertical : Axis.horizontal,
             value: controller.settings.appLanguageMode,
@@ -718,7 +714,6 @@ class _CategoryRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final AppStrings strings = context.strings;
-    final ReaderPalette palette = AppTheme.paletteOf(context);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(14, 16, 12, 16),
@@ -745,15 +740,6 @@ class _CategoryRail extends StatelessWidget {
                   );
                 },
               ).toList(),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 12, 10, 2),
-            child: Text(
-              strings.settingsIntro,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: palette.secondaryText,
-                  ),
             ),
           ),
         ],
@@ -1054,59 +1040,11 @@ class _GitHubMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SizedBox(
-      width: size,
-      height: size,
-      child: CustomPaint(
-        painter: _GitHubMarkPainter(color),
-      ),
+    return FaIcon(
+      FontAwesomeIcons.github,
+      size: size,
+      color: color,
     );
-  }
-}
-
-class _GitHubMarkPainter extends CustomPainter {
-  const _GitHubMarkPainter(this.color);
-
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final Paint paint = Paint()..color = color;
-    final double w = size.width;
-    final double h = size.height;
-    final Path mark = Path()
-      ..moveTo(w * 0.50, h * 0.04)
-      ..cubicTo(w * 0.24, h * 0.04, w * 0.05, h * 0.24, w * 0.05, h * 0.50)
-      ..cubicTo(w * 0.05, h * 0.70, w * 0.18, h * 0.86, w * 0.36, h * 0.92)
-      ..cubicTo(w * 0.39, h * 0.93, w * 0.41, h * 0.91, w * 0.41, h * 0.88)
-      ..lineTo(w * 0.41, h * 0.76)
-      ..cubicTo(w * 0.25, h * 0.80, w * 0.22, h * 0.69, w * 0.22, h * 0.69)
-      ..cubicTo(w * 0.19, h * 0.61, w * 0.14, h * 0.59, w * 0.14, h * 0.59)
-      ..cubicTo(w * 0.08, h * 0.55, w * 0.14, h * 0.55, w * 0.14, h * 0.55)
-      ..cubicTo(w * 0.20, h * 0.55, w * 0.24, h * 0.62, w * 0.24, h * 0.62)
-      ..cubicTo(w * 0.30, h * 0.72, w * 0.39, h * 0.69, w * 0.42, h * 0.67)
-      ..cubicTo(w * 0.43, h * 0.63, w * 0.45, h * 0.60, w * 0.47, h * 0.58)
-      ..cubicTo(w * 0.33, h * 0.56, w * 0.18, h * 0.51, w * 0.18, h * 0.29)
-      ..cubicTo(w * 0.18, h * 0.23, w * 0.20, h * 0.17, w * 0.24, h * 0.13)
-      ..cubicTo(w * 0.23, h * 0.11, w * 0.22, h * 0.04, w * 0.25, h * 0.00)
-      ..cubicTo(w * 0.25, h * 0.00, w * 0.31, h * -0.01, w * 0.41, h * 0.06)
-      ..cubicTo(w * 0.47, h * 0.04, w * 0.53, h * 0.04, w * 0.59, h * 0.06)
-      ..cubicTo(w * 0.69, h * -0.01, w * 0.75, h * 0.00, w * 0.75, h * 0.00)
-      ..cubicTo(w * 0.78, h * 0.04, w * 0.77, h * 0.11, w * 0.76, h * 0.13)
-      ..cubicTo(w * 0.80, h * 0.17, w * 0.82, h * 0.23, w * 0.82, h * 0.29)
-      ..cubicTo(w * 0.82, h * 0.51, w * 0.67, h * 0.56, w * 0.53, h * 0.58)
-      ..cubicTo(w * 0.56, h * 0.61, w * 0.59, h * 0.67, w * 0.59, h * 0.75)
-      ..lineTo(w * 0.59, h * 0.88)
-      ..cubicTo(w * 0.59, h * 0.91, w * 0.61, h * 0.93, w * 0.64, h * 0.92)
-      ..cubicTo(w * 0.82, h * 0.86, w * 0.95, h * 0.70, w * 0.95, h * 0.50)
-      ..cubicTo(w * 0.95, h * 0.24, w * 0.76, h * 0.04, w * 0.50, h * 0.04)
-      ..close();
-    canvas.drawPath(mark, paint);
-  }
-
-  @override
-  bool shouldRepaint(_GitHubMarkPainter oldDelegate) {
-    return oldDelegate.color != color;
   }
 }
 

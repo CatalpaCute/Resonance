@@ -729,23 +729,21 @@ class _ReaderHomeState extends State<ReaderHome> {
                                 child: IgnorePointer(
                                   ignoring: !_desktopSettingsOpen,
                                   child: AnimatedSwitcher(
-                                    duration: const Duration(
-                                      milliseconds: 360,
-                                    ),
+                                    duration: const Duration(milliseconds: 420),
                                     reverseDuration: const Duration(
-                                      milliseconds: 260,
+                                      milliseconds: 300,
                                     ),
                                     switchInCurve: const Cubic(
-                                      0.16,
-                                      1,
-                                      0.3,
+                                      0.2,
+                                      0.9,
+                                      0.24,
                                       1,
                                     ),
                                     switchOutCurve: const Cubic(
-                                      0.4,
+                                      0.32,
                                       0,
-                                      1,
-                                      1,
+                                      0.67,
+                                      0,
                                     ),
                                     layoutBuilder: (
                                       Widget? currentChild,
@@ -767,36 +765,46 @@ class _ReaderHomeState extends State<ReaderHome> {
                                       final Animation<double> fade =
                                           CurvedAnimation(
                                         parent: animation,
-                                        curve: const Interval(0.0, 0.82),
+                                        curve: const Interval(0.0, 0.88),
                                       );
                                       final Animation<double> scale =
                                           Tween<double>(
-                                        begin: 0.94,
+                                        begin: 0.965,
                                         end: 1,
                                       ).animate(
                                         CurvedAnimation(
                                           parent: animation,
                                           curve: const Cubic(
-                                            0.16,
-                                            1,
-                                            0.3,
+                                            0.2,
+                                            0.9,
+                                            0.24,
                                             1,
                                           ),
                                         ),
                                       );
                                       final Animation<Offset> slide =
                                           Tween<Offset>(
-                                        begin: const Offset(0, 0.05),
+                                        begin: const Offset(0, 0.028),
                                         end: Offset.zero,
                                       ).animate(
                                         CurvedAnimation(
                                           parent: animation,
                                           curve: const Cubic(
-                                            0.16,
-                                            1,
-                                            0.3,
+                                            0.2,
+                                            0.9,
+                                            0.24,
                                             1,
                                           ),
+                                        ),
+                                      );
+                                      final Animation<double> blurLift =
+                                          Tween<double>(
+                                        begin: 0.992,
+                                        end: 1,
+                                      ).animate(
+                                        CurvedAnimation(
+                                          parent: animation,
+                                          curve: const Interval(0.18, 1.0),
                                         ),
                                       );
 
@@ -806,7 +814,10 @@ class _ReaderHomeState extends State<ReaderHome> {
                                           position: slide,
                                           child: ScaleTransition(
                                             scale: scale,
-                                            child: child,
+                                            child: ScaleTransition(
+                                              scale: blurLift,
+                                              child: child,
+                                            ),
                                           ),
                                         ),
                                       );
