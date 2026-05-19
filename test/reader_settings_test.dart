@@ -22,6 +22,7 @@ void main() {
         articleContentMode: ArticleContentMode.textOnly,
         blurEffectsEnabled: false,
         appLanguageMode: AppLanguageMode.zhHant,
+        cloudServiceEnabled: true,
         privateCloudEnabled: true,
         advancedCloudModeEnabled: true,
         cloudIdentityMode: CloudIdentityMode.privateCloud,
@@ -59,6 +60,7 @@ void main() {
       expect(restored.articleContentMode, ArticleContentMode.textOnly);
       expect(restored.blurEffectsEnabled, isFalse);
       expect(restored.appLanguageMode, AppLanguageMode.zhHant);
+      expect(restored.cloudServiceEnabled, isTrue);
       expect(restored.privateCloudEnabled, isTrue);
       expect(restored.advancedCloudModeEnabled, isTrue);
       expect(restored.cloudIdentityMode, CloudIdentityMode.privateCloud);
@@ -111,6 +113,10 @@ void main() {
         ReaderSettings.defaults.blurEffectsEnabled,
       );
       expect(restored.appLanguageMode, ReaderSettings.defaults.appLanguageMode);
+      expect(
+        restored.cloudServiceEnabled,
+        ReaderSettings.defaults.cloudServiceEnabled,
+      );
       expect(
         restored.privateCloudEnabled,
         ReaderSettings.defaults.privateCloudEnabled,

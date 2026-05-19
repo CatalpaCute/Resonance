@@ -223,7 +223,16 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
           iconColor: const Color(0xFF4285F4),
           iconBackground: const Color(0xFFDCE8FF),
           title: strings.accountCloudServiceTitle,
-          subtitle: strings.accountCloudServiceHintOfficial,
+          subtitle: null,
+          headerTrailing: Tooltip(
+            message: _cloudServiceSwitchLabel(context),
+            child: Switch(
+              value: controller.cloudServiceEnabled,
+              onChanged: controller.isBusy
+                  ? null
+                  : (bool value) => controller.setCloudServiceEnabled(value),
+            ),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
@@ -242,10 +251,7 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                   children: <Widget>[
                     Text(
                       controller.isContentCloudConfigured
-                          ? strings.accountCloudConnected(
-                              controller.contentCloudHost ??
-                                  strings.accountCloudOfficialName,
-                            )
+                          ? _cloudConnectionLabel(context)
                           : strings.accountCloudUnavailable,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w600,
@@ -258,13 +264,6 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                     Text(
                       _cloudStatusText(context),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.paletteOf(context).secondaryText,
-                          ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      strings.accountCloudServiceBodyOfficial,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: AppTheme.paletteOf(context).secondaryText,
                           ),
                     ),
@@ -283,29 +282,30 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                 ),
               ),
               const SizedBox(height: 14),
-              Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: <Widget>[
-                  FilledButton.icon(
-                    onPressed: controller.isBusy ||
-                            !controller.isContentCloudConfigured
-                        ? null
-                        : () => controller.uploadCurrentUserToOfficialCloud(),
-                    icon: const Icon(Icons.cloud_upload_rounded),
-                    label: Text(strings.accountCloudUploadAction),
-                  ),
-                  OutlinedButton.icon(
-                    onPressed: controller.isBusy ||
-                            !controller.isContentCloudConfigured
-                        ? null
-                        : () =>
-                            controller.downloadCurrentUserFromOfficialCloud(),
-                    icon: const Icon(Icons.cloud_download_rounded),
-                    label: Text(strings.accountCloudDownloadAction),
-                  ),
-                ],
-              ),
+              if (controller.cloudServiceEnabled)
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: <Widget>[
+                    FilledButton.icon(
+                      onPressed: controller.isBusy ||
+                              !controller.isContentCloudConfigured
+                          ? null
+                          : () => controller.uploadCurrentUserToOfficialCloud(),
+                      icon: const Icon(Icons.cloud_upload_rounded),
+                      label: Text(strings.accountCloudUploadAction),
+                    ),
+                    OutlinedButton.icon(
+                      onPressed: controller.isBusy ||
+                              !controller.isContentCloudConfigured
+                          ? null
+                          : () =>
+                              controller.downloadCurrentUserFromOfficialCloud(),
+                      icon: const Icon(Icons.cloud_download_rounded),
+                      label: Text(strings.accountCloudDownloadAction),
+                    ),
+                  ],
+                ),
             ],
           ),
         ),
@@ -486,6 +486,30 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
     return '${local.year}-${twoDigits(local.month)}-${twoDigits(local.day)} '
         '${twoDigits(local.hour)}:${twoDigits(local.minute)}';
   }
+
+  String _cloudConnectionLabel(BuildContext context) {
+    final Locale locale = Localizations.localeOf(context);
+    switch (locale.languageCode) {
+      case 'zh':
+        return locale.scriptCode == 'Hant' || locale.countryCode == 'TW'
+            ? '目前連線：摺紙雲（由 CzWorks 提供服務）'
+            : '当前连接：折纸云（由 CzWorks 提供服务）';
+      default:
+        return 'Current connection: Origami Cloud (provided by CzWorks)';
+    }
+  }
+
+  String _cloudServiceSwitchLabel(BuildContext context) {
+    final Locale locale = Localizations.localeOf(context);
+    switch (locale.languageCode) {
+      case 'zh':
+        return locale.scriptCode == 'Hant' || locale.countryCode == 'TW'
+            ? '啟用雲服務'
+            : '启用云服务';
+      default:
+        return 'Enable Cloud Services';
+    }
+  }
 }
 
 class _AccountCard extends StatelessWidget {
@@ -530,6 +554,7 @@ class _AccountInfoCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.child,
+    this.headerTrailing,
   });
 
   final bool wideLayout;
@@ -537,8 +562,9 @@ class _AccountInfoCard extends StatelessWidget {
   final Color iconColor;
   final Color iconBackground;
   final String title;
-  final String subtitle;
+  final String? subtitle;
   final Widget child;
+  final Widget? headerTrailing;
 
   @override
   Widget build(BuildContext context) {
@@ -571,16 +597,23 @@ class _AccountInfoCard extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                           ),
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      subtitle,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.paletteOf(context).secondaryText,
-                          ),
-                    ),
+                    if (subtitle != null &&
+                        subtitle!.trim().isNotEmpty) ...<Widget>[
+                      const SizedBox(height: 4),
+                      Text(
+                        subtitle!,
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              color: AppTheme.paletteOf(context).secondaryText,
+                            ),
+                      ),
+                    ],
                   ],
                 ),
               ),
+              if (headerTrailing != null) ...<Widget>[
+                const SizedBox(width: 12),
+                headerTrailing!,
+              ],
             ],
           ),
           const SizedBox(height: 18),

@@ -85,6 +85,7 @@ class ReaderSettings {
     required this.articleContentMode,
     required this.blurEffectsEnabled,
     required this.appLanguageMode,
+    required this.cloudServiceEnabled,
     required this.privateCloudEnabled,
     required this.advancedCloudModeEnabled,
     required this.cloudIdentityMode,
@@ -110,6 +111,7 @@ class ReaderSettings {
   final ArticleContentMode articleContentMode;
   final bool blurEffectsEnabled;
   final AppLanguageMode appLanguageMode;
+  final bool cloudServiceEnabled;
   final bool privateCloudEnabled;
   final bool advancedCloudModeEnabled;
   final CloudIdentityMode cloudIdentityMode;
@@ -138,6 +140,7 @@ class ReaderSettings {
     articleContentMode: ArticleContentMode.rich,
     blurEffectsEnabled: true,
     appLanguageMode: AppLanguageMode.system,
+    cloudServiceEnabled: false,
     privateCloudEnabled: false,
     advancedCloudModeEnabled: false,
     cloudIdentityMode: CloudIdentityMode.official,
@@ -175,6 +178,7 @@ class ReaderSettings {
     ArticleContentMode? articleContentMode,
     bool? blurEffectsEnabled,
     AppLanguageMode? appLanguageMode,
+    bool? cloudServiceEnabled,
     bool? privateCloudEnabled,
     bool? advancedCloudModeEnabled,
     CloudIdentityMode? cloudIdentityMode,
@@ -207,6 +211,7 @@ class ReaderSettings {
       articleContentMode: articleContentMode ?? this.articleContentMode,
       blurEffectsEnabled: blurEffectsEnabled ?? this.blurEffectsEnabled,
       appLanguageMode: appLanguageMode ?? this.appLanguageMode,
+      cloudServiceEnabled: cloudServiceEnabled ?? this.cloudServiceEnabled,
       privateCloudEnabled: privateCloudEnabled ?? this.privateCloudEnabled,
       advancedCloudModeEnabled:
           advancedCloudModeEnabled ?? this.advancedCloudModeEnabled,
@@ -238,6 +243,7 @@ class ReaderSettings {
       'articleContentMode': articleContentMode.name,
       'blurEffectsEnabled': blurEffectsEnabled,
       'appLanguageMode': appLanguageMode.storageValue,
+      'cloudServiceEnabled': cloudServiceEnabled,
       'privateCloudEnabled': privateCloudEnabled,
       'advancedCloudModeEnabled': advancedCloudModeEnabled,
       'cloudIdentityMode': cloudIdentityMode.name,
@@ -314,6 +320,8 @@ class ReaderSettings {
           json['blurEffectsEnabled'] as bool? ?? defaults.blurEffectsEnabled,
       appLanguageMode:
           AppLanguageModeX.fromStorageValue(json['appLanguageMode'] as String?),
+      cloudServiceEnabled:
+          json['cloudServiceEnabled'] as bool? ?? defaults.cloudServiceEnabled,
       privateCloudEnabled:
           json['privateCloudEnabled'] as bool? ?? defaults.privateCloudEnabled,
       advancedCloudModeEnabled: json['advancedCloudModeEnabled'] as bool? ??

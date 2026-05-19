@@ -169,6 +169,7 @@ void main() {
       ]);
       await controller.reloadPersistedState();
       await controller.signInWithIdentityCode('AbCd1234EfGh56');
+      await controller.setCloudServiceEnabled(true);
 
       await controller.uploadCurrentUserToOfficialCloud();
 
@@ -240,6 +241,7 @@ void main() {
         ],
       };
       await controller.signInWithIdentityCode('AbCd1234EfGh56');
+      await controller.setCloudServiceEnabled(true);
 
       await controller.downloadCurrentUserFromOfficialCloud();
 

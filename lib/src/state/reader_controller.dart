@@ -136,6 +136,7 @@ class ReaderController extends ChangeNotifier {
   bool get advancedCloudModeEnabled => _settings.advancedCloudModeEnabled;
   CloudIdentityMode get cloudIdentityMode => _settings.cloudIdentityMode;
   CloudContentMode get cloudContentMode => _settings.cloudContentMode;
+  bool get cloudServiceEnabled => _settings.cloudServiceEnabled;
 
   CloudSyncStatus get currentCloudSyncStatus =>
       _currentUser?.lastCloudSyncStatus ?? CloudSyncStatus.idle;
@@ -528,6 +529,11 @@ class ReaderController extends ChangeNotifier {
     await _persistSettings();
   }
 
+  Future<void> setCloudServiceEnabled(bool value) async {
+    _setSettings(_settings.copyWith(cloudServiceEnabled: value));
+    await _persistSettings();
+  }
+
   Future<void> setAppLanguageMode(AppLanguageMode mode) async {
     _setSettings(_settings.copyWith(appLanguageMode: mode));
     await _persistSettings();
@@ -762,6 +768,9 @@ class ReaderController extends ChangeNotifier {
     if (profile == null) {
       return;
     }
+    if (!cloudServiceEnabled) {
+      return;
+    }
     if (!_ensureContentSyncConfigured()) {
       return;
     }
@@ -801,6 +810,9 @@ class ReaderController extends ChangeNotifier {
   Future<void> downloadCurrentUserFromOfficialCloud() async {
     final UserProfile? profile = _currentUser;
     if (profile == null) {
+      return;
+    }
+    if (!cloudServiceEnabled) {
       return;
     }
     if (!_ensureContentSyncConfigured()) {

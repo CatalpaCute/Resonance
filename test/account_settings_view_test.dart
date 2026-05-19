@@ -88,6 +88,33 @@ void main() {
       expect(find.text('Cloud Services'), findsOneWidget);
       expect(find.text('Sign Out'), findsOneWidget);
       expect(find.text('AbCd1234EfGh56'), findsAtLeastNWidgets(1));
+      expect(find.text('Upload to Origami Cloud'), findsNothing);
+      expect(find.text('Download from Origami Cloud'), findsNothing);
+    });
+
+    testWidgets(
+        'shows upload and download actions after enabling cloud service',
+        (WidgetTester tester) async {
+      cloudService.usersByIdentityCode['AbCd1234EfGh56'] = 'Cloud Catal';
+      await tester.runAsync(() async {
+        await controller.signInWithIdentityCode('AbCd1234EfGh56');
+      });
+
+      await tester.pumpWidget(_buildHarness(controller: controller));
+      await tester.pump();
+
+      await tester.runAsync(() async {
+        await controller.setCloudServiceEnabled(true);
+      });
+      await tester.pumpWidget(_buildHarness(controller: controller));
+      await tester.pump();
+
+      expect(find.text('Upload to Origami Cloud'), findsOneWidget);
+      expect(find.text('Download from Origami Cloud'), findsOneWidget);
+      expect(
+        find.text('Current connection: Origami Cloud (provided by CzWorks)'),
+        findsOneWidget,
+      );
     });
 
     testWidgets('disables cloud sign-in actions when endpoint is not injected',
