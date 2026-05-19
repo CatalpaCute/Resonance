@@ -16,6 +16,7 @@ import '../models/feed_source.dart';
 import '../models/reader_settings.dart';
 import '../models/user_profile.dart';
 import '../services/auto_refresh_engine.dart';
+import '../services/cloud_service_router.dart';
 import '../services/json_store.dart';
 import '../services/official_cloud_service.dart';
 import '../services/rss_service.dart';
@@ -33,14 +34,14 @@ class _SourceStats {
 class ReaderController extends ChangeNotifier {
   ReaderController({
     required JsonStore store,
-    required OfficialCloudService officialCloudService,
+    required CloudServiceResolver cloudServiceResolver,
     required RssService rssService,
   })  : _store = store,
-        _officialCloudService = officialCloudService,
+        _cloudServiceResolver = cloudServiceResolver,
         _rssService = rssService;
 
   final JsonStore _store;
-  final OfficialCloudService _officialCloudService;
+  final CloudServiceResolver _cloudServiceResolver;
   final RssService _rssService;
   late final AutoRefreshEngine _autoRefreshEngine = AutoRefreshEngine(
     store: _store,
@@ -105,8 +106,14 @@ class ReaderController extends ChangeNotifier {
     return _strings.accountUnnamedUser;
   }
 
-  bool get isOfficialCloudConfigured => _officialCloudService.isConfigured;
-  String? get officialCloudBaseUrl => _officialCloudService.baseUrl;
+  CloudServiceBundle get _cloudServices =>
+      _cloudServiceResolver.resolve(_settings);
+  IdentitySyncService get _identitySyncService =>
+      _cloudServices.identityService;
+  ContentSyncService get _contentSyncService => _cloudServices.contentService;
+
+  bool get isOfficialCloudConfigured => _identitySyncService.isConfigured;
+  String? get officialCloudBaseUrl => _identitySyncService.baseUrl;
   String? get officialCloudHost {
     final String? baseUrl = officialCloudBaseUrl;
     if (baseUrl == null || baseUrl.isEmpty) {
@@ -114,6 +121,21 @@ class ReaderController extends ChangeNotifier {
     }
     return Uri.tryParse(baseUrl)?.host;
   }
+
+  bool get isContentCloudConfigured => _contentSyncService.isConfigured;
+  String? get contentCloudBaseUrl => _contentSyncService.baseUrl;
+  String? get contentCloudHost {
+    final String? baseUrl = contentCloudBaseUrl;
+    if (baseUrl == null || baseUrl.isEmpty) {
+      return null;
+    }
+    return Uri.tryParse(baseUrl)?.host;
+  }
+
+  bool get privateCloudEnabled => _settings.privateCloudEnabled;
+  bool get advancedCloudModeEnabled => _settings.advancedCloudModeEnabled;
+  CloudIdentityMode get cloudIdentityMode => _settings.cloudIdentityMode;
+  CloudContentMode get cloudContentMode => _settings.cloudContentMode;
 
   CloudSyncStatus get currentCloudSyncStatus =>
       _currentUser?.lastCloudSyncStatus ?? CloudSyncStatus.idle;
@@ -530,7 +552,7 @@ class ReaderController extends ChangeNotifier {
           continue;
         }
         try {
-          createdUser = await _officialCloudService.createUser(
+          createdUser = await _identitySyncService.createUser(
             identityCode,
             initialUserName,
           );
@@ -580,13 +602,13 @@ class ReaderController extends ChangeNotifier {
       return;
     }
 
-    if (!_ensureOfficialCloudConfigured()) {
+    if (!_ensureIdentitySyncConfigured()) {
       return;
     }
 
     await _runUserBusyTask(() async {
       final CloudUserLookupResult result =
-          await _officialCloudService.getUser(identityCode);
+          await _identitySyncService.getUser(identityCode);
       if (!result.exists) {
         _errorMessage = _strings.accountIdentityCodeNotFound;
         return;
@@ -623,7 +645,7 @@ class ReaderController extends ChangeNotifier {
     if (profile == null) {
       return;
     }
-    if (!_ensureOfficialCloudConfigured()) {
+    if (!_ensureIdentitySyncConfigured()) {
       return;
     }
 
@@ -638,7 +660,7 @@ class ReaderController extends ChangeNotifier {
       notifyListeners();
 
       try {
-        await _officialCloudService.updateUser(
+        await _identitySyncService.updateUser(
           profile.identityCode,
           normalizedUserName,
         );
@@ -740,23 +762,23 @@ class ReaderController extends ChangeNotifier {
     if (profile == null) {
       return;
     }
-    if (!_ensureOfficialCloudConfigured()) {
+    if (!_ensureContentSyncConfigured()) {
       return;
     }
 
     await _runUserBusyTask(() async {
-      await _officialCloudService.uploadFeeds(
+      await _contentSyncService.uploadFeeds(
         profile.identityCode,
         buildCloudFeedsPayload(profile.identityCode, _feeds),
       );
-      await _officialCloudService.uploadArticles(
+      await _contentSyncService.uploadArticles(
         profile.identityCode,
         buildCloudArticlesPayload(profile.identityCode, _articles),
       );
       if (profile.hasAvatar) {
         final File avatarFile = File(profile.avatarPath!);
         if (await avatarFile.exists()) {
-          await _officialCloudService.uploadAvatar(
+          await _contentSyncService.uploadAvatar(
             profile.identityCode,
             await avatarFile.readAsBytes(),
             'image/jpeg',
@@ -781,17 +803,17 @@ class ReaderController extends ChangeNotifier {
     if (profile == null) {
       return;
     }
-    if (!_ensureOfficialCloudConfigured()) {
+    if (!_ensureContentSyncConfigured()) {
       return;
     }
 
     await _runUserBusyTask(() async {
       final Map<String, dynamic> feedsPayload =
-          await _officialCloudService.downloadFeeds(profile.identityCode);
+          await _contentSyncService.downloadFeeds(profile.identityCode);
       final Map<String, dynamic> articlesPayload =
-          await _officialCloudService.downloadArticles(profile.identityCode);
+          await _contentSyncService.downloadArticles(profile.identityCode);
       final Uint8List? avatarBytes =
-          await _officialCloudService.downloadAvatar(profile.identityCode);
+          await _contentSyncService.downloadAvatar(profile.identityCode);
 
       final List<FeedSource> downloadedFeeds =
           _decodeCloudFeedsPayload(feedsPayload);
@@ -1412,7 +1434,7 @@ class ReaderController extends ChangeNotifier {
   }
 
   bool _canCreateIdentityCode() {
-    if (_officialCloudService.isConfigured) {
+    if (_identitySyncService.isConfigured) {
       return true;
     }
     _errorMessage = _strings.accountCloudUnavailable;
@@ -1420,8 +1442,17 @@ class ReaderController extends ChangeNotifier {
     return false;
   }
 
-  bool _ensureOfficialCloudConfigured() {
-    if (_officialCloudService.isConfigured) {
+  bool _ensureIdentitySyncConfigured() {
+    if (_identitySyncService.isConfigured) {
+      return true;
+    }
+    _errorMessage = _strings.accountCloudUnavailable;
+    notifyListeners();
+    return false;
+  }
+
+  bool _ensureContentSyncConfigured() {
+    if (_contentSyncService.isConfigured) {
       return true;
     }
     _errorMessage = _strings.accountCloudUnavailable;
@@ -1531,9 +1562,14 @@ class ReaderController extends ChangeNotifier {
 
   bool _shouldAutoSyncPendingAccountState() {
     final UserProfile? profile = _currentUser;
-    return _officialCloudService.isConfigured &&
-        profile != null &&
-        profile.hasPendingAccountSync;
+    if (profile == null || !profile.hasPendingAccountSync) {
+      return false;
+    }
+    final bool needsIdentitySync =
+        profile.pendingCloudCreate || profile.pendingCloudProfileSync;
+    final bool needsContentSync = profile.pendingCloudAvatarSync;
+    return (needsIdentitySync && _identitySyncService.isConfigured) ||
+        (needsContentSync && _contentSyncService.isConfigured);
   }
 
   void _triggerPendingAccountSyncIfPossible() {
@@ -1558,9 +1594,9 @@ class ReaderController extends ChangeNotifier {
       final String normalizedUserName =
           _normalizeCloudUserName(profile.displayName);
 
-      if (profile.pendingCloudCreate) {
+      if (profile.pendingCloudCreate && _identitySyncService.isConfigured) {
         try {
-          await _officialCloudService.createUser(
+          await _identitySyncService.createUser(
             profile.identityCode,
             normalizedUserName,
           );
@@ -1577,8 +1613,9 @@ class ReaderController extends ChangeNotifier {
         ));
       }
 
-      if (profile.pendingCloudProfileSync) {
-        await _officialCloudService.updateUser(
+      if (profile.pendingCloudProfileSync &&
+          _identitySyncService.isConfigured) {
+        await _identitySyncService.updateUser(
           profile.identityCode,
           normalizedUserName,
         );
@@ -1587,12 +1624,13 @@ class ReaderController extends ChangeNotifier {
         ));
       }
 
-      if (profile.pendingCloudAvatarSync &&
+      if (_contentSyncService.isConfigured &&
+          profile.pendingCloudAvatarSync &&
           profile.hasAvatar &&
           profile.avatarPath != null) {
         final File avatarFile = File(profile.avatarPath!);
         if (await avatarFile.exists()) {
-          await _officialCloudService.uploadAvatar(
+          await _contentSyncService.uploadAvatar(
             profile.identityCode,
             await avatarFile.readAsBytes(),
             'image/jpeg',
@@ -1603,10 +1641,15 @@ class ReaderController extends ChangeNotifier {
         ));
       }
 
+      final bool hasRemainingPending = profile.hasPendingAccountSync;
       profile = await _persistUserProfile(profile.copyWith(
         lastCloudSyncAt: DateTime.now(),
-        lastCloudSyncStatus: CloudSyncStatus.synced,
-        lastCloudSyncMessage: _strings.accountCloudAutoSyncCompleted,
+        lastCloudSyncStatus: hasRemainingPending
+            ? CloudSyncStatus.failed
+            : CloudSyncStatus.synced,
+        lastCloudSyncMessage: hasRemainingPending
+            ? _strings.accountCloudAutoSyncPending
+            : _strings.accountCloudAutoSyncCompleted,
       ));
       _currentUser = profile;
     } on CloudServiceException catch (error) {

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:rsstool/src/models/article.dart';
 import 'package:rsstool/src/models/feed_source.dart';
 import 'package:rsstool/src/models/user_profile.dart';
+import 'package:rsstool/src/services/cloud_service_router.dart';
 import 'package:rsstool/src/services/json_store.dart';
 import 'package:rsstool/src/services/rss_service.dart';
 import 'package:rsstool/src/state/reader_controller.dart';
@@ -26,7 +27,9 @@ void main() {
       cloudService = FakeOfficialCloudService();
       controller = ReaderController(
         store: store,
-        officialCloudService: cloudService,
+        cloudServiceResolver: DefaultCloudServiceResolver(
+          officialCloudService: cloudService,
+        ),
         rssService: RssService(),
       );
       await controller.initialize();
@@ -88,7 +91,9 @@ void main() {
 
       final ReaderController reloaded = ReaderController(
         store: store,
-        officialCloudService: cloudService,
+        cloudServiceResolver: DefaultCloudServiceResolver(
+          officialCloudService: cloudService,
+        ),
         rssService: RssService(),
       );
       await reloaded.initialize();

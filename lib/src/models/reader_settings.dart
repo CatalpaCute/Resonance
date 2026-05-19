@@ -57,6 +57,16 @@ enum SubscriptionNotificationMode {
   minimal,
 }
 
+enum CloudIdentityMode {
+  official,
+  privateCloud,
+}
+
+enum CloudContentMode {
+  official,
+  privateCloud,
+}
+
 class ReaderSettings {
   const ReaderSettings({
     required this.startupHomeMode,
@@ -75,6 +85,13 @@ class ReaderSettings {
     required this.articleContentMode,
     required this.blurEffectsEnabled,
     required this.appLanguageMode,
+    required this.privateCloudEnabled,
+    required this.advancedCloudModeEnabled,
+    required this.cloudIdentityMode,
+    required this.cloudContentMode,
+    required this.privateCloudBaseUrl,
+    required this.privateCloudUserEndpoint,
+    required this.privateCloudContentEndpoint,
   });
 
   final StartupHomeMode startupHomeMode;
@@ -93,6 +110,13 @@ class ReaderSettings {
   final ArticleContentMode articleContentMode;
   final bool blurEffectsEnabled;
   final AppLanguageMode appLanguageMode;
+  final bool privateCloudEnabled;
+  final bool advancedCloudModeEnabled;
+  final CloudIdentityMode cloudIdentityMode;
+  final CloudContentMode cloudContentMode;
+  final String privateCloudBaseUrl;
+  final String privateCloudUserEndpoint;
+  final String privateCloudContentEndpoint;
 
   bool get autoRefreshEnabled => autoRefreshMode != AutoRefreshMode.allOff;
   bool get autoRefreshAllEnabled => autoRefreshMode == AutoRefreshMode.allOn;
@@ -114,6 +138,13 @@ class ReaderSettings {
     articleContentMode: ArticleContentMode.rich,
     blurEffectsEnabled: true,
     appLanguageMode: AppLanguageMode.system,
+    privateCloudEnabled: false,
+    advancedCloudModeEnabled: false,
+    cloudIdentityMode: CloudIdentityMode.official,
+    cloudContentMode: CloudContentMode.official,
+    privateCloudBaseUrl: '',
+    privateCloudUserEndpoint: '',
+    privateCloudContentEndpoint: '',
   );
 
   AppRouteId get startupRoute {
@@ -144,6 +175,13 @@ class ReaderSettings {
     ArticleContentMode? articleContentMode,
     bool? blurEffectsEnabled,
     AppLanguageMode? appLanguageMode,
+    bool? privateCloudEnabled,
+    bool? advancedCloudModeEnabled,
+    CloudIdentityMode? cloudIdentityMode,
+    CloudContentMode? cloudContentMode,
+    String? privateCloudBaseUrl,
+    String? privateCloudUserEndpoint,
+    String? privateCloudContentEndpoint,
   }) {
     return ReaderSettings(
       startupHomeMode: startupHomeMode ?? this.startupHomeMode,
@@ -169,6 +207,16 @@ class ReaderSettings {
       articleContentMode: articleContentMode ?? this.articleContentMode,
       blurEffectsEnabled: blurEffectsEnabled ?? this.blurEffectsEnabled,
       appLanguageMode: appLanguageMode ?? this.appLanguageMode,
+      privateCloudEnabled: privateCloudEnabled ?? this.privateCloudEnabled,
+      advancedCloudModeEnabled:
+          advancedCloudModeEnabled ?? this.advancedCloudModeEnabled,
+      cloudIdentityMode: cloudIdentityMode ?? this.cloudIdentityMode,
+      cloudContentMode: cloudContentMode ?? this.cloudContentMode,
+      privateCloudBaseUrl: privateCloudBaseUrl ?? this.privateCloudBaseUrl,
+      privateCloudUserEndpoint:
+          privateCloudUserEndpoint ?? this.privateCloudUserEndpoint,
+      privateCloudContentEndpoint:
+          privateCloudContentEndpoint ?? this.privateCloudContentEndpoint,
     );
   }
 
@@ -190,6 +238,13 @@ class ReaderSettings {
       'articleContentMode': articleContentMode.name,
       'blurEffectsEnabled': blurEffectsEnabled,
       'appLanguageMode': appLanguageMode.storageValue,
+      'privateCloudEnabled': privateCloudEnabled,
+      'advancedCloudModeEnabled': advancedCloudModeEnabled,
+      'cloudIdentityMode': cloudIdentityMode.name,
+      'cloudContentMode': cloudContentMode.name,
+      'privateCloudBaseUrl': privateCloudBaseUrl,
+      'privateCloudUserEndpoint': privateCloudUserEndpoint,
+      'privateCloudContentEndpoint': privateCloudContentEndpoint,
     };
   }
 
@@ -259,6 +314,25 @@ class ReaderSettings {
           json['blurEffectsEnabled'] as bool? ?? defaults.blurEffectsEnabled,
       appLanguageMode:
           AppLanguageModeX.fromStorageValue(json['appLanguageMode'] as String?),
+      privateCloudEnabled:
+          json['privateCloudEnabled'] as bool? ?? defaults.privateCloudEnabled,
+      advancedCloudModeEnabled: json['advancedCloudModeEnabled'] as bool? ??
+          defaults.advancedCloudModeEnabled,
+      cloudIdentityMode: CloudIdentityMode.values.firstWhere(
+        (CloudIdentityMode value) => value.name == json['cloudIdentityMode'],
+        orElse: () => defaults.cloudIdentityMode,
+      ),
+      cloudContentMode: CloudContentMode.values.firstWhere(
+        (CloudContentMode value) => value.name == json['cloudContentMode'],
+        orElse: () => defaults.cloudContentMode,
+      ),
+      privateCloudBaseUrl: json['privateCloudBaseUrl'] as String? ??
+          defaults.privateCloudBaseUrl,
+      privateCloudUserEndpoint: json['privateCloudUserEndpoint'] as String? ??
+          defaults.privateCloudUserEndpoint,
+      privateCloudContentEndpoint:
+          json['privateCloudContentEndpoint'] as String? ??
+              defaults.privateCloudContentEndpoint,
     );
   }
 }

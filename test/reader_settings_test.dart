@@ -22,6 +22,13 @@ void main() {
         articleContentMode: ArticleContentMode.textOnly,
         blurEffectsEnabled: false,
         appLanguageMode: AppLanguageMode.zhHant,
+        privateCloudEnabled: true,
+        advancedCloudModeEnabled: true,
+        cloudIdentityMode: CloudIdentityMode.privateCloud,
+        cloudContentMode: CloudContentMode.privateCloud,
+        privateCloudBaseUrl: 'https://private.example.com',
+        privateCloudUserEndpoint: '/identity',
+        privateCloudContentEndpoint: '/content',
       );
 
       final Map<String, dynamic> json = settings.toJson();
@@ -52,6 +59,13 @@ void main() {
       expect(restored.articleContentMode, ArticleContentMode.textOnly);
       expect(restored.blurEffectsEnabled, isFalse);
       expect(restored.appLanguageMode, AppLanguageMode.zhHant);
+      expect(restored.privateCloudEnabled, isTrue);
+      expect(restored.advancedCloudModeEnabled, isTrue);
+      expect(restored.cloudIdentityMode, CloudIdentityMode.privateCloud);
+      expect(restored.cloudContentMode, CloudContentMode.privateCloud);
+      expect(restored.privateCloudBaseUrl, 'https://private.example.com');
+      expect(restored.privateCloudUserEndpoint, '/identity');
+      expect(restored.privateCloudContentEndpoint, '/content');
     });
 
     test('falls back to defaults for missing values', () {
@@ -97,6 +111,34 @@ void main() {
         ReaderSettings.defaults.blurEffectsEnabled,
       );
       expect(restored.appLanguageMode, ReaderSettings.defaults.appLanguageMode);
+      expect(
+        restored.privateCloudEnabled,
+        ReaderSettings.defaults.privateCloudEnabled,
+      );
+      expect(
+        restored.advancedCloudModeEnabled,
+        ReaderSettings.defaults.advancedCloudModeEnabled,
+      );
+      expect(
+        restored.cloudIdentityMode,
+        ReaderSettings.defaults.cloudIdentityMode,
+      );
+      expect(
+        restored.cloudContentMode,
+        ReaderSettings.defaults.cloudContentMode,
+      );
+      expect(
+        restored.privateCloudBaseUrl,
+        ReaderSettings.defaults.privateCloudBaseUrl,
+      );
+      expect(
+        restored.privateCloudUserEndpoint,
+        ReaderSettings.defaults.privateCloudUserEndpoint,
+      );
+      expect(
+        restored.privateCloudContentEndpoint,
+        ReaderSettings.defaults.privateCloudContentEndpoint,
+      );
     });
   });
 }

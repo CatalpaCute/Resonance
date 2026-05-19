@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rsstool/src/localization/app_language.dart';
+import 'package:rsstool/src/services/cloud_service_router.dart';
 import 'package:rsstool/src/services/json_store.dart';
 import 'package:rsstool/src/services/rss_service.dart';
 import 'package:rsstool/src/state/reader_controller.dart';
@@ -25,7 +26,9 @@ void main() {
         store: JsonStore(
           documentsDirectoryResolver: () async => documentsDir,
         ),
-        officialCloudService: cloudService,
+        cloudServiceResolver: DefaultCloudServiceResolver(
+          officialCloudService: cloudService,
+        ),
         rssService: RssService(),
       );
       await controller.initialize();

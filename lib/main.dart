@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:window_manager/window_manager.dart';
 
+import 'src/services/cloud_service_router.dart';
 import 'src/services/json_store.dart';
 import 'src/services/official_cloud_service.dart';
 import 'src/services/rss_service.dart';
@@ -77,7 +78,9 @@ Future<void> main() async {
 
   final controller = ReaderController(
     store: JsonStore(),
-    officialCloudService: HttpOfficialCloudService(),
+    cloudServiceResolver: DefaultCloudServiceResolver(
+      officialCloudService: HttpOfficialCloudService(),
+    ),
     rssService: RssService(),
   );
   await controller.initialize();

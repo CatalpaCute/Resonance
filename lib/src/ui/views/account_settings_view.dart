@@ -188,10 +188,9 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                 label: strings.accountDisplayNameLabel,
                 value: controller.currentUserDisplayName,
                 trailing: TextButton(
-                  onPressed:
-                      controller.isOfficialCloudConfigured
-                          ? _showEditDisplayNameDialog
-                          : null,
+                  onPressed: controller.isOfficialCloudConfigured
+                      ? _showEditDisplayNameDialog
+                      : null,
                   child: Text(strings.accountEditDisplayName),
                 ),
               ),
@@ -242,15 +241,15 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      controller.isOfficialCloudConfigured
+                      controller.isContentCloudConfigured
                           ? strings.accountCloudConnected(
-                              controller.officialCloudHost ??
+                              controller.contentCloudHost ??
                                   strings.accountCloudOfficialName,
                             )
                           : strings.accountCloudUnavailable,
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             fontWeight: FontWeight.w600,
-                            color: controller.isOfficialCloudConfigured
+                            color: controller.isContentCloudConfigured
                                 ? null
                                 : Theme.of(context).colorScheme.error,
                           ),
@@ -275,11 +274,9 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                         strings.accountCloudLastSync(
                           _formatSyncTime(controller.currentCloudSyncAt!),
                         ),
-                        style:
-                            Theme.of(context).textTheme.bodySmall?.copyWith(
-                                  color:
-                                      AppTheme.paletteOf(context).secondaryText,
-                                ),
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: AppTheme.paletteOf(context).secondaryText,
+                            ),
                       ),
                     ],
                   ],
@@ -292,7 +289,7 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                 children: <Widget>[
                   FilledButton.icon(
                     onPressed: controller.isBusy ||
-                            !controller.isOfficialCloudConfigured
+                            !controller.isContentCloudConfigured
                         ? null
                         : () => controller.uploadCurrentUserToOfficialCloud(),
                     icon: const Icon(Icons.cloud_upload_rounded),
@@ -300,7 +297,7 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                   ),
                   OutlinedButton.icon(
                     onPressed: controller.isBusy ||
-                            !controller.isOfficialCloudConfigured
+                            !controller.isContentCloudConfigured
                         ? null
                         : () =>
                             controller.downloadCurrentUserFromOfficialCloud(),
