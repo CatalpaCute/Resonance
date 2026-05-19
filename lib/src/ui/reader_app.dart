@@ -1,11 +1,9 @@
-import 'dart:ui';
 import 'package:dynamic_color/dynamic_color.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:window_manager/window_manager.dart';
-import 'dart:math' as math;
 
 import '../localization/app_language.dart';
 import '../localization/app_strings.dart';
@@ -1738,36 +1736,33 @@ class _ShellHeader extends StatelessWidget {
                           left: mobileRestyled ? 10 : 8,
                           right: mobileRestyled ? 6 : 4,
                         ),
-                        child: SizedBox(
-                          width: mobileRestyled ? 36 : 34,
-                          child: Center(
-                            child: compactReading || compactSettings
-                                ? IconButton(
-                                    onPressed: compactReading
-                                        ? controller.closeCompactReader
-                                        : onSettingsBack,
-                                    icon: const Icon(Icons.arrow_back_rounded),
-                                    splashRadius: 18,
-                                    tooltip: MaterialLocalizations.of(context)
-                                        .backButtonTooltip,
+                        // Keep the compact leading slot aligned with the older,
+                        // more stable layout so non-reader pages don't shift the
+                        // brand mark or title baseline unexpectedly.
+                        child: compactReading || compactSettings
+                            ? IconButton(
+                                onPressed: compactReading
+                                    ? controller.closeCompactReader
+                                    : onSettingsBack,
+                                icon: const Icon(Icons.arrow_back_rounded),
+                                splashRadius: 18,
+                                tooltip: MaterialLocalizations.of(context)
+                                    .backButtonTooltip,
+                              )
+                            : showSidebarToggle
+                                ? _HeaderSidebarToggle(
+                                    collapsed: sidebarCollapsed,
+                                    onTap: onSidebarToggle,
                                   )
-                                : showSidebarToggle
-                                    ? _HeaderSidebarToggle(
-                                        collapsed: sidebarCollapsed,
-                                        onTap: onSidebarToggle,
+                                : showMenuButton
+                                    ? IconButton(
+                                        onPressed: onMenuPressed,
+                                        icon: const Icon(Icons.menu_rounded),
+                                        splashRadius: 18,
+                                        tooltip:
+                                            strings.subscriptionManagement,
                                       )
-                                    : showMenuButton
-                                        ? IconButton(
-                                            onPressed: onMenuPressed,
-                                            icon:
-                                                const Icon(Icons.menu_rounded),
-                                            splashRadius: 18,
-                                            tooltip:
-                                                strings.subscriptionManagement,
-                                          )
-                                        : const SizedBox.shrink(),
-                          ),
-                        ),
+                                    : SizedBox(width: mobileRestyled ? 6 : 4),
                       )
                     else
                       const SizedBox(width: 12),
@@ -1789,17 +1784,55 @@ class _ShellHeader extends StatelessWidget {
                       ),
                     Expanded(
                       child: compact
-                          ? _CompactHeaderIdentity(
-                              controller: controller,
-                              strings: strings,
-                              mobileRestyled: mobileRestyled,
-                              compactReading: compactReading,
-                              compactSettings: compactSettings,
-                              selectedArticle: selectedArticle,
-                              settingsSubPageTitle: settingsSubPageTitle,
-                              searchEnabled:
-                                  mobileSearchEnabled && !compactReading,
-                              onSearchOpen: onMobileSearchOpen,
+                          ? AnimatedSwitcher(
+                              duration: _shellMotionDuration,
+                              switchInCurve: _shellMotionCurve,
+                              switchOutCurve: _shellMotionCurve,
+                              transitionBuilder:
+                                  (Widget child, Animation<double> anim) {
+                                return FadeTransition(
+                                  opacity: anim,
+                                  child: SlideTransition(
+                                    position: Tween<Offset>(
+                                      begin: const Offset(0.04, 0),
+                                      end: Offset.zero,
+                                    ).animate(anim),
+                                    child: child,
+                                  ),
+                                );
+                              },
+                              child: compactReading
+                                  ? _MobileReaderHeaderTitle(
+                                      key: const ValueKey<String>(
+                                        'mobile-reader',
+                                      ),
+                                      controller: controller,
+                                      article: selectedArticle,
+                                      strings: strings,
+                                      mobileRestyled: mobileRestyled,
+                                    )
+                                  : compactSettings
+                                      ? _MobileHeaderTitle(
+                                          key: const ValueKey<String>(
+                                            'mobile-settings',
+                                          ),
+                                          controller: controller,
+                                          strings: strings,
+                                          mobileRestyled: mobileRestyled,
+                                          routeTitleOverride:
+                                              settingsSubPageTitle,
+                                        )
+                                      : _MobileHeaderTitle(
+                                          key: const ValueKey<String>(
+                                            'mobile-title',
+                                          ),
+                                          controller: controller,
+                                          strings: strings,
+                                          mobileRestyled: mobileRestyled,
+                                          searchEnabled:
+                                              mobileSearchEnabled,
+                                          onSearchOpen: onMobileSearchOpen,
+                                        ),
                             )
                           : Stack(
                               alignment: Alignment.center,
@@ -1848,25 +1881,23 @@ class _ShellHeader extends StatelessWidget {
                               ],
                             ),
                     ),
-                    if (compact)
-                      SizedBox(
-                        width: mobileRestyled ? 104 : 96,
-                        child: AnimatedOpacity(
-                          duration: _shellMotionDuration,
-                          curve: _shellMotionCurve,
-                          opacity: (!compactReading &&
-                                  !(mobileSearchActive && mobileSearchEnabled))
-                              ? 1
-                              : 0,
-                          child: IgnorePointer(
-                            ignoring: compactReading ||
-                                (mobileSearchActive && mobileSearchEnabled),
-                            child: Padding(
-                              padding: EdgeInsets.only(
-                                right: mobileRestyled ? 12 : 10,
-                              ),
-                              child: Align(
-                                alignment: Alignment.centerRight,
+                    if (compact && !compactReading)
+                      AnimatedSwitcher(
+                        duration: _shellMotionDuration,
+                        switchInCurve: _shellMotionCurve,
+                        switchOutCurve: _shellMotionCurve,
+                        child: mobileSearchActive && mobileSearchEnabled
+                            ? const SizedBox(
+                                key: ValueKey<String>(
+                                  'mobile-search-stat-hidden',
+                                ),
+                                width: 12,
+                              )
+                            : Padding(
+                                key: const ValueKey<String>('mobile-stat'),
+                                padding: EdgeInsets.only(
+                                  right: mobileRestyled ? 12 : 10,
+                                ),
                                 child: _CompactStat(
                                   mobileRestyled: mobileRestyled,
                                   text: strings.unreadCountStat(
@@ -1874,10 +1905,9 @@ class _ShellHeader extends StatelessWidget {
                                   ),
                                 ),
                               ),
-                            ),
-                          ),
-                        ),
-                      ),
+                      )
+                    else if (compact && compactReading)
+                      const SizedBox(width: 12),
                     if (_useWindowsWindowChrome && !compact)
                       _WindowActions(brightness: Theme.of(context).brightness)
                     else if (!compact)
@@ -3484,60 +3514,34 @@ class _MobileSearchBrandTriggerState extends State<_MobileSearchBrandTrigger> {
   }
 }
 
-class _CompactHeaderIdentity extends StatelessWidget {
-  const _CompactHeaderIdentity({
+class _MobileHeaderTitle extends StatelessWidget {
+  const _MobileHeaderTitle({
+    super.key,
     required this.controller,
     required this.strings,
     required this.mobileRestyled,
-    required this.compactReading,
-    required this.compactSettings,
-    required this.searchEnabled,
-    required this.selectedArticle,
-    this.settingsSubPageTitle,
+    this.routeTitleOverride,
+    this.searchEnabled = false,
     this.onSearchOpen,
   });
 
   final ReaderController controller;
   final AppStrings strings;
   final bool mobileRestyled;
-  final bool compactReading;
-  final bool compactSettings;
+  final String? routeTitleOverride;
   final bool searchEnabled;
-  final Article? selectedArticle;
-  final String? settingsSubPageTitle;
   final VoidCallback? onSearchOpen;
 
   @override
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
-    final String title;
-    final String subtitle;
-
-    if (compactReading && selectedArticle != null) {
-      title = selectedArticle!.title;
-      subtitle = controller.sourceTitleForArticle(selectedArticle!);
-    } else if (compactSettings && settingsSubPageTitle != null) {
-      title = settingsSubPageTitle!;
-      subtitle = controller.currentRouteTitle;
-    } else {
-      title = controller.currentRouteTitle;
-      subtitle = strings.appName;
-    }
 
     return Row(
       children: <Widget>[
-        AnimatedSlide(
-          duration: _shellMotionDuration,
-          curve: _shellMotionCurve,
-          offset: compactReading ? const Offset(0.02, 0) : Offset.zero,
-          child: _MobileSearchBrandTrigger(
-            enabled: searchEnabled,
-            onOpen: onSearchOpen,
-            child: _BrandMark(
-              compact: true,
-              mobileRestyled: mobileRestyled,
-            ),
-          ),
+        _MobileSearchBrandTrigger(
+          enabled: searchEnabled,
+          onOpen: onSearchOpen,
+          child: _BrandMark(compact: true, mobileRestyled: mobileRestyled),
         ),
         SizedBox(width: mobileRestyled ? 12 : 8),
         Expanded(
@@ -3545,8 +3549,10 @@ class _CompactHeaderIdentity extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
-              _MorphingHeaderText(
-                text: title,
+              Text(
+                routeTitleOverride ?? controller.currentRouteTitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: mobileRestyled
                     ? Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontSize: 20,
@@ -3556,8 +3562,10 @@ class _CompactHeaderIdentity extends StatelessWidget {
                     : Theme.of(context).textTheme.titleMedium,
               ),
               SizedBox(height: mobileRestyled ? 2 : 0),
-              _MorphingHeaderText(
-                text: subtitle,
+              Text(
+                strings.appName,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: palette.secondaryText,
                       fontWeight: mobileRestyled ? FontWeight.w500 : null,
@@ -3572,191 +3580,105 @@ class _CompactHeaderIdentity extends StatelessWidget {
   }
 }
 
-class _MorphingHeaderText extends StatefulWidget {
-  const _MorphingHeaderText({
-    required this.text,
-    required this.style,
+class _MobileReaderHeaderTitle extends StatelessWidget {
+  const _MobileReaderHeaderTitle({
+    super.key,
+    required this.controller,
+    required this.article,
+    required this.strings,
+    required this.mobileRestyled,
   });
 
-  final String text;
-  final TextStyle? style;
-
-  @override
-  State<_MorphingHeaderText> createState() => _MorphingHeaderTextState();
-}
-
-class _MorphingHeaderTextState extends State<_MorphingHeaderText>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  String? _previousText;
-  late String _currentText;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentText = widget.text;
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 320),
-      value: 1,
-    );
-  }
-
-  @override
-  void didUpdateWidget(covariant _MorphingHeaderText oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.text == widget.text) {
-      return;
-    }
-    _previousText = _currentText;
-    _currentText = widget.text;
-    _controller.forward(from: 0).whenComplete(() {
-      if (mounted) {
-        setState(() {
-          _previousText = null;
-        });
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
+  final ReaderController controller;
+  final Article article;
+  final AppStrings strings;
+  final bool mobileRestyled;
 
   @override
   Widget build(BuildContext context) {
-    final bool disableAnimations =
-        MediaQuery.maybeOf(context)?.disableAnimations ?? false;
-    final String? previousText = _previousText;
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final String sourceTitle = controller.sourceTitleForArticle(article);
 
-    if (disableAnimations || previousText == null) {
-      return Text(
-        _currentText,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: widget.style,
-      );
-    }
-
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (BuildContext context, _) {
-        final double value =
-            Curves.easeOutCubic.transform(_controller.value).clamp(0.0, 1.0);
-        final double currentBlur = _gooeyBlurFor(value);
-        final double previousBlur = _gooeyBlurFor(1 - value);
-        final double currentOpacity = math.pow(value, 0.58).toDouble();
-        final double previousOpacity =
-            math.pow((1 - value).clamp(0.0, 1.0), 0.58).toDouble();
-
-        return Stack(
-          alignment: Alignment.centerLeft,
-          children: <Widget>[
-            Opacity(
-              opacity: 0,
-              child: Text(
-                _currentText,
+    return Row(
+      children: <Widget>[
+        _MobileHeaderSourceAvatar(
+          iconUrl: controller.sourceIconForArticle(article),
+          mobileRestyled: mobileRestyled,
+        ),
+        SizedBox(width: mobileRestyled ? 12 : 8),
+        Expanded(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(
+                article.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: widget.style,
-              ),
-            ),
-            ClipRect(
-              child: ColorFiltered(
-                colorFilter: const ColorFilter.matrix(<double>[
-                  1,
-                  0,
-                  0,
-                  0,
-                  0,
-                  0,
-                  1,
-                  0,
-                  0,
-                  0,
-                  0,
-                  0,
-                  1,
-                  0,
-                  0,
-                  0,
-                  0,
-                  0,
-                  255,
-                  -132,
-                ]),
-                child: Stack(
-                  alignment: Alignment.centerLeft,
-                  children: <Widget>[
-                    _MorphingTextLayer(
-                      text: previousText,
-                      style: widget.style,
-                      blurSigma: previousBlur,
-                      opacity: previousOpacity,
-                      translateX: lerpDouble(0, -6, value) ?? 0,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontSize: mobileRestyled ? 18 : null,
+                      fontWeight: FontWeight.w600,
+                      height: 1.08,
                     ),
-                    _MorphingTextLayer(
-                      text: _currentText,
-                      style: widget.style,
-                      blurSigma: currentBlur,
-                      opacity: currentOpacity,
-                      translateX: lerpDouble(6, 0, value) ?? 0,
-                    ),
-                  ],
-                ),
               ),
-            ),
-          ],
-        );
-      },
+              const SizedBox(height: 2),
+              Text(
+                '${strings.appName} @ $sourceTitle',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: palette.secondaryText,
+                      fontWeight: FontWeight.w500,
+                      height: 1.1,
+                    ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
-  }
-
-  double _gooeyBlurFor(double fraction) {
-    final double safeFraction = fraction.clamp(0.001, 1.0);
-    return math.min((6 / safeFraction) - 6, 10).toDouble();
   }
 }
 
-class _MorphingTextLayer extends StatelessWidget {
-  const _MorphingTextLayer({
-    required this.text,
-    required this.style,
-    required this.blurSigma,
-    required this.opacity,
-    required this.translateX,
+class _MobileHeaderSourceAvatar extends StatelessWidget {
+  const _MobileHeaderSourceAvatar({
+    required this.iconUrl,
+    required this.mobileRestyled,
   });
 
-  final String text;
-  final TextStyle? style;
-  final double blurSigma;
-  final double opacity;
-  final double translateX;
+  final String? iconUrl;
+  final bool mobileRestyled;
 
   @override
   Widget build(BuildContext context) {
-    Widget child = Text(
-      text,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: style,
-    );
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final double size = mobileRestyled ? 32 : 26;
 
-    if (blurSigma > 0.05) {
-      child = ImageFiltered(
-        imageFilter: ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-        child: child,
-      );
-    }
-
-    return Transform.translate(
-      offset: Offset(translateX, 0),
-      child: Opacity(
-        opacity: opacity.clamp(0.0, 1.0),
-        child: child,
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        color: palette.primarySoft,
+        borderRadius: BorderRadius.circular(mobileRestyled ? 12 : 9),
       ),
+      clipBehavior: Clip.antiAlias,
+      child: iconUrl == null
+          ? Icon(
+              Icons.rss_feed_rounded,
+              size: mobileRestyled ? 17 : 15,
+              color: Theme.of(context).colorScheme.primary,
+            )
+          : Image.network(
+              iconUrl!,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) {
+                return Icon(
+                  Icons.public_rounded,
+                  size: mobileRestyled ? 17 : 15,
+                  color: Theme.of(context).colorScheme.primary,
+                );
+              },
+            ),
     );
   }
 }
