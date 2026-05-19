@@ -287,6 +287,14 @@ class SettingsViewState extends State<SettingsView> {
     }
   }
 
+  String? currentSubPageTitle(AppStrings strings) {
+    final _SettingsCategory? activeCategory = _activeCategory;
+    if (activeCategory == null) {
+      return null;
+    }
+    return _categoryTitle(strings, activeCategory);
+  }
+
   Widget _buildCategoryContent(
     BuildContext context, {
     required _SettingsCategory category,

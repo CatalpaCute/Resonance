@@ -364,10 +364,18 @@ class _ReaderHomeState extends State<ReaderHome> {
 
   void _handlePhonePageChanged(int index) {
     final AppRouteId route = _phoneNavigationRouteForIndex(index);
-    if (_settingsSubPageTitle != null) {
+    if (route != AppRouteId.settings && _settingsSubPageTitle != null) {
       setState(() {
         _settingsSubPageTitle = null;
       });
+    } else if (route == AppRouteId.settings && _settingsSubPageTitle == null) {
+      final String? restoredTitle =
+          _settingsKey.currentState?.currentSubPageTitle(context.strings);
+      if (restoredTitle != null) {
+        setState(() {
+          _settingsSubPageTitle = restoredTitle;
+        });
+      }
     }
     if (controller.currentRoute != route) {
       controller.setCurrentRoute(route);
@@ -1762,8 +1770,7 @@ class _ShellHeader extends StatelessWidget {
                                         onPressed: onMenuPressed,
                                         icon: const Icon(Icons.menu_rounded),
                                         splashRadius: 18,
-                                        tooltip:
-                                            strings.subscriptionManagement,
+                                        tooltip: strings.subscriptionManagement,
                                       )
                                     : SizedBox(width: mobileRestyled ? 6 : 4),
                       )
@@ -1832,8 +1839,7 @@ class _ShellHeader extends StatelessWidget {
                                           controller: controller,
                                           strings: strings,
                                           mobileRestyled: mobileRestyled,
-                                          searchEnabled:
-                                              mobileSearchEnabled,
+                                          searchEnabled: mobileSearchEnabled,
                                           onSearchOpen: onMobileSearchOpen,
                                         ),
                             )
