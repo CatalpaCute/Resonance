@@ -1754,26 +1754,39 @@ class _ShellHeader extends StatelessWidget {
     final bool compactSettings = compact &&
         controller.currentRoute == AppRouteId.settings &&
         settingsSubPageTitle != null;
-    final double headerHeight =
-        mobileRestyled || compactReading ? 58 : (compact ? 52 : 40);
+    final double headerHeight = compact ? 48 : 40;
 
     final Widget header = Container(
       height: headerHeight + topInset,
       padding: EdgeInsets.only(top: topInset),
       decoration: BoxDecoration(
+        gradient: compact
+            ? LinearGradient(
+                colors: <Color>[
+                  (mobileRestyled
+                          ? _mobilePageBackgroundOf(context)
+                          : palette.chromeBackground)
+                      .withValues(alpha: 0.90),
+                  (mobileRestyled
+                          ? _mobilePageBackgroundOf(context)
+                          : palette.chromeBackground)
+                      .withValues(alpha: 0.80),
+                ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+              )
+            : null,
         color: compact
-            ? (mobileRestyled
-                ? _mobilePageBackgroundOf(context)
-                : palette.chromeBackground).withValues(alpha: 0.85)
+            ? null
             : (mobileRestyled
                 ? _mobilePageBackgroundOf(context)
                 : palette.chromeBackground),
         border: Border(
           bottom: BorderSide(
             color: compact
-                ? palette.divider.withValues(alpha: 0.5)
+                ? palette.divider.withValues(alpha: 0.35)
                 : palette.divider,
-            width: compact ? 0.8 : 1.0,
+            width: compact ? 0.7 : 1.0,
           ),
         ),
       ),
@@ -1993,7 +2006,10 @@ class _ShellHeader extends StatelessWidget {
                     curve: _shellMotionCurve,
                     opacity: mobileSearchActive ? 1 : 0,
                     child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 9, 24, 9),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: mobileRestyled ? 16 : 20,
+                        vertical: (headerHeight - 34) / 2,
+                      ),
                       child: _MobileHeaderSearchField(
                         controller: mobileSearchController,
                         focusNode: mobileSearchFocusNode,
@@ -3450,20 +3466,23 @@ class _MobileHeaderSearchField extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final ThemeData theme = Theme.of(context);
     final TextStyle textStyle = theme.textTheme.bodyMedium?.copyWith(
-          fontSize: 17,
-          fontWeight: FontWeight.w600,
-          height: 1.1,
+          fontSize: 15,
+          fontWeight: FontWeight.w500,
+          height: 1.2,
         ) ??
-        const TextStyle(fontSize: 17, fontWeight: FontWeight.w600);
+        const TextStyle(fontSize: 15, fontWeight: FontWeight.w500);
 
     return Container(
-      height: 40,
+      height: 34,
       decoration: BoxDecoration(
-        color: palette.panelBackground,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: palette.border.withValues(alpha: 0.82)),
+        color: palette.canvasBackground,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(
+          color: palette.border.withValues(alpha: 0.4),
+          width: 0.8,
+        ),
       ),
-      padding: const EdgeInsets.fromLTRB(12, 0, 8, 0),
+      padding: const EdgeInsets.fromLTRB(10, 0, 6, 0),
       child: Row(
         children: <Widget>[
           Icon(
@@ -3627,9 +3646,9 @@ class _MobileHeaderTitle extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: mobileRestyled
                     ? Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontSize: 20,
+                          fontSize: 18,
                           fontWeight: FontWeight.w600,
-                          height: 1.12,
+                          height: 1.15,
                         )
                     : Theme.of(context).textTheme.titleMedium,
               ),
@@ -3688,9 +3707,9 @@ class _MobileReaderHeaderTitle extends StatelessWidget {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontSize: mobileRestyled ? 18 : null,
+                      fontSize: mobileRestyled ? 16 : null,
                       fontWeight: FontWeight.w600,
-                      height: 1.08,
+                      height: 1.15,
                     ),
               ),
               const SizedBox(height: 2),
