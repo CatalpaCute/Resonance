@@ -67,6 +67,10 @@ enum CloudContentMode {
   privateCloud,
 }
 
+enum PrivateCloudProtocol {
+  webdav,
+}
+
 class ReaderSettings {
   const ReaderSettings({
     required this.startupHomeMode,
@@ -90,7 +94,11 @@ class ReaderSettings {
     required this.advancedCloudModeEnabled,
     required this.cloudIdentityMode,
     required this.cloudContentMode,
+    required this.privateCloudProtocol,
     required this.privateCloudBaseUrl,
+    required this.privateCloudUsername,
+    required this.privateCloudPassword,
+    required this.privateCloudBasePath,
     required this.privateCloudUserEndpoint,
     required this.privateCloudContentEndpoint,
   });
@@ -116,7 +124,11 @@ class ReaderSettings {
   final bool advancedCloudModeEnabled;
   final CloudIdentityMode cloudIdentityMode;
   final CloudContentMode cloudContentMode;
+  final PrivateCloudProtocol privateCloudProtocol;
   final String privateCloudBaseUrl;
+  final String privateCloudUsername;
+  final String privateCloudPassword;
+  final String privateCloudBasePath;
   final String privateCloudUserEndpoint;
   final String privateCloudContentEndpoint;
 
@@ -145,7 +157,11 @@ class ReaderSettings {
     advancedCloudModeEnabled: false,
     cloudIdentityMode: CloudIdentityMode.official,
     cloudContentMode: CloudContentMode.official,
+    privateCloudProtocol: PrivateCloudProtocol.webdav,
     privateCloudBaseUrl: '',
+    privateCloudUsername: '',
+    privateCloudPassword: '',
+    privateCloudBasePath: '/resonance/',
     privateCloudUserEndpoint: '',
     privateCloudContentEndpoint: '',
   );
@@ -183,7 +199,11 @@ class ReaderSettings {
     bool? advancedCloudModeEnabled,
     CloudIdentityMode? cloudIdentityMode,
     CloudContentMode? cloudContentMode,
+    PrivateCloudProtocol? privateCloudProtocol,
     String? privateCloudBaseUrl,
+    String? privateCloudUsername,
+    String? privateCloudPassword,
+    String? privateCloudBasePath,
     String? privateCloudUserEndpoint,
     String? privateCloudContentEndpoint,
   }) {
@@ -217,7 +237,11 @@ class ReaderSettings {
           advancedCloudModeEnabled ?? this.advancedCloudModeEnabled,
       cloudIdentityMode: cloudIdentityMode ?? this.cloudIdentityMode,
       cloudContentMode: cloudContentMode ?? this.cloudContentMode,
+      privateCloudProtocol: privateCloudProtocol ?? this.privateCloudProtocol,
       privateCloudBaseUrl: privateCloudBaseUrl ?? this.privateCloudBaseUrl,
+      privateCloudUsername: privateCloudUsername ?? this.privateCloudUsername,
+      privateCloudPassword: privateCloudPassword ?? this.privateCloudPassword,
+      privateCloudBasePath: privateCloudBasePath ?? this.privateCloudBasePath,
       privateCloudUserEndpoint:
           privateCloudUserEndpoint ?? this.privateCloudUserEndpoint,
       privateCloudContentEndpoint:
@@ -248,7 +272,11 @@ class ReaderSettings {
       'advancedCloudModeEnabled': advancedCloudModeEnabled,
       'cloudIdentityMode': cloudIdentityMode.name,
       'cloudContentMode': cloudContentMode.name,
+      'privateCloudProtocol': privateCloudProtocol.name,
       'privateCloudBaseUrl': privateCloudBaseUrl,
+      'privateCloudUsername': privateCloudUsername,
+      'privateCloudPassword': privateCloudPassword,
+      'privateCloudBasePath': privateCloudBasePath,
       'privateCloudUserEndpoint': privateCloudUserEndpoint,
       'privateCloudContentEndpoint': privateCloudContentEndpoint,
     };
@@ -334,8 +362,19 @@ class ReaderSettings {
         (CloudContentMode value) => value.name == json['cloudContentMode'],
         orElse: () => defaults.cloudContentMode,
       ),
+      privateCloudProtocol: PrivateCloudProtocol.values.firstWhere(
+        (PrivateCloudProtocol value) =>
+            value.name == json['privateCloudProtocol'],
+        orElse: () => defaults.privateCloudProtocol,
+      ),
       privateCloudBaseUrl: json['privateCloudBaseUrl'] as String? ??
           defaults.privateCloudBaseUrl,
+      privateCloudUsername: json['privateCloudUsername'] as String? ??
+          defaults.privateCloudUsername,
+      privateCloudPassword: json['privateCloudPassword'] as String? ??
+          defaults.privateCloudPassword,
+      privateCloudBasePath: json['privateCloudBasePath'] as String? ??
+          defaults.privateCloudBasePath,
       privateCloudUserEndpoint: json['privateCloudUserEndpoint'] as String? ??
           defaults.privateCloudUserEndpoint,
       privateCloudContentEndpoint:

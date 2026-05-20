@@ -534,6 +534,16 @@ class ReaderController extends ChangeNotifier {
     await _persistSettings();
   }
 
+  Future<void> setCloudContentModeSelection(CloudContentMode mode) async {
+    _setSettings(
+      _settings.copyWith(
+        cloudContentMode: mode,
+        privateCloudEnabled: mode == CloudContentMode.privateCloud,
+      ),
+    );
+    await _persistSettings();
+  }
+
   Future<void> setAppLanguageMode(AppLanguageMode mode) async {
     _setSettings(_settings.copyWith(appLanguageMode: mode));
     await _persistSettings();

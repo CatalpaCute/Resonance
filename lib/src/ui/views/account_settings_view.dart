@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../localization/app_strings.dart';
+import '../../models/reader_settings.dart';
 import '../../models/user_profile.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
@@ -181,7 +182,7 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
           iconColor: const Color(0xFF0F9D58),
           iconBackground: const Color(0xFFD7F2E3),
           title: strings.accountPersonalInfoTitle,
-          subtitle: strings.accountPersonalInfoHint,
+          subtitle: null,
           child: Column(
             children: <Widget>[
               _AccountInfoRow(
@@ -224,6 +225,18 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
           iconBackground: const Color(0xFFDCE8FF),
           title: strings.accountCloudServiceTitle,
           subtitle: null,
+          subtitleWidget: _CloudConnectionSelector(
+            connectionLabel: _cloudConnectionLabel(context),
+            currentOptionLabel: _cloudServiceOptionLabel(
+              context,
+              controller.cloudContentMode,
+            ),
+            selectedMode: controller.cloudContentMode,
+            onSelected: controller.isBusy
+                ? null
+                : (CloudContentMode mode) =>
+                    controller.setCloudContentModeSelection(mode),
+          ),
           headerTrailing: Tooltip(
             message: _cloudServiceSwitchLabel(context),
             child: Switch(
@@ -250,21 +263,10 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      controller.isContentCloudConfigured
-                          ? _cloudConnectionLabel(context)
-                          : strings.accountCloudUnavailable,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: controller.isContentCloudConfigured
-                                ? null
-                                : Theme.of(context).colorScheme.error,
-                          ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
                       _cloudStatusText(context),
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppTheme.paletteOf(context).secondaryText,
+                            fontWeight: FontWeight.w600,
+                            color: _cloudStatusTextColor(context),
                           ),
                     ),
                     if (controller.currentCloudSyncAt != null) ...<Widget>[
@@ -282,7 +284,7 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                 ),
               ),
               const SizedBox(height: 14),
-              if (controller.cloudServiceEnabled)
+              if (_shouldShowOfficialCloudActions)
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
@@ -320,6 +322,11 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
         ),
       ],
     );
+  }
+
+  bool get _shouldShowOfficialCloudActions {
+    return controller.cloudServiceEnabled &&
+        controller.cloudContentMode == CloudContentMode.official;
   }
 
   Widget _buildAccountHeader(BuildContext context, UserProfile profile) {
@@ -460,6 +467,22 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
   }
 
   String _cloudStatusText(BuildContext context) {
+    if (controller.cloudContentMode == CloudContentMode.privateCloud) {
+      final Locale locale = Localizations.localeOf(context);
+      switch (locale.languageCode) {
+        case 'zh':
+          return locale.scriptCode == 'Hant' || locale.countryCode == 'TW'
+              ? '個人雲暫未接入。'
+              : '个人云暂未接入。';
+        default:
+          return 'Personal cloud is reserved and not connected yet.';
+      }
+    }
+
+    if (!controller.isContentCloudConfigured) {
+      return context.strings.accountCloudUnavailable;
+    }
+
     final AppStrings strings = context.strings;
     final String? detail = controller.currentCloudSyncMessage;
     final String baseText;
@@ -477,7 +500,15 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
     if (detail == null || detail.trim().isEmpty) {
       return baseText;
     }
-    return '$baseText · $detail';
+    return '$baseText  $detail';
+  }
+
+  Color _cloudStatusTextColor(BuildContext context) {
+    if (controller.cloudContentMode == CloudContentMode.privateCloud ||
+        controller.isContentCloudConfigured) {
+      return AppTheme.paletteOf(context).secondaryText;
+    }
+    return Theme.of(context).colorScheme.error;
   }
 
   String _formatSyncTime(DateTime value) {
@@ -489,13 +520,38 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
 
   String _cloudConnectionLabel(BuildContext context) {
     final Locale locale = Localizations.localeOf(context);
+    final bool usePrivateCloud =
+        controller.cloudContentMode == CloudContentMode.privateCloud;
     switch (locale.languageCode) {
       case 'zh':
         return locale.scriptCode == 'Hant' || locale.countryCode == 'TW'
-            ? '目前連線：摺紙雲（由 CzWorks 提供服務）'
-            : '当前连接：折纸云（由 CzWorks 提供服务）';
+            ? (usePrivateCloud ? '目前連線：個人雲' : '目前連線：摺紙雲')
+            : (usePrivateCloud ? '当前连接：个人云' : '当前连接：折纸云');
       default:
-        return 'Current connection: Origami Cloud (provided by CzWorks)';
+        return usePrivateCloud
+            ? 'Current connection: Personal Cloud'
+            : 'Current connection: Origami Cloud';
+    }
+  }
+
+  String _cloudServiceOptionLabel(
+    BuildContext context,
+    CloudContentMode mode,
+  ) {
+    final Locale locale = Localizations.localeOf(context);
+    final bool traditional = locale.languageCode == 'zh' &&
+        (locale.scriptCode == 'Hant' || locale.countryCode == 'TW');
+    switch (mode) {
+      case CloudContentMode.official:
+        if (traditional) {
+          return '摺紙雲';
+        }
+        return locale.languageCode == 'zh' ? '折纸云' : 'Origami Cloud';
+      case CloudContentMode.privateCloud:
+        if (traditional) {
+          return '個人雲';
+        }
+        return locale.languageCode == 'zh' ? '个人云' : 'Personal Cloud';
     }
   }
 
@@ -554,6 +610,7 @@ class _AccountInfoCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.child,
+    this.subtitleWidget,
     this.headerTrailing,
   });
 
@@ -564,6 +621,7 @@ class _AccountInfoCard extends StatelessWidget {
   final String title;
   final String? subtitle;
   final Widget child;
+  final Widget? subtitleWidget;
   final Widget? headerTrailing;
 
   @override
@@ -607,6 +665,10 @@ class _AccountInfoCard extends StatelessWidget {
                             ),
                       ),
                     ],
+                    if (subtitleWidget != null) ...<Widget>[
+                      const SizedBox(height: 4),
+                      subtitleWidget!,
+                    ],
                   ],
                 ),
               ),
@@ -620,6 +682,161 @@ class _AccountInfoCard extends StatelessWidget {
           child,
         ],
       ),
+    );
+  }
+}
+
+class _CloudConnectionSelector extends StatelessWidget {
+  const _CloudConnectionSelector({
+    required this.connectionLabel,
+    required this.currentOptionLabel,
+    required this.selectedMode,
+    required this.onSelected,
+  });
+
+  final String connectionLabel;
+  final String currentOptionLabel;
+  final CloudContentMode selectedMode;
+  final ValueChanged<CloudContentMode>? onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return SizedBox(
+      height: 22,
+      child: Row(
+        children: <Widget>[
+          Expanded(
+            child: Text(
+              connectionLabel,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: palette.secondaryText,
+                  ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          _CloudModeMenuButton(
+            currentOptionLabel: currentOptionLabel,
+            selectedMode: selectedMode,
+            onSelected: onSelected,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CloudModeMenuButton extends StatelessWidget {
+  const _CloudModeMenuButton({
+    required this.currentOptionLabel,
+    required this.selectedMode,
+    required this.onSelected,
+  });
+
+  final String currentOptionLabel;
+  final CloudContentMode selectedMode;
+  final ValueChanged<CloudContentMode>? onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final Locale locale = Localizations.localeOf(context);
+    final bool traditional = locale.languageCode == 'zh' &&
+        (locale.scriptCode == 'Hant' || locale.countryCode == 'TW');
+    final String officialLabel = traditional
+        ? '摺紙雲'
+        : locale.languageCode == 'zh'
+            ? '折纸云'
+            : 'Origami Cloud';
+    final String privateLabel = traditional
+        ? '個人雲'
+        : locale.languageCode == 'zh'
+            ? '个人云'
+            : 'Personal Cloud';
+
+    return PopupMenuButton<CloudContentMode>(
+      enabled: onSelected != null,
+      tooltip: '',
+      onSelected: onSelected,
+      padding: EdgeInsets.zero,
+      color: palette.panelBackground,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
+      itemBuilder: (BuildContext context) => <PopupMenuEntry<CloudContentMode>>[
+        PopupMenuItem<CloudContentMode>(
+          value: CloudContentMode.official,
+          child: _CloudModeMenuItem(
+            label: officialLabel,
+            selected: selectedMode == CloudContentMode.official,
+          ),
+        ),
+        PopupMenuItem<CloudContentMode>(
+          value: CloudContentMode.privateCloud,
+          child: _CloudModeMenuItem(
+            label: privateLabel,
+            selected: selectedMode == CloudContentMode.privateCloud,
+          ),
+        ),
+      ],
+      child: Opacity(
+        opacity: onSelected == null ? 0.55 : 1,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(
+              currentOptionLabel,
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.w600,
+                    color: palette.secondaryText,
+                  ),
+            ),
+            const SizedBox(width: 4),
+            Icon(
+              Icons.unfold_more_rounded,
+              size: 18,
+              color: palette.secondaryText,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CloudModeMenuItem extends StatelessWidget {
+  const _CloudModeMenuItem({
+    required this.label,
+    required this.selected,
+  });
+
+  final String label;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color selectedColor = Theme.of(context).colorScheme.primary;
+    return Row(
+      children: <Widget>[
+        Expanded(
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected ? selectedColor : null,
+                ),
+          ),
+        ),
+        if (selected)
+          Icon(
+            Icons.check_rounded,
+            color: selectedColor,
+            size: 20,
+          ),
+      ],
     );
   }
 }
