@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../../localization/app_strings.dart';
 import '../../models/reader_settings.dart';
 import '../../models/user_profile.dart';
+import '../../services/private_webdav_service.dart';
 import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
 import '../widgets/user_avatar.dart';
@@ -55,7 +56,7 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
 
   Widget _buildSignedOutView(BuildContext context) {
     final AppStrings strings = context.strings;
-    final bool cloudReady = controller.isOfficialCloudConfigured;
+    final bool cloudReady = controller.isIdentityCloudConfigured;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -73,7 +74,7 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
               ),
               const SizedBox(height: 8),
               Text(
-                strings.accountSignedOutHintCloud,
+                _signedOutHintText(context),
                 style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                       color: AppTheme.paletteOf(context).secondaryText,
                     ),
@@ -81,7 +82,7 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
               if (!cloudReady) ...<Widget>[
                 const SizedBox(height: 12),
                 Text(
-                  strings.accountCloudUnavailable,
+                  _identityCloudUnavailableText(context),
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                         color: Theme.of(context).colorScheme.error,
                       ),
@@ -110,6 +111,16 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                     icon: const Icon(Icons.password_rounded),
                     label: Text(strings.accountEnterCode),
                   ),
+                  if (controller.privateCloudEnabled ||
+                      controller.usesPrivateIdentityCloud ||
+                      controller.usesPrivateContentCloud)
+                    OutlinedButton.icon(
+                      onPressed: controller.isBusy
+                          ? null
+                          : () => _showPrivateCloudServerSheet(context),
+                      icon: const Icon(Icons.settings_outlined),
+                      label: Text(_configureServerActionLabel(context)),
+                    ),
                 ],
               ),
               if (_showManualCodeInput) ...<Widget>[
@@ -189,12 +200,13 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                 label: strings.accountDisplayNameLabel,
                 value: controller.currentUserDisplayName,
                 trailing: TextButton(
-                  onPressed: controller.isOfficialCloudConfigured
+                  onPressed: controller.isIdentityCloudConfigured
                       ? _showEditDisplayNameDialog
                       : null,
                   child: Text(strings.accountEditDisplayName),
                 ),
               ),
+              const SizedBox(height: 12),
               _AccountInfoRow(
                 label: strings.accountAvatarLabel,
                 value: strings.accountAvatarHint,
@@ -205,6 +217,7 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                   child: Text(strings.accountChangeAvatar),
                 ),
               ),
+              const SizedBox(height: 12),
               _AccountInfoRow(
                 label: strings.accountIdentityCodeLabel,
                 value: controller.currentIdentityCodeDisplay,
@@ -249,6 +262,21 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
+              if (controller.usesPrivateContentCloud)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _AccountInfoRow(
+                    label: _serverSectionTitle(context),
+                    value: _serverSectionValue(context),
+                    trailing: IconButton(
+                      tooltip: _serverSettingsTooltip(context),
+                      onPressed: controller.isBusy
+                          ? null
+                          : () => _showPrivateCloudServerSheet(context),
+                      icon: const Icon(Icons.settings_outlined),
+                    ),
+                  ),
+                ),
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(16),
@@ -284,7 +312,7 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                 ),
               ),
               const SizedBox(height: 14),
-              if (_shouldShowOfficialCloudActions)
+              if (controller.cloudServiceEnabled)
                 Wrap(
                   spacing: 12,
                   runSpacing: 12,
@@ -293,18 +321,17 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                       onPressed: controller.isBusy ||
                               !controller.isContentCloudConfigured
                           ? null
-                          : () => controller.uploadCurrentUserToOfficialCloud(),
+                          : () => controller.uploadCurrentUserToCloud(),
                       icon: const Icon(Icons.cloud_upload_rounded),
-                      label: Text(strings.accountCloudUploadAction),
+                      label: Text(_cloudUploadActionLabel(context)),
                     ),
                     OutlinedButton.icon(
                       onPressed: controller.isBusy ||
                               !controller.isContentCloudConfigured
                           ? null
-                          : () =>
-                              controller.downloadCurrentUserFromOfficialCloud(),
+                          : () => controller.downloadCurrentUserFromCloud(),
                       icon: const Icon(Icons.cloud_download_rounded),
-                      label: Text(strings.accountCloudDownloadAction),
+                      label: Text(_cloudDownloadActionLabel(context)),
                     ),
                   ],
                 ),
@@ -322,11 +349,6 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
         ),
       ],
     );
-  }
-
-  bool get _shouldShowOfficialCloudActions {
-    return controller.cloudServiceEnabled &&
-        controller.cloudContentMode == CloudContentMode.official;
   }
 
   Widget _buildAccountHeader(BuildContext context, UserProfile profile) {
@@ -399,6 +421,40 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
     );
   }
 
+  Future<void> _showPrivateCloudServerSheet(BuildContext context) async {
+    final _PrivateCloudServerConfigResult? result =
+        await showModalBottomSheet<_PrivateCloudServerConfigResult>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        return _PrivateCloudServerSheet(
+          initialProtocol: controller.privateCloudProtocol,
+          initialBaseUrl: controller.privateCloudBaseUrl,
+          initialUsername: controller.privateCloudUsername,
+          initialPassword: controller.privateCloudPassword,
+          initialBasePath: controller.privateCloudBasePath,
+          initialAdvancedModeEnabled: controller.advancedCloudModeEnabled,
+        );
+      },
+    );
+
+    if (result == null) {
+      return;
+    }
+
+    await controller.setPrivateCloudProtocol(result.protocol);
+    await controller.setPrivateCloudServerConfig(
+      baseUrl: result.baseUrl,
+      username: result.username,
+      password: result.password,
+      basePath: result.basePath,
+    );
+    await controller.setAdvancedCloudModeEnabled(
+      result.advancedModeEnabled,
+    );
+  }
+
   Future<void> _copyIdentityCode(BuildContext context) async {
     await Clipboard.setData(
       ClipboardData(text: controller.currentIdentityCodeDisplay),
@@ -466,46 +522,95 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
     return context.strings.accountIdentityCodeInvalid;
   }
 
-  String _cloudStatusText(BuildContext context) {
-    if (controller.cloudContentMode == CloudContentMode.privateCloud) {
-      final Locale locale = Localizations.localeOf(context);
-      switch (locale.languageCode) {
-        case 'zh':
-          return locale.scriptCode == 'Hant' || locale.countryCode == 'TW'
-              ? '個人雲暫未接入。'
-              : '个人云暂未接入。';
-        default:
-          return 'Personal cloud is reserved and not connected yet.';
-      }
+  String _signedOutHintText(BuildContext context) {
+    if (controller.usesPrivateIdentityCloud) {
+      return _localizedText(
+        context,
+        zhHans: '生成代码会直接注册到个人云。输入已有代码时，也会先从个人云校验身份是否存在。',
+        zhHant: '產生代碼會直接註冊到個人雲。輸入既有代碼時，也會先從個人雲驗證身分是否存在。',
+        en: 'Generating a code will register it with the personal cloud. Entering an existing code will first verify it in the personal cloud.',
+      );
     }
+    return context.strings.accountSignedOutHintCloud;
+  }
 
-    if (!controller.isContentCloudConfigured) {
+  String _identityCloudUnavailableText(BuildContext context) {
+    if (controller.usesPrivateIdentityCloud) {
+      return _localizedText(
+        context,
+        zhHans: '个人云服务器尚未配置。先在云服务里设置 WebDAV 地址后，才能创建或登录身份。',
+        zhHant: '個人雲伺服器尚未設定。請先在雲服務中設定 WebDAV 位址，才能建立或登入身分。',
+        en: 'The personal cloud server is not configured yet. Set up the WebDAV server first before creating or signing in to an identity.',
+      );
+    }
+    return context.strings.accountCloudUnavailable;
+  }
+
+  String _cloudStatusText(BuildContext context) {
+    if (controller.usesPrivateContentCloud &&
+        !controller.isContentCloudConfigured) {
+      return _localizedText(
+        context,
+        zhHans: '个人云服务器尚未配置。',
+        zhHant: '個人雲伺服器尚未設定。',
+        en: 'The personal cloud server is not configured yet.',
+      );
+    }
+    if (!controller.usesPrivateContentCloud &&
+        !controller.isContentCloudConfigured) {
       return context.strings.accountCloudUnavailable;
     }
 
-    final AppStrings strings = context.strings;
-    final String? detail = controller.currentCloudSyncMessage;
-    final String baseText;
+    final String? detail = controller.currentCloudSyncMessage?.trim();
+    if (detail != null && detail.isNotEmpty) {
+      return detail;
+    }
+
+    if (controller.usesPrivateContentCloud) {
+      switch (controller.currentCloudSyncStatus) {
+        case CloudSyncStatus.idle:
+          return _localizedText(
+            context,
+            zhHans: '个人云已连接，等待同步。',
+            zhHant: '個人雲已連線，等待同步。',
+            en: 'The personal cloud is connected and waiting to sync.',
+          );
+        case CloudSyncStatus.synced:
+          return controller.advancedCloudModeEnabled
+              ? _localizedText(
+                  context,
+                  zhHans: '账号信息与内容已同步到个人云。',
+                  zhHant: '帳號資訊與內容已同步到個人雲。',
+                  en: 'Account details and content were synced to the personal cloud.',
+                )
+              : _localizedText(
+                  context,
+                  zhHans: '订阅、文章和头像已同步到个人云。',
+                  zhHant: '訂閱、文章與頭像已同步到個人雲。',
+                  en: 'Subscriptions, articles, and avatar were synced to the personal cloud.',
+                );
+        case CloudSyncStatus.failed:
+          return _localizedText(
+            context,
+            zhHans: '个人云同步失败了。',
+            zhHant: '個人雲同步失敗了。',
+            en: 'Syncing with the personal cloud failed.',
+          );
+      }
+    }
+
     switch (controller.currentCloudSyncStatus) {
       case CloudSyncStatus.idle:
-        baseText = strings.accountCloudStatusIdle;
-        break;
+        return context.strings.accountCloudStatusIdle;
       case CloudSyncStatus.synced:
-        baseText = strings.accountCloudStatusSynced;
-        break;
+        return context.strings.accountCloudStatusSynced;
       case CloudSyncStatus.failed:
-        baseText = strings.accountCloudStatusFailed;
-        break;
+        return context.strings.accountCloudStatusFailed;
     }
-    if (detail == null || detail.trim().isEmpty) {
-      return baseText;
-    }
-    return '$baseText  $detail';
   }
 
   Color _cloudStatusTextColor(BuildContext context) {
-    if (controller.cloudContentMode == CloudContentMode.privateCloud ||
-        controller.isContentCloudConfigured) {
+    if (controller.isContentCloudConfigured) {
       return AppTheme.paletteOf(context).secondaryText;
     }
     return Theme.of(context).colorScheme.error;
@@ -519,52 +624,124 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
   }
 
   String _cloudConnectionLabel(BuildContext context) {
-    final Locale locale = Localizations.localeOf(context);
-    final bool usePrivateCloud =
-        controller.cloudContentMode == CloudContentMode.privateCloud;
-    switch (locale.languageCode) {
-      case 'zh':
-        return locale.scriptCode == 'Hant' || locale.countryCode == 'TW'
-            ? (usePrivateCloud ? '目前連線：個人雲' : '目前連線：摺紙雲')
-            : (usePrivateCloud ? '当前连接：个人云' : '当前连接：折纸云');
-      default:
-        return usePrivateCloud
-            ? 'Current connection: Personal Cloud'
-            : 'Current connection: Origami Cloud';
-    }
+    final bool usePrivateCloud = controller.usesPrivateContentCloud;
+    return _localizedText(
+      context,
+      zhHans: usePrivateCloud ? '当前连接：个人云' : '当前连接：折纸云',
+      zhHant: usePrivateCloud ? '目前連線：個人雲' : '目前連線：摺紙雲',
+      en: usePrivateCloud
+          ? 'Current connection: Personal Cloud'
+          : 'Current connection: Origami Cloud',
+    );
   }
 
   String _cloudServiceOptionLabel(
     BuildContext context,
     CloudContentMode mode,
   ) {
-    final Locale locale = Localizations.localeOf(context);
-    final bool traditional = locale.languageCode == 'zh' &&
-        (locale.scriptCode == 'Hant' || locale.countryCode == 'TW');
     switch (mode) {
       case CloudContentMode.official:
-        if (traditional) {
-          return '摺紙雲';
-        }
-        return locale.languageCode == 'zh' ? '折纸云' : 'Origami Cloud';
+        return _localizedText(
+          context,
+          zhHans: '折纸云',
+          zhHant: '摺紙雲',
+          en: 'Origami Cloud',
+        );
       case CloudContentMode.privateCloud:
-        if (traditional) {
-          return '個人雲';
-        }
-        return locale.languageCode == 'zh' ? '个人云' : 'Personal Cloud';
+        return _localizedText(
+          context,
+          zhHans: '个人云',
+          zhHant: '個人雲',
+          en: 'Personal Cloud',
+        );
     }
   }
 
+  String _cloudUploadActionLabel(BuildContext context) {
+    return controller.usesPrivateContentCloud
+        ? _localizedText(
+            context,
+            zhHans: '上传到个人云',
+            zhHant: '上傳到個人雲',
+            en: 'Upload to Personal Cloud',
+          )
+        : context.strings.accountCloudUploadAction;
+  }
+
+  String _cloudDownloadActionLabel(BuildContext context) {
+    return controller.usesPrivateContentCloud
+        ? _localizedText(
+            context,
+            zhHans: '从个人云下载',
+            zhHant: '從個人雲下載',
+            en: 'Download from Personal Cloud',
+          )
+        : context.strings.accountCloudDownloadAction;
+  }
+
   String _cloudServiceSwitchLabel(BuildContext context) {
-    final Locale locale = Localizations.localeOf(context);
-    switch (locale.languageCode) {
-      case 'zh':
-        return locale.scriptCode == 'Hant' || locale.countryCode == 'TW'
-            ? '啟用雲服務'
-            : '启用云服务';
-      default:
-        return 'Enable Cloud Services';
+    return _localizedText(
+      context,
+      zhHans: '启用云服务',
+      zhHant: '啟用雲服務',
+      en: 'Enable Cloud Services',
+    );
+  }
+
+  String _serverSectionTitle(BuildContext context) {
+    return _localizedText(
+      context,
+      zhHans: '服务器',
+      zhHant: '伺服器',
+      en: 'Server',
+    );
+  }
+
+  String _serverSectionValue(BuildContext context) {
+    if (controller.privateCloudBaseUrl.trim().isEmpty) {
+      return _localizedText(
+        context,
+        zhHans: '未配置',
+        zhHant: '未設定',
+        en: 'Not configured',
+      );
     }
+    final String host = Uri.tryParse(controller.privateCloudBaseUrl)?.host ??
+        controller.privateCloudBaseUrl;
+    return 'WebDAV · $host${controller.privateCloudBasePath}';
+  }
+
+  String _serverSettingsTooltip(BuildContext context) {
+    return _localizedText(
+      context,
+      zhHans: '设置个人云服务器',
+      zhHant: '設定個人雲伺服器',
+      en: 'Configure personal cloud server',
+    );
+  }
+
+  String _configureServerActionLabel(BuildContext context) {
+    return _localizedText(
+      context,
+      zhHans: '设置服务器',
+      zhHant: '設定伺服器',
+      en: 'Configure Server',
+    );
+  }
+
+  String _localizedText(
+    BuildContext context, {
+    required String zhHans,
+    String? zhHant,
+    required String en,
+  }) {
+    final Locale locale = Localizations.localeOf(context);
+    if (locale.languageCode == 'zh') {
+      final bool traditional =
+          locale.scriptCode == 'Hant' || locale.countryCode == 'TW';
+      return traditional ? (zhHant ?? zhHans) : zhHans;
+    }
+    return en;
   }
 }
 
@@ -743,19 +920,18 @@ class _CloudModeMenuButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
-    final Locale locale = Localizations.localeOf(context);
-    final bool traditional = locale.languageCode == 'zh' &&
-        (locale.scriptCode == 'Hant' || locale.countryCode == 'TW');
-    final String officialLabel = traditional
-        ? '摺紙雲'
-        : locale.languageCode == 'zh'
-            ? '折纸云'
-            : 'Origami Cloud';
-    final String privateLabel = traditional
-        ? '個人雲'
-        : locale.languageCode == 'zh'
-            ? '个人云'
-            : 'Personal Cloud';
+    final String officialLabel = _localizedText(
+      context,
+      zhHans: '折纸云',
+      zhHant: '摺紙雲',
+      en: 'Origami Cloud',
+    );
+    final String privateLabel = _localizedText(
+      context,
+      zhHans: '个人云',
+      zhHant: '個人雲',
+      en: 'Personal Cloud',
+    );
 
     return PopupMenuButton<CloudContentMode>(
       enabled: onSelected != null,
@@ -805,6 +981,21 @@ class _CloudModeMenuButton extends StatelessWidget {
       ),
     );
   }
+
+  String _localizedText(
+    BuildContext context, {
+    required String zhHans,
+    String? zhHant,
+    required String en,
+  }) {
+    final Locale locale = Localizations.localeOf(context);
+    if (locale.languageCode == 'zh') {
+      final bool traditional =
+          locale.scriptCode == 'Hant' || locale.countryCode == 'TW';
+      return traditional ? (zhHant ?? zhHans) : zhHans;
+    }
+    return en;
+  }
 }
 
 class _CloudModeMenuItem extends StatelessWidget {
@@ -841,6 +1032,311 @@ class _CloudModeMenuItem extends StatelessWidget {
   }
 }
 
+class _PrivateCloudServerSheet extends StatefulWidget {
+  const _PrivateCloudServerSheet({
+    required this.initialProtocol,
+    required this.initialBaseUrl,
+    required this.initialUsername,
+    required this.initialPassword,
+    required this.initialBasePath,
+    required this.initialAdvancedModeEnabled,
+  });
+
+  final PrivateCloudProtocol initialProtocol;
+  final String initialBaseUrl;
+  final String initialUsername;
+  final String initialPassword;
+  final String initialBasePath;
+  final bool initialAdvancedModeEnabled;
+
+  @override
+  State<_PrivateCloudServerSheet> createState() =>
+      _PrivateCloudServerSheetState();
+}
+
+class _PrivateCloudServerSheetState extends State<_PrivateCloudServerSheet> {
+  late final TextEditingController _baseUrlController;
+  late final TextEditingController _usernameController;
+  late final TextEditingController _passwordController;
+  late final TextEditingController _basePathController;
+  late PrivateCloudProtocol _protocol;
+  late bool _advancedModeEnabled;
+  String? _baseUrlError;
+
+  @override
+  void initState() {
+    super.initState();
+    _protocol = widget.initialProtocol;
+    _advancedModeEnabled = widget.initialAdvancedModeEnabled;
+    _baseUrlController = TextEditingController(text: widget.initialBaseUrl);
+    _usernameController = TextEditingController(text: widget.initialUsername);
+    _passwordController = TextEditingController(text: widget.initialPassword);
+    _basePathController = TextEditingController(
+      text: widget.initialBasePath.isEmpty
+          ? '/resonance/'
+          : widget.initialBasePath,
+    );
+  }
+
+  @override
+  void dispose() {
+    _baseUrlController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _basePathController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+    final EdgeInsets viewInsets = MediaQuery.viewInsetsOf(context);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: viewInsets.bottom),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: palette.panelBackground,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        ),
+        child: SafeArea(
+          top: false,
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: palette.border,
+                      borderRadius: BorderRadius.circular(999),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  _localizedText(
+                    context,
+                    zhHans: '个人云服务器',
+                    zhHant: '個人雲伺服器',
+                    en: 'Personal Cloud Server',
+                  ),
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
+                const SizedBox(height: 18),
+                DropdownButtonFormField<PrivateCloudProtocol>(
+                  initialValue: _protocol,
+                  decoration: InputDecoration(
+                    labelText: _localizedText(
+                      context,
+                      zhHans: '协议',
+                      zhHant: '協定',
+                      en: 'Protocol',
+                    ),
+                  ),
+                  items: <DropdownMenuItem<PrivateCloudProtocol>>[
+                    DropdownMenuItem<PrivateCloudProtocol>(
+                      value: PrivateCloudProtocol.webdav,
+                      child: const Text('WebDAV'),
+                    ),
+                  ],
+                  onChanged: (PrivateCloudProtocol? value) {
+                    if (value == null) {
+                      return;
+                    }
+                    setState(() {
+                      _protocol = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _baseUrlController,
+                  keyboardType: TextInputType.url,
+                  decoration: InputDecoration(
+                    labelText: _localizedText(
+                      context,
+                      zhHans: '地址',
+                      zhHant: '位址',
+                      en: 'Address',
+                    ),
+                    hintText: 'https://dav.example.com/webdav',
+                    errorText: _baseUrlError,
+                  ),
+                  onChanged: (_) {
+                    if (_baseUrlError != null) {
+                      setState(() {
+                        _baseUrlError = null;
+                      });
+                    }
+                  },
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _usernameController,
+                  decoration: InputDecoration(
+                    labelText: _localizedText(
+                      context,
+                      zhHans: '用户名',
+                      zhHant: '使用者名稱',
+                      en: 'Username',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _passwordController,
+                  obscureText: true,
+                  enableSuggestions: false,
+                  autocorrect: false,
+                  decoration: InputDecoration(
+                    labelText: _localizedText(
+                      context,
+                      zhHans: '密码',
+                      zhHant: '密碼',
+                      en: 'Password',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                TextField(
+                  controller: _basePathController,
+                  decoration: InputDecoration(
+                    labelText: _localizedText(
+                      context,
+                      zhHans: '路径',
+                      zhHant: '路徑',
+                      en: 'Path',
+                    ),
+                    hintText: '/resonance/',
+                  ),
+                ),
+                const SizedBox(height: 14),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _advancedModeEnabled,
+                  onChanged: (bool value) {
+                    setState(() {
+                      _advancedModeEnabled = value;
+                    });
+                  },
+                  title: Text(
+                    _localizedText(
+                      context,
+                      zhHans: '高级模式',
+                      zhHant: '進階模式',
+                      en: 'Advanced Mode',
+                    ),
+                  ),
+                  subtitle: Text(
+                    _localizedText(
+                      context,
+                      zhHans: '开启后，创建身份、输入身份代码、用户名和头像也都会走个人云。',
+                      zhHant: '開啟後，建立身分、輸入身分代碼、使用者名稱與頭像也都會改走個人雲。',
+                      en: 'When enabled, identity creation, sign-in, user name, and avatar sync also use the personal cloud.',
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        child: Text(MaterialLocalizations.of(context)
+                            .cancelButtonLabel),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: _submit,
+                        child: Text(
+                          _localizedText(
+                            context,
+                            zhHans: '保存',
+                            zhHant: '儲存',
+                            en: 'Save',
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _submit() {
+    final String normalizedBaseUrl =
+        normalizePrivateCloudBaseUrl(_baseUrlController.text);
+    if (normalizedBaseUrl.isEmpty || Uri.tryParse(normalizedBaseUrl) == null) {
+      setState(() {
+        _baseUrlError = _localizedText(
+          context,
+          zhHans: '请输入可用的 WebDAV 地址。',
+          zhHant: '請輸入可用的 WebDAV 位址。',
+          en: 'Enter a valid WebDAV address.',
+        );
+      });
+      return;
+    }
+
+    Navigator.of(context).pop(
+      _PrivateCloudServerConfigResult(
+        protocol: _protocol,
+        baseUrl: normalizedBaseUrl,
+        username: _usernameController.text,
+        password: _passwordController.text,
+        basePath: normalizePrivateCloudBasePath(_basePathController.text),
+        advancedModeEnabled: _advancedModeEnabled,
+      ),
+    );
+  }
+
+  String _localizedText(
+    BuildContext context, {
+    required String zhHans,
+    String? zhHant,
+    required String en,
+  }) {
+    final Locale locale = Localizations.localeOf(context);
+    if (locale.languageCode == 'zh') {
+      final bool traditional =
+          locale.scriptCode == 'Hant' || locale.countryCode == 'TW';
+      return traditional ? (zhHant ?? zhHans) : zhHans;
+    }
+    return en;
+  }
+}
+
+class _PrivateCloudServerConfigResult {
+  const _PrivateCloudServerConfigResult({
+    required this.protocol,
+    required this.baseUrl,
+    required this.username,
+    required this.password,
+    required this.basePath,
+    required this.advancedModeEnabled,
+  });
+
+  final PrivateCloudProtocol protocol;
+  final String baseUrl;
+  final String username;
+  final String password;
+  final String basePath;
+  final bool advancedModeEnabled;
+}
+
 class _AccountInfoRow extends StatelessWidget {
   const _AccountInfoRow({
     required this.label,
@@ -856,43 +1352,40 @@ class _AccountInfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          color: palette.panelMutedBackground.withValues(alpha: 0.45),
-          borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: palette.border),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.center,
-          children: <Widget>[
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    label,
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: palette.secondaryText,
-                        ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    value,
-                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                  ),
-                ],
-              ),
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      decoration: BoxDecoration(
+        color: palette.panelMutedBackground.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: palette.border),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: palette.secondaryText,
+                      ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w600,
+                      ),
+                ),
+              ],
             ),
-            const SizedBox(width: 12),
-            trailing,
-          ],
-        ),
+          ),
+          const SizedBox(width: 12),
+          trailing,
+        ],
       ),
     );
   }

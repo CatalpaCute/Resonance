@@ -27,7 +27,11 @@ void main() {
         advancedCloudModeEnabled: true,
         cloudIdentityMode: CloudIdentityMode.privateCloud,
         cloudContentMode: CloudContentMode.privateCloud,
+        privateCloudProtocol: PrivateCloudProtocol.webdav,
         privateCloudBaseUrl: 'https://private.example.com',
+        privateCloudUsername: 'catal',
+        privateCloudPassword: 'secret',
+        privateCloudBasePath: '/resonance/',
         privateCloudUserEndpoint: '/identity',
         privateCloudContentEndpoint: '/content',
       );
@@ -65,7 +69,11 @@ void main() {
       expect(restored.advancedCloudModeEnabled, isTrue);
       expect(restored.cloudIdentityMode, CloudIdentityMode.privateCloud);
       expect(restored.cloudContentMode, CloudContentMode.privateCloud);
+      expect(restored.privateCloudProtocol, PrivateCloudProtocol.webdav);
       expect(restored.privateCloudBaseUrl, 'https://private.example.com');
+      expect(restored.privateCloudUsername, 'catal');
+      expect(restored.privateCloudPassword, 'secret');
+      expect(restored.privateCloudBasePath, '/resonance/');
       expect(restored.privateCloudUserEndpoint, '/identity');
       expect(restored.privateCloudContentEndpoint, '/content');
     });
@@ -134,8 +142,24 @@ void main() {
         ReaderSettings.defaults.cloudContentMode,
       );
       expect(
+        restored.privateCloudProtocol,
+        ReaderSettings.defaults.privateCloudProtocol,
+      );
+      expect(
         restored.privateCloudBaseUrl,
         ReaderSettings.defaults.privateCloudBaseUrl,
+      );
+      expect(
+        restored.privateCloudUsername,
+        ReaderSettings.defaults.privateCloudUsername,
+      );
+      expect(
+        restored.privateCloudPassword,
+        ReaderSettings.defaults.privateCloudPassword,
+      );
+      expect(
+        restored.privateCloudBasePath,
+        ReaderSettings.defaults.privateCloudBasePath,
       );
       expect(
         restored.privateCloudUserEndpoint,

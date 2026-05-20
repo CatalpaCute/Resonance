@@ -19,6 +19,7 @@ import '../services/auto_refresh_engine.dart';
 import '../services/cloud_service_router.dart';
 import '../services/json_store.dart';
 import '../services/official_cloud_service.dart';
+import '../services/private_webdav_service.dart';
 import '../services/rss_service.dart';
 
 class _SourceStats {
@@ -113,6 +114,7 @@ class ReaderController extends ChangeNotifier {
   ContentSyncService get _contentSyncService => _cloudServices.contentService;
 
   bool get isOfficialCloudConfigured => _identitySyncService.isConfigured;
+  bool get isIdentityCloudConfigured => _identitySyncService.isConfigured;
   String? get officialCloudBaseUrl => _identitySyncService.baseUrl;
   String? get officialCloudHost {
     final String? baseUrl = officialCloudBaseUrl;
@@ -136,7 +138,17 @@ class ReaderController extends ChangeNotifier {
   bool get advancedCloudModeEnabled => _settings.advancedCloudModeEnabled;
   CloudIdentityMode get cloudIdentityMode => _settings.cloudIdentityMode;
   CloudContentMode get cloudContentMode => _settings.cloudContentMode;
+  PrivateCloudProtocol get privateCloudProtocol =>
+      _settings.privateCloudProtocol;
   bool get cloudServiceEnabled => _settings.cloudServiceEnabled;
+  String get privateCloudBaseUrl => _settings.privateCloudBaseUrl;
+  String get privateCloudUsername => _settings.privateCloudUsername;
+  String get privateCloudPassword => _settings.privateCloudPassword;
+  String get privateCloudBasePath => _settings.privateCloudBasePath;
+  bool get usesPrivateIdentityCloud =>
+      _settings.cloudIdentityMode == CloudIdentityMode.privateCloud;
+  bool get usesPrivateContentCloud =>
+      _settings.cloudContentMode == CloudContentMode.privateCloud;
 
   CloudSyncStatus get currentCloudSyncStatus =>
       _currentUser?.lastCloudSyncStatus ?? CloudSyncStatus.idle;
@@ -539,9 +551,52 @@ class ReaderController extends ChangeNotifier {
       _settings.copyWith(
         cloudContentMode: mode,
         privateCloudEnabled: mode == CloudContentMode.privateCloud,
+        advancedCloudModeEnabled: mode == CloudContentMode.privateCloud
+            ? _settings.advancedCloudModeEnabled
+            : false,
+        cloudIdentityMode: mode == CloudContentMode.privateCloud &&
+                _settings.advancedCloudModeEnabled
+            ? CloudIdentityMode.privateCloud
+            : CloudIdentityMode.official,
       ),
     );
     await _persistSettings();
+  }
+
+  Future<void> setPrivateCloudProtocol(PrivateCloudProtocol protocol) async {
+    _setSettings(_settings.copyWith(privateCloudProtocol: protocol));
+    await _persistSettings();
+  }
+
+  Future<void> setPrivateCloudServerConfig({
+    required String baseUrl,
+    required String username,
+    required String password,
+    required String basePath,
+  }) async {
+    _setSettings(
+      _settings.copyWith(
+        privateCloudBaseUrl: normalizePrivateCloudBaseUrl(baseUrl),
+        privateCloudUsername: username.trim(),
+        privateCloudPassword: password,
+        privateCloudBasePath: normalizePrivateCloudBasePath(basePath),
+      ),
+    );
+    await _persistSettings();
+    _triggerPendingAccountSyncIfPossible();
+  }
+
+  Future<void> setAdvancedCloudModeEnabled(bool value) async {
+    _setSettings(
+      _settings.copyWith(
+        advancedCloudModeEnabled: value,
+        cloudIdentityMode: value && _settings.privateCloudEnabled
+            ? CloudIdentityMode.privateCloud
+            : CloudIdentityMode.official,
+      ),
+    );
+    await _persistSettings();
+    _triggerPendingAccountSyncIfPossible();
   }
 
   Future<void> setAppLanguageMode(AppLanguageMode mode) async {
@@ -592,7 +647,7 @@ class ReaderController extends ChangeNotifier {
         );
         await _activateUserSession(
           offlineProfile,
-          statusMessage: _strings.accountGeneratedOfflinePending,
+          statusMessage: _accountGeneratedOfflinePendingMessage,
         );
         return;
       }
@@ -601,11 +656,11 @@ class ReaderController extends ChangeNotifier {
         identityCode: createdUser.identityCode,
         userName: createdUser.userName,
         syncStatus: CloudSyncStatus.synced,
-        syncMessage: _strings.accountCloudRegistrationCompleted,
+        syncMessage: _accountRegistrationCompletedMessage,
       );
       await _activateUserSession(
         profile,
-        statusMessage: _strings.accountGeneratedAndSignedInCloud,
+        statusMessage: _accountGeneratedAndSignedInMessage,
       );
     });
   }
@@ -626,7 +681,7 @@ class ReaderController extends ChangeNotifier {
       final CloudUserLookupResult result =
           await _identitySyncService.getUser(identityCode);
       if (!result.exists) {
-        _errorMessage = _strings.accountIdentityCodeNotFound;
+        _errorMessage = _identityCodeNotFoundMessage;
         return;
       }
 
@@ -634,11 +689,11 @@ class ReaderController extends ChangeNotifier {
         identityCode: identityCode,
         userName: result.userName ?? _defaultCloudUserName,
         syncStatus: CloudSyncStatus.synced,
-        syncMessage: _strings.accountCloudLoginLoaded,
+        syncMessage: _accountLoginLoadedMessage,
       );
       await _activateUserSession(
         profile,
-        statusMessage: _strings.accountSignedInCloud,
+        statusMessage: _accountSignedInMessage,
       );
     });
   }
@@ -684,25 +739,25 @@ class ReaderController extends ChangeNotifier {
           nextProfile.copyWith(
             lastCloudSyncAt: DateTime.now(),
             lastCloudSyncStatus: CloudSyncStatus.synced,
-            lastCloudSyncMessage: _strings.accountDisplayNameUpdatedCloud,
+            lastCloudSyncMessage: _accountDisplayNameUpdatedMessage,
             pendingCloudCreate: false,
             pendingCloudProfileSync: false,
           ),
         );
         _currentUser = nextProfile;
-        _statusMessage = _strings.accountDisplayNameUpdatedCloud;
+        _statusMessage = _accountDisplayNameUpdatedMessage;
       } on CloudServiceException catch (error) {
         nextProfile = await _persistUserProfile(
           nextProfile.copyWith(
             lastCloudSyncStatus: CloudSyncStatus.failed,
-            lastCloudSyncMessage: _strings.accountUserNameSyncFailed,
+            lastCloudSyncMessage: _accountUserNameSyncFailedMessage,
             pendingCloudProfileSync: true,
           ),
         );
         _currentUser = nextProfile;
         _errorMessage = _cloudOperationMessage(
           error,
-          fallback: _strings.accountUserNameSyncFailed,
+          fallback: _accountUserNameSyncFailedMessage,
         );
       }
     });
@@ -759,7 +814,7 @@ class ReaderController extends ChangeNotifier {
           updatedAt: DateTime.now(),
           pendingCloudAvatarSync: true,
           lastCloudSyncStatus: CloudSyncStatus.failed,
-          lastCloudSyncMessage: _strings.accountAvatarPendingSync,
+          lastCloudSyncMessage: _accountAvatarPendingSyncMessage,
         ),
       );
       _currentUser = nextProfile;
@@ -773,7 +828,7 @@ class ReaderController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> uploadCurrentUserToOfficialCloud() async {
+  Future<void> uploadCurrentUserToCloud() async {
     final UserProfile? profile = _currentUser;
     if (profile == null) {
       return;
@@ -786,6 +841,21 @@ class ReaderController extends ChangeNotifier {
     }
 
     await _runUserBusyTask(() async {
+      if (usesPrivateIdentityCloud) {
+        final CloudUserLookupResult userLookup =
+            await _identitySyncService.getUser(profile.identityCode);
+        if (!userLookup.exists) {
+          await _identitySyncService.createUser(
+            profile.identityCode,
+            _normalizeCloudUserName(profile.displayName),
+          );
+        } else {
+          await _identitySyncService.updateUser(
+            profile.identityCode,
+            _normalizeCloudUserName(profile.displayName),
+          );
+        }
+      }
       await _contentSyncService.uploadFeeds(
         profile.identityCode,
         buildCloudFeedsPayload(profile.identityCode, _feeds),
@@ -807,17 +877,21 @@ class ReaderController extends ChangeNotifier {
       _currentUser = await _persistUserProfile(profile.copyWith(
         lastCloudSyncAt: DateTime.now(),
         lastCloudSyncStatus: CloudSyncStatus.synced,
-        lastCloudSyncMessage: _strings.accountCloudUploadCompleted,
+        lastCloudSyncMessage: _cloudUploadCompletedMessage,
         pendingCloudCreate: false,
         pendingCloudProfileSync: false,
         pendingCloudAvatarSync: false,
         updatedAt: DateTime.now(),
       ));
-      _statusMessage = _strings.accountCloudUploadCompleted;
-    }, onCloudErrorFallback: _strings.accountCloudUploadFailed);
+      _statusMessage = _cloudUploadCompletedMessage;
+    }, onCloudErrorFallback: _cloudUploadFailedMessage);
   }
 
-  Future<void> downloadCurrentUserFromOfficialCloud() async {
+  Future<void> uploadCurrentUserToOfficialCloud() {
+    return uploadCurrentUserToCloud();
+  }
+
+  Future<void> downloadCurrentUserFromCloud() async {
     final UserProfile? profile = _currentUser;
     if (profile == null) {
       return;
@@ -830,6 +904,14 @@ class ReaderController extends ChangeNotifier {
     }
 
     await _runUserBusyTask(() async {
+      CloudUserLookupResult? identityResult;
+      if (usesPrivateIdentityCloud) {
+        identityResult =
+            await _identitySyncService.getUser(profile.identityCode);
+        if (!identityResult.exists) {
+          throw const CloudServiceException(CloudServiceErrorKind.notFound);
+        }
+      }
       final Map<String, dynamic> feedsPayload =
           await _contentSyncService.downloadFeeds(profile.identityCode);
       final Map<String, dynamic> articlesPayload =
@@ -851,16 +933,23 @@ class ReaderController extends ChangeNotifier {
       _setArticles(downloadedArticles);
       await _persistAll();
       _currentUser = await _persistUserProfile(refreshedProfile.copyWith(
+        displayName: identityResult?.userName == null
+            ? refreshedProfile.displayName
+            : _normalizeCloudUserName(identityResult!.userName!),
         lastCloudSyncAt: DateTime.now(),
         lastCloudSyncStatus: CloudSyncStatus.synced,
-        lastCloudSyncMessage: _strings.accountCloudDownloadCompleted,
+        lastCloudSyncMessage: _cloudDownloadCompletedMessage,
         pendingCloudCreate: false,
         pendingCloudProfileSync: false,
         pendingCloudAvatarSync: false,
         updatedAt: DateTime.now(),
       ));
-      _statusMessage = _strings.accountCloudDownloadCompleted;
-    }, onCloudErrorFallback: _strings.accountCloudDownloadFailed);
+      _statusMessage = _cloudDownloadCompletedMessage;
+    }, onCloudErrorFallback: _cloudDownloadFailedMessage);
+  }
+
+  Future<void> downloadCurrentUserFromOfficialCloud() {
+    return downloadCurrentUserFromCloud();
   }
 
   void setArticleListPaneWidth(double width) {
@@ -1459,7 +1548,7 @@ class ReaderController extends ChangeNotifier {
     if (_identitySyncService.isConfigured) {
       return true;
     }
-    _errorMessage = _strings.accountCloudUnavailable;
+    _errorMessage = _identityCloudUnavailableMessage;
     notifyListeners();
     return false;
   }
@@ -1468,7 +1557,7 @@ class ReaderController extends ChangeNotifier {
     if (_identitySyncService.isConfigured) {
       return true;
     }
-    _errorMessage = _strings.accountCloudUnavailable;
+    _errorMessage = _identityCloudUnavailableMessage;
     notifyListeners();
     return false;
   }
@@ -1477,7 +1566,7 @@ class ReaderController extends ChangeNotifier {
     if (_contentSyncService.isConfigured) {
       return true;
     }
-    _errorMessage = _strings.accountCloudUnavailable;
+    _errorMessage = _contentCloudUnavailableMessage;
     notifyListeners();
     return false;
   }
@@ -1516,7 +1605,7 @@ class ReaderController extends ChangeNotifier {
       displayName: _normalizeCloudUserName(initialUserName),
       updatedAt: now,
       lastCloudSyncStatus: CloudSyncStatus.failed,
-      lastCloudSyncMessage: _strings.accountCloudCreatePending,
+      lastCloudSyncMessage: _accountCloudCreatePendingMessage,
       pendingCloudCreate: true,
     );
     return _persistUserProfile(profile);
@@ -1560,17 +1649,257 @@ class ReaderController extends ChangeNotifier {
     return normalized.substring(0, 64);
   }
 
+  String _localizedCloudText({
+    required String zhHans,
+    String? zhHant,
+    required String en,
+  }) {
+    final Locale locale = _settings.appLanguageMode.explicitLocale ??
+        PlatformDispatcher.instance.locale;
+    if (locale.languageCode == 'zh') {
+      final bool traditional =
+          locale.scriptCode == 'Hant' || locale.countryCode == 'TW';
+      return traditional ? (zhHant ?? zhHans) : zhHans;
+    }
+    return en;
+  }
+
+  String get _identityCloudUnavailableMessage {
+    if (usesPrivateIdentityCloud) {
+      return _localizedCloudText(
+        zhHans: '个人云服务器尚未配置。',
+        zhHant: '個人雲伺服器尚未設定。',
+        en: 'The personal cloud server is not configured yet.',
+      );
+    }
+    return _strings.accountCloudUnavailable;
+  }
+
+  String get _contentCloudUnavailableMessage {
+    if (usesPrivateContentCloud) {
+      return _localizedCloudText(
+        zhHans: '个人云服务器尚未配置。',
+        zhHant: '個人雲伺服器尚未設定。',
+        en: 'The personal cloud server is not configured yet.',
+      );
+    }
+    return _strings.accountCloudUnavailable;
+  }
+
+  String get _cloudConnectionFailedMessage {
+    if (usesPrivateIdentityCloud || usesPrivateContentCloud) {
+      return _localizedCloudText(
+        zhHans: '无法连接个人云服务器。',
+        zhHant: '無法連線到個人雲伺服器。',
+        en: 'The app could not connect to the personal cloud server.',
+      );
+    }
+    return _strings.accountCloudConnectionFailed;
+  }
+
+  String get _identityCodeNotFoundMessage {
+    if (usesPrivateIdentityCloud) {
+      return _localizedCloudText(
+        zhHans: '该身份代码不存在于个人云。',
+        zhHant: '此身分代碼不存在於個人雲。',
+        en: 'This identity code does not exist in the personal cloud.',
+      );
+    }
+    return _strings.accountIdentityCodeNotFound;
+  }
+
+  String get _accountRegistrationCompletedMessage {
+    if (usesPrivateIdentityCloud) {
+      return _localizedCloudText(
+        zhHans: '身份代码已注册到个人云。',
+        zhHant: '身分代碼已註冊到個人雲。',
+        en: 'The identity code has been registered with the personal cloud.',
+      );
+    }
+    return _strings.accountCloudRegistrationCompleted;
+  }
+
+  String get _accountGeneratedAndSignedInMessage {
+    if (usesPrivateIdentityCloud) {
+      return _localizedCloudText(
+        zhHans: '身份代码已创建并连接到个人云，当前身份已启用。',
+        zhHant: '身分代碼已建立並連線到個人雲，目前身分已啟用。',
+        en: 'The identity code was created in the personal cloud and is now active.',
+      );
+    }
+    return _strings.accountGeneratedAndSignedInCloud;
+  }
+
+  String get _accountGeneratedOfflinePendingMessage {
+    if (usesPrivateIdentityCloud) {
+      return _localizedCloudText(
+        zhHans: '身份代码已先保存在本地，恢复联网后会自动注册到个人云。',
+        zhHant: '身分代碼已先儲存在本機，恢復連線後會自動註冊到個人雲。',
+        en: 'The identity code was saved locally and will register with the personal cloud when the app is back online.',
+      );
+    }
+    return _strings.accountGeneratedOfflinePending;
+  }
+
+  String get _accountLoginLoadedMessage {
+    if (usesPrivateIdentityCloud) {
+      return _localizedCloudText(
+        zhHans: '已从个人云加载当前身份资料。',
+        zhHant: '已從個人雲載入目前身分資料。',
+        en: 'Loaded the current profile from the personal cloud.',
+      );
+    }
+    return _strings.accountCloudLoginLoaded;
+  }
+
+  String get _accountSignedInMessage {
+    if (usesPrivateIdentityCloud) {
+      return _localizedCloudText(
+        zhHans: '已通过个人云登录。',
+        zhHant: '已透過個人雲登入。',
+        en: 'Signed in through the personal cloud.',
+      );
+    }
+    return _strings.accountSignedInCloud;
+  }
+
+  String get _accountDisplayNameUpdatedMessage {
+    if (usesPrivateIdentityCloud) {
+      return _localizedCloudText(
+        zhHans: '用户名已更新并同步到个人云。',
+        zhHant: '使用者名稱已更新並同步到個人雲。',
+        en: 'The user name was updated and synced to the personal cloud.',
+      );
+    }
+    return _strings.accountDisplayNameUpdatedCloud;
+  }
+
+  String get _accountUserNameSyncFailedMessage {
+    if (usesPrivateIdentityCloud) {
+      return _localizedCloudText(
+        zhHans: '用户名已保存在本地，但同步到个人云失败了。',
+        zhHant: '使用者名稱已儲存在本機，但同步到個人雲失敗了。',
+        en: 'The user name was updated locally, but syncing it to the personal cloud failed.',
+      );
+    }
+    return _strings.accountUserNameSyncFailed;
+  }
+
+  String get _accountAvatarPendingSyncMessage {
+    if (usesPrivateContentCloud || usesPrivateIdentityCloud) {
+      return _localizedCloudText(
+        zhHans: '头像已更新，本地保存后会自动同步到个人云。',
+        zhHant: '頭像已更新，本機儲存後會自動同步到個人雲。',
+        en: 'The avatar was updated locally and will sync to the personal cloud automatically.',
+      );
+    }
+    return _strings.accountAvatarPendingSync;
+  }
+
+  String get _accountCloudCreatePendingMessage {
+    if (usesPrivateIdentityCloud) {
+      return _localizedCloudText(
+        zhHans: '该身份代码已保存在本地，恢复联网后会注册到个人云。',
+        zhHant: '此身分代碼已儲存在本機，恢復連線後會註冊到個人雲。',
+        en: 'This identity code was saved locally and will register with the personal cloud once the app is back online.',
+      );
+    }
+    return _strings.accountCloudCreatePending;
+  }
+
+  String get _accountCloudAutoSyncPendingMessage {
+    if (usesPrivateIdentityCloud || usesPrivateContentCloud) {
+      return _localizedCloudText(
+        zhHans: '个人云还有待同步的资料，应用恢复联网后会继续补传。',
+        zhHant: '個人雲仍有待同步資料，應用恢復連線後會繼續補傳。',
+        en: 'Some personal cloud data is still pending and will sync after the app is back online.',
+      );
+    }
+    return _strings.accountCloudAutoSyncPending;
+  }
+
+  String get _accountCloudAutoSyncCompletedMessage {
+    if (usesPrivateIdentityCloud || usesPrivateContentCloud) {
+      return _localizedCloudText(
+        zhHans: '应用恢复联网后，个人云资料已自动同步完成。',
+        zhHant: '應用恢復連線後，個人雲資料已自動同步完成。',
+        en: 'The app is back online and personal cloud data finished syncing automatically.',
+      );
+    }
+    return _strings.accountCloudAutoSyncCompleted;
+  }
+
+  String get _cloudUploadCompletedMessage {
+    if (usesPrivateContentCloud && usesPrivateIdentityCloud) {
+      return _localizedCloudText(
+        zhHans: '账号信息与内容已同步到个人云。',
+        zhHant: '帳號資訊與內容已同步到個人雲。',
+        en: 'Account details and content were synced to the personal cloud.',
+      );
+    }
+    if (usesPrivateContentCloud) {
+      return _localizedCloudText(
+        zhHans: '订阅、文章和头像已同步到个人云。',
+        zhHant: '訂閱、文章與頭像已同步到個人雲。',
+        en: 'Subscriptions, articles, and avatar were synced to the personal cloud.',
+      );
+    }
+    return _strings.accountCloudUploadCompleted;
+  }
+
+  String get _cloudUploadFailedMessage {
+    if (usesPrivateContentCloud) {
+      return _localizedCloudText(
+        zhHans: '上传到个人云失败了，本地数据没有被改动。',
+        zhHant: '上傳到個人雲失敗了，本機資料沒有被改動。',
+        en: 'Uploading to the personal cloud failed. Local data was left unchanged.',
+      );
+    }
+    return _strings.accountCloudUploadFailed;
+  }
+
+  String get _cloudDownloadCompletedMessage {
+    if (usesPrivateContentCloud && usesPrivateIdentityCloud) {
+      return _localizedCloudText(
+        zhHans: '账号信息与内容已从个人云下载到本机。',
+        zhHant: '帳號資訊與內容已從個人雲下載到本機。',
+        en: 'Account details and content were downloaded from the personal cloud.',
+      );
+    }
+    if (usesPrivateContentCloud) {
+      return _localizedCloudText(
+        zhHans: '个人云中的订阅、文章和头像已下载到本机。',
+        zhHant: '個人雲中的訂閱、文章與頭像已下載到本機。',
+        en: 'Subscriptions, articles, and avatar were downloaded from the personal cloud.',
+      );
+    }
+    return _strings.accountCloudDownloadCompleted;
+  }
+
+  String get _cloudDownloadFailedMessage {
+    if (usesPrivateContentCloud) {
+      return _localizedCloudText(
+        zhHans: '从个人云下载失败了，本地数据没有被覆盖。',
+        zhHant: '從個人雲下載失敗了，本機資料沒有被覆蓋。',
+        en: 'Downloading from the personal cloud failed. Local data was not overwritten.',
+      );
+    }
+    return _strings.accountCloudDownloadFailed;
+  }
+
   String _cloudOperationMessage(
     CloudServiceException error, {
     required String fallback,
   }) {
     switch (error.kind) {
       case CloudServiceErrorKind.notConfigured:
-        return _strings.accountCloudUnavailable;
+        return usesPrivateIdentityCloud || usesPrivateContentCloud
+            ? _contentCloudUnavailableMessage
+            : _strings.accountCloudUnavailable;
       case CloudServiceErrorKind.network:
-        return _strings.accountCloudConnectionFailed;
+        return _cloudConnectionFailedMessage;
       case CloudServiceErrorKind.notFound:
-        return _strings.accountIdentityCodeNotFound;
+        return _identityCodeNotFoundMessage;
       case CloudServiceErrorKind.conflict:
       case CloudServiceErrorKind.invalidResponse:
       case CloudServiceErrorKind.rejected:
@@ -1631,7 +1960,7 @@ class ReaderController extends ChangeNotifier {
           pendingCloudCreate: false,
           pendingCloudProfileSync: true,
           lastCloudSyncStatus: CloudSyncStatus.failed,
-          lastCloudSyncMessage: _strings.accountCloudCreatePending,
+          lastCloudSyncMessage: _accountCloudCreatePendingMessage,
         ));
       }
 
@@ -1670,8 +1999,8 @@ class ReaderController extends ChangeNotifier {
             ? CloudSyncStatus.failed
             : CloudSyncStatus.synced,
         lastCloudSyncMessage: hasRemainingPending
-            ? _strings.accountCloudAutoSyncPending
-            : _strings.accountCloudAutoSyncCompleted,
+            ? _accountCloudAutoSyncPendingMessage
+            : _accountCloudAutoSyncCompletedMessage,
       ));
       _currentUser = profile;
     } on CloudServiceException catch (error) {
@@ -1681,7 +2010,7 @@ class ReaderController extends ChangeNotifier {
           lastCloudSyncStatus: CloudSyncStatus.failed,
           lastCloudSyncMessage: _cloudOperationMessage(
             error,
-            fallback: _strings.accountCloudAutoSyncPending,
+            fallback: _accountCloudAutoSyncPendingMessage,
           ),
         ));
       }

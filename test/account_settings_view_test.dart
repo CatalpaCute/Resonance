@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:rsstool/src/localization/app_language.dart';
+import 'package:rsstool/src/models/reader_settings.dart';
 import 'package:rsstool/src/services/cloud_service_router.dart';
 import 'package:rsstool/src/services/json_store.dart';
 import 'package:rsstool/src/services/rss_service.dart';
@@ -88,8 +89,15 @@ void main() {
       expect(find.text('Cloud Services'), findsOneWidget);
       expect(find.text('Sign Out'), findsOneWidget);
       expect(find.text('AbCd1234EfGh56'), findsAtLeastNWidgets(1));
+      expect(
+        find.text(
+          'This section only manages the user name, avatar, and identity code for your current identity.',
+        ),
+        findsNothing,
+      );
       expect(find.text('Upload to Origami Cloud'), findsNothing);
       expect(find.text('Download from Origami Cloud'), findsNothing);
+      expect(find.text('Current connection: Origami Cloud'), findsOneWidget);
     });
 
     testWidgets(
@@ -111,10 +119,54 @@ void main() {
 
       expect(find.text('Upload to Origami Cloud'), findsOneWidget);
       expect(find.text('Download from Origami Cloud'), findsOneWidget);
-      expect(
-        find.text('Current connection: Origami Cloud (provided by CzWorks)'),
-        findsOneWidget,
+      expect(find.text('Current connection: Origami Cloud'), findsOneWidget);
+      expect(find.textContaining('provided by CzWorks'), findsNothing);
+    });
+
+    test('switches the cloud type label and persists the selection', () async {
+      cloudService.usersByIdentityCode['AbCd1234EfGh56'] = 'Cloud Catal';
+      await controller.signInWithIdentityCode('AbCd1234EfGh56');
+
+      await controller.setCloudContentModeSelection(
+        CloudContentMode.privateCloud,
       );
+
+      expect(controller.cloudContentMode, CloudContentMode.privateCloud);
+
+      final JsonStore reloadedStore = JsonStore(
+        documentsDirectoryResolver: () async => documentsDir,
+      );
+      final persisted = await reloadedStore.load();
+      expect(
+          persisted.settings.cloudContentMode, CloudContentMode.privateCloud);
+    });
+
+    testWidgets(
+        'shows server row and personal-cloud actions after switching to personal cloud',
+        (WidgetTester tester) async {
+      cloudService.usersByIdentityCode['AbCd1234EfGh56'] = 'Cloud Catal';
+      await tester.runAsync(() async {
+        await controller.signInWithIdentityCode('AbCd1234EfGh56');
+        await controller.setCloudContentModeSelection(
+          CloudContentMode.privateCloud,
+        );
+        await controller.setPrivateCloudServerConfig(
+          baseUrl: 'https://dav.example.com',
+          username: 'catal',
+          password: 'secret',
+          basePath: '/resonance/',
+        );
+        await controller.setCloudServiceEnabled(true);
+      });
+
+      await tester.pumpWidget(_buildHarness(controller: controller));
+      await tester.pump();
+
+      expect(find.text('Current connection: Personal Cloud'), findsOneWidget);
+      expect(find.text('Server'), findsOneWidget);
+      expect(find.textContaining('WebDAV'), findsOneWidget);
+      expect(find.text('Upload to Personal Cloud'), findsOneWidget);
+      expect(find.text('Download from Personal Cloud'), findsOneWidget);
     });
 
     testWidgets('disables cloud sign-in actions when endpoint is not injected',

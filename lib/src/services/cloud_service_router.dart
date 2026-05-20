@@ -2,6 +2,7 @@ import 'dart:typed_data';
 
 import '../models/reader_settings.dart';
 import 'official_cloud_service.dart';
+import 'private_webdav_service.dart';
 
 abstract class IdentitySyncService {
   bool get isConfigured;
@@ -78,17 +79,28 @@ class DefaultCloudServiceResolver implements CloudServiceResolver {
 
   @override
   CloudServiceBundle resolve(ReaderSettings settings) {
+    final WebDavCloudClient privateWebDavClient = WebDavCloudClient(
+      baseUrl: settings.privateCloudBaseUrl,
+      basePath: settings.privateCloudBasePath,
+      username: settings.privateCloudUsername,
+      password: settings.privateCloudPassword,
+    );
+    final PrivateWebDavIdentitySyncService privateIdentityService =
+        PrivateWebDavIdentitySyncService(client: privateWebDavClient);
+    final PrivateWebDavContentSyncService privateContentService =
+        PrivateWebDavContentSyncService(
+      client: privateWebDavClient,
+      identityService: privateIdentityService,
+    );
     final IdentitySyncService identityService =
-        settings.cloudIdentityMode == CloudIdentityMode.privateCloud
-            ? UnsupportedPrivateIdentitySyncService(
-                baseUrl: settings.privateCloudBaseUrl,
-              )
+        settings.cloudIdentityMode == CloudIdentityMode.privateCloud &&
+                settings.privateCloudProtocol == PrivateCloudProtocol.webdav
+            ? privateIdentityService
             : _officialIdentityService;
     final ContentSyncService contentService =
-        settings.cloudContentMode == CloudContentMode.privateCloud
-            ? UnsupportedPrivateContentSyncService(
-                baseUrl: settings.privateCloudBaseUrl,
-              )
+        settings.cloudContentMode == CloudContentMode.privateCloud &&
+                settings.privateCloudProtocol == PrivateCloudProtocol.webdav
+            ? privateContentService
             : _officialContentService;
     return CloudServiceBundle(
       identityService: identityService,
