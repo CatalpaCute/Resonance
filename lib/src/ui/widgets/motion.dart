@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
-const Duration kFluidMotionDuration = Duration(milliseconds: 260);
-const Duration kFluidMotionFastDuration = Duration(milliseconds: 180);
-const Curve kFluidMotionCurve = Cubic(0.18, 0.92, 0.28, 1.0);
+const Duration kFluidMotionDuration = Duration(milliseconds: 320);
+const Duration kFluidMotionFastDuration = Duration(milliseconds: 200);
+const Curve kFluidMotionCurve = Cubic(0.16, 1.0, 0.3, 1.0);
 
 /// Shared page/pane switcher for shell-level transitions.
 ///
@@ -38,7 +38,7 @@ class FluidAnimatedSwitcher extends StatelessWidget {
       duration: duration,
       reverseDuration: reverseDuration,
       switchInCurve: kFluidMotionCurve,
-      switchOutCurve: Curves.easeInCubic,
+      switchOutCurve: const Cubic(0.38, 0.0, 0.24, 1.0),
       layoutBuilder: (Widget? currentChild, List<Widget> previousChildren) {
         return Stack(
           alignment: alignment,

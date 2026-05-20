@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:window_manager/window_manager.dart';
+import 'dart:ui' show ImageFilter;
 
 import '../localization/app_language.dart';
 import '../localization/app_strings.dart';
@@ -1559,11 +1560,32 @@ class _CompactReaderDeck extends StatelessWidget {
     return Stack(
       children: <Widget>[
         Positioned.fill(
+          child: AnimatedSlide(
+            duration: duration,
+            curve: kFluidMotionCurve,
+            offset: showReader ? const Offset(-0.16, 0) : Offset.zero,
+            child: AnimatedOpacity(
+              duration: duration,
+              curve: kFluidMotionCurve,
+              opacity: showReader ? 0.6 : 1.0,
+              child: IgnorePointer(
+                ignoring: showReader,
+                child: TickerMode(
+                  enabled: !showReader,
+                  child: list,
+                ),
+              ),
+            ),
+          ),
+        ),
+        Positioned.fill(
           child: IgnorePointer(
-            ignoring: showReader,
-            child: TickerMode(
-              enabled: !showReader,
-              child: list,
+            child: AnimatedContainer(
+              duration: duration,
+              curve: kFluidMotionCurve,
+              color: showReader
+                  ? Colors.black.withValues(alpha: 0.16)
+                  : Colors.transparent,
             ),
           ),
         ),
@@ -1574,8 +1596,19 @@ class _CompactReaderDeck extends StatelessWidget {
               duration: duration,
               curve: kFluidMotionCurve,
               offset: showReader ? Offset.zero : const Offset(1.02, 0),
-              child: ColoredBox(
-                color: _mobilePageBackgroundOf(context),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: _mobilePageBackgroundOf(context),
+                  boxShadow: <BoxShadow>[
+                    if (showReader)
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.16),
+                        blurRadius: 24,
+                        spreadRadius: -2,
+                        offset: const Offset(-6, 0),
+                      ),
+                  ],
+                ),
                 child: TickerMode(
                   enabled: showReader,
                   child: reader,
@@ -1724,15 +1757,24 @@ class _ShellHeader extends StatelessWidget {
     final double headerHeight =
         mobileRestyled || compactReading ? 58 : (compact ? 52 : 40);
 
-    return Container(
+    final Widget header = Container(
       height: headerHeight + topInset,
       padding: EdgeInsets.only(top: topInset),
       decoration: BoxDecoration(
-        color: mobileRestyled
-            ? _mobilePageBackgroundOf(context)
-            : palette.chromeBackground,
+        color: compact
+            ? (mobileRestyled
+                ? _mobilePageBackgroundOf(context)
+                : palette.chromeBackground).withValues(alpha: 0.85)
+            : (mobileRestyled
+                ? _mobilePageBackgroundOf(context)
+                : palette.chromeBackground),
         border: Border(
-          bottom: BorderSide(color: palette.divider),
+          bottom: BorderSide(
+            color: compact
+                ? palette.divider.withValues(alpha: 0.5)
+                : palette.divider,
+            width: compact ? 0.8 : 1.0,
+          ),
         ),
       ),
       child: Stack(
@@ -1741,7 +1783,7 @@ class _ShellHeader extends StatelessWidget {
             duration: _shellMotionDuration,
             curve: _shellMotionCurve,
             offset: compact && mobileSearchActive && mobileSearchEnabled
-                ? const Offset(0.08, 0)
+                ? const Offset(-0.08, 0)
                 : Offset.zero,
             child: AnimatedOpacity(
               duration: _shellMotionDuration,
@@ -1815,7 +1857,7 @@ class _ShellHeader extends StatelessWidget {
                                   opacity: anim,
                                   child: SlideTransition(
                                     position: Tween<Offset>(
-                                      begin: const Offset(0.04, 0),
+                                      begin: const Offset(0, 0.15),
                                       end: Offset.zero,
                                     ).animate(anim),
                                     child: child,
@@ -1945,7 +1987,7 @@ class _ShellHeader extends StatelessWidget {
                   duration: _shellMotionDuration,
                   curve: _shellMotionCurve,
                   offset:
-                      mobileSearchActive ? Offset.zero : const Offset(-0.04, 0),
+                      mobileSearchActive ? Offset.zero : const Offset(0.08, 0),
                   child: AnimatedOpacity(
                     duration: _shellMotionDuration,
                     curve: _shellMotionCurve,
@@ -1966,6 +2008,16 @@ class _ShellHeader extends StatelessWidget {
         ],
       ),
     );
+
+    if (compact) {
+      return ClipRect(
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+          child: header,
+        ),
+      );
+    }
+    return header;
   }
 }
 
