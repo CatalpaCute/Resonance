@@ -253,17 +253,16 @@ class AutoRefreshEngine {
 
     final List<FeedSource> feeds = List<FeedSource>.from(state.feeds);
     List<Article> articles = List<Article>.from(state.articles);
-    int attemptedCount = 0;
-    int refreshedCount = 0;
     final List<AutoRefreshSourceUpdate> sourceUpdates =
         <AutoRefreshSourceUpdate>[];
 
+    // 1. Identify valid due feeds and mark attempt timestamps
+    final List<_DueFeedAttempt> attempts = <_DueFeedAttempt>[];
     for (final FeedSource original in due) {
       final int index = feeds.indexWhere((FeedSource item) => item.id == original.id);
       if (index < 0) {
         continue;
       }
-
       final FeedSource current = feeds[index];
       if (nextRefreshTimeForSource(
             settings: state.settings,
@@ -274,37 +273,99 @@ class AutoRefreshEngine {
         continue;
       }
 
-      attemptedCount += 1;
-
       final DateTime attemptAt = DateTime.now();
       final FeedSource attemptMarked = current.copyWith(
         lastAutoRefreshAttemptAt: attemptAt,
       );
       feeds[index] = attemptMarked;
-      await _store.saveFeeds(feeds);
+      attempts.add(_DueFeedAttempt(index: index, attemptMarked: attemptMarked));
+    }
 
+    if (attempts.isEmpty) {
+      return const AutoRefreshRunResult(
+        attemptedCount: 0,
+        refreshedCount: 0,
+        sourceUpdates: <AutoRefreshSourceUpdate>[],
+      );
+    }
+
+    // 2. Persist attempt timestamps once before starting I/O
+    await _store.saveFeeds(feeds);
+
+    // 3. Fetch all due feeds concurrently
+    final List<Future<_FeedFetchResult?>> fetchFutures =
+        attempts.map((_DueFeedAttempt attempt) async {
       try {
-        final ParsedFeedResult parsed = await _rssService.fetchFeed(current.url);
-        final FeedSource refreshedSource = attemptMarked.copyWith(
-          title: current.title.trim().isEmpty ? parsed.title : current.title,
-          siteUrl: parsed.siteUrl,
-          iconUrl: parsed.iconUrl,
-          lastFetchedAt: DateTime.now(),
+        final ParsedFeedResult parsed =
+            await _rssService.fetchFeed(attempt.attemptMarked.url);
+        return _FeedFetchResult(
+          attempt: attempt,
+          parsedResult: parsed,
         );
-        feeds[index] = refreshedSource;
-        final _MergeArticlesResult mergeResult = _mergeArticlesForSource(
-          source: refreshedSource,
-          drafts: parsed.articles,
-          currentArticles: articles,
+      } catch (error, stackTrace) {
+        developer.log(
+          'Automatic refresh failed for ${attempt.attemptMarked.url}',
+          name: 'AutoRefreshEngine',
+          error: error,
+          stackTrace: stackTrace,
         );
-        articles = mergeResult.articles;
-        if (mergeResult.newArticles.isNotEmpty) {
+        return null;
+      }
+    }).toList();
+
+    final List<_FeedFetchResult?> fetchResults =
+        await Future.wait(fetchFutures);
+    final List<_FeedFetchResult> successfulResults =
+        fetchResults.whereType<_FeedFetchResult>().toList();
+
+    // 4. Update metadata of successfully fetched feeds
+    final List<FeedSource> updatedSources = <FeedSource>[];
+    final List<List<ParsedArticleDraft>> draftsPerSource =
+        <List<ParsedArticleDraft>>[];
+
+    for (final _FeedFetchResult result in successfulResults) {
+      final FeedSource original = result.attempt.attemptMarked;
+      final ParsedFeedResult parsed = result.parsedResult;
+      final FeedSource refreshedSource = original.copyWith(
+        title: original.title.trim().isEmpty ? parsed.title : original.title,
+        siteUrl: parsed.siteUrl,
+        iconUrl: parsed.iconUrl,
+        lastFetchedAt: DateTime.now(),
+      );
+      feeds[result.attempt.index] = refreshedSource;
+      updatedSources.add(refreshedSource);
+      draftsPerSource.add(parsed.articles);
+    }
+
+    // 5. Bulk merge new articles in a single pass
+    if (updatedSources.isNotEmpty) {
+      final _MergeArticlesResult mergeResult = _mergeArticlesForSources(
+        sources: updatedSources,
+        draftsPerSource: draftsPerSource,
+        currentArticles: articles,
+      );
+      articles = mergeResult.articles;
+
+      // Group new articles by source to build updates
+      final Map<String, List<Article>> newArticlesBySource =
+          <String, List<Article>>{};
+      for (final Article article in mergeResult.newArticles) {
+        newArticlesBySource
+            .putIfAbsent(article.sourceId, () => <Article>[])
+            .add(article);
+      }
+
+      for (final _FeedFetchResult result in successfulResults) {
+        final FeedSource refreshedSource = feeds[result.attempt.index];
+        final List<Article> sourceNewArticles =
+            newArticlesBySource[refreshedSource.id] ?? const <Article>[];
+        if (sourceNewArticles.isNotEmpty) {
           sourceUpdates.add(
             AutoRefreshSourceUpdate(
               sourceId: refreshedSource.id,
               sourceTitle: refreshedSource.title,
               notificationEnabled: refreshedSource.notificationEnabled,
-              newArticles: mergeResult.newArticles
+              newArticles: sourceNewArticles
                   .map(
                     (Article article) => AutoRefreshNewArticle(
                       articleId: article.id,
@@ -318,24 +379,17 @@ class AutoRefreshEngine {
             ),
           );
         }
-        refreshedCount += 1;
-      } catch (error, stackTrace) {
-        developer.log(
-          'Automatic refresh failed for ${current.url}',
-          name: 'AutoRefreshEngine',
-          error: error,
-          stackTrace: stackTrace,
-        );
       }
     }
 
+    // 6. Save all final state to disk once
     await _store.saveFeeds(feeds);
     await _store.saveArticles(articles);
     await _store.saveSettings(state.settings);
 
     return AutoRefreshRunResult(
-      attemptedCount: attemptedCount,
-      refreshedCount: refreshedCount,
+      attemptedCount: attempts.length,
+      refreshedCount: successfulResults.length,
       sourceUpdates: List<AutoRefreshSourceUpdate>.unmodifiable(sourceUpdates),
     );
   }
@@ -345,62 +399,109 @@ class AutoRefreshEngine {
     required List<ParsedArticleDraft> drafts,
     required List<Article> currentArticles,
   }) {
+    return _mergeArticlesForSources(
+      sources: <FeedSource>[source],
+      draftsPerSource: <List<ParsedArticleDraft>>[drafts],
+      currentArticles: currentArticles,
+    );
+  }
+
+  _MergeArticlesResult _mergeArticlesForSources({
+    required List<FeedSource> sources,
+    required List<List<ParsedArticleDraft>> draftsPerSource,
+    required List<Article> currentArticles,
+  }) {
     final Map<String, Article> currentById = <String, Article>{
       for (final Article article in currentArticles) article.id: article,
     };
-    final Map<String, Article> currentByUrl = <String, Article>{
-      for (final Article article in currentArticles)
-        if (article.sourceId == source.id && article.url.trim().isNotEmpty)
-          article.url: article,
-    };
+    final Map<String, Map<String, Article>> currentBySourceAndUrl =
+        <String, Map<String, Article>>{};
+    for (final Article article in currentArticles) {
+      if (article.url.trim().isNotEmpty) {
+        currentBySourceAndUrl
+            .putIfAbsent(article.sourceId, () => <String, Article>{})
+            [article.url] = article;
+      }
+    }
 
     final List<Article> newArticles = <Article>[];
 
-    for (final ParsedArticleDraft draft in drafts) {
-      final String draftUrl = draft.url.trim();
-      final String candidateId = _rssService.stableArticleId(source.id, draft);
-      final Article? existing =
-          currentById[candidateId] ?? currentByUrl[draftUrl];
-      final String articleId = existing?.id ?? candidateId;
+    for (int i = 0; i < sources.length; i++) {
+      final FeedSource source = sources[i];
+      final List<ParsedArticleDraft> drafts = draftsPerSource[i];
+      final Map<String, Article> sourceUrlMap =
+          currentBySourceAndUrl[source.id] ?? const <String, Article>{};
 
-      if (existing != null && existing.id != articleId) {
-        currentById.remove(existing.id);
-      }
+      for (final ParsedArticleDraft draft in drafts) {
+        final String draftUrl = draft.url.trim();
+        final String candidateId = _rssService.stableArticleId(source.id, draft);
+        final Article? existing =
+            currentById[candidateId] ?? sourceUrlMap[draftUrl];
+        final String articleId = existing?.id ?? candidateId;
 
-      final Article nextArticle = Article(
-        id: articleId,
-        sourceId: source.id,
-        title: draft.title,
-        author: draft.author,
-        publishedAt: draft.publishedAt,
-        summary: draft.summary,
-        summaryHtml: draft.summaryHtml,
-        content: draft.content,
-        contentHtml: draft.contentHtml,
-        url: draft.url,
-        readState: existing?.readState ?? ArticleReadState.unread,
-        starred: existing?.starred ?? false,
-        savedForLater: existing?.savedForLater ?? false,
-      );
-      currentById[articleId] = nextArticle;
-      if (existing == null) {
-        newArticles.add(nextArticle);
-      }
+        if (existing != null && existing.id != articleId) {
+          currentById.remove(existing.id);
+        }
 
-      if (draftUrl.isNotEmpty) {
-        currentByUrl[draftUrl] = currentById[articleId]!;
+        final Article nextArticle = Article(
+          id: articleId,
+          sourceId: source.id,
+          title: draft.title,
+          author: draft.author,
+          publishedAt: draft.publishedAt,
+          summary: draft.summary,
+          summaryHtml: draft.summaryHtml,
+          content: draft.content,
+          contentHtml: draft.contentHtml,
+          url: draft.url,
+          readState: existing?.readState ?? ArticleReadState.unread,
+          starred: existing?.starred ?? false,
+          savedForLater: existing?.savedForLater ?? false,
+        );
+        currentById[articleId] = nextArticle;
+        if (existing == null) {
+          newArticles.add(nextArticle);
+        }
+
+        if (draftUrl.isNotEmpty) {
+          currentBySourceAndUrl
+              .putIfAbsent(source.id, () => <String, Article>{})
+              [draftUrl] = nextArticle;
+        }
       }
     }
 
     final List<Article> merged = currentById.values.toList()
       ..sort((Article a, Article b) => b.publishedAt.compareTo(a.publishedAt));
-    newArticles.sort((Article a, Article b) => b.publishedAt.compareTo(a.publishedAt));
+    newArticles
+        .sort((Article a, Article b) => b.publishedAt.compareTo(a.publishedAt));
     return _MergeArticlesResult(
       articles: merged,
       newArticles: List<Article>.unmodifiable(newArticles),
     );
   }
 }
+
+class _DueFeedAttempt {
+  const _DueFeedAttempt({
+    required this.index,
+    required this.attemptMarked,
+  });
+
+  final int index;
+  final FeedSource attemptMarked;
+}
+
+class _FeedFetchResult {
+  const _FeedFetchResult({
+    required this.attempt,
+    required this.parsedResult,
+  });
+
+  final _DueFeedAttempt attempt;
+  final ParsedFeedResult parsedResult;
+}
+
 
 class _MergeArticlesResult {
   const _MergeArticlesResult({

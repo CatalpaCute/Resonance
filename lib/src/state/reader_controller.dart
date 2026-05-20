@@ -1114,10 +1114,68 @@ class ReaderController extends ChangeNotifier {
       _strings.refreshingAllFeeds,
       () async {
         for (final FeedSource source in candidates) {
-          await _refreshFeed(source);
+          _refreshingFeedIds.add(source.id);
         }
-        await _persistAll();
-        _statusMessage = _strings.refreshedAllFeeds(candidates.length);
+        notifyListeners();
+
+        try {
+          final List<Future<_ControllerFeedFetchResult?>> fetchFutures =
+              candidates.map((FeedSource source) async {
+            try {
+              final ParsedFeedResult parsed =
+                  await _rssService.fetchFeed(source.url);
+              return _ControllerFeedFetchResult(
+                source: source,
+                parsedResult: parsed,
+              );
+            } catch (error) {
+              return null;
+            } finally {
+              _refreshingFeedIds.remove(source.id);
+              notifyListeners();
+            }
+          }).toList();
+
+          final List<_ControllerFeedFetchResult?> fetchResults =
+              await Future.wait(fetchFutures);
+          final List<_ControllerFeedFetchResult> successfulResults =
+              fetchResults.whereType<_ControllerFeedFetchResult>().toList();
+
+          final List<FeedSource> updatedSources = <FeedSource>[];
+          final List<List<ParsedArticleDraft>> draftsPerSource =
+              <List<ParsedArticleDraft>>[];
+
+          final Map<String, FeedSource> updatedFeedsMap = <String, FeedSource>{
+            for (final FeedSource f in _feeds) f.id: f,
+          };
+
+          for (final _ControllerFeedFetchResult result in successfulResults) {
+            final FeedSource original = result.source;
+            final ParsedFeedResult parsed = result.parsedResult;
+            final FeedSource refreshedSource = original.copyWith(
+              title: original.title.trim().isEmpty ? parsed.title : original.title,
+              siteUrl: parsed.siteUrl,
+              iconUrl: parsed.iconUrl,
+              lastFetchedAt: DateTime.now(),
+            );
+            updatedFeedsMap[original.id] = refreshedSource;
+            updatedSources.add(refreshedSource);
+            draftsPerSource.add(parsed.articles);
+          }
+
+          if (successfulResults.isNotEmpty) {
+            _setFeeds(updatedFeedsMap.values.toList(), dirty: true);
+            _mergeArticlesForSources(updatedSources, draftsPerSource);
+          }
+
+          await _persistAll();
+          _statusMessage = _strings.refreshedAllFeeds(candidates.length);
+        } finally {
+          for (final FeedSource source in candidates) {
+            _refreshingFeedIds.remove(source.id);
+          }
+          notifyListeners();
+        }
       },
     );
   }
@@ -1421,44 +1479,68 @@ class ReaderController extends ChangeNotifier {
     FeedSource source,
     List<ParsedArticleDraft> drafts,
   ) {
+    _mergeArticlesForSources(
+      <FeedSource>[source],
+      <List<ParsedArticleDraft>>[drafts],
+    );
+  }
+
+  void _mergeArticlesForSources(
+    List<FeedSource> sources,
+    List<List<ParsedArticleDraft>> draftsPerSource,
+  ) {
     final Map<String, Article> currentById = <String, Article>{
       for (final Article article in _articles) article.id: article,
     };
-    final Map<String, Article> currentByUrl = <String, Article>{
-      for (final Article article in _articles)
-        if (article.sourceId == source.id && article.url.trim().isNotEmpty)
-          article.url: article,
-    };
-
-    for (final ParsedArticleDraft draft in drafts) {
-      final String draftUrl = draft.url.trim();
-      final String candidateId = _rssService.stableArticleId(source.id, draft);
-      final Article? existing =
-          currentById[candidateId] ?? currentByUrl[draftUrl];
-      final String articleId = existing?.id ?? candidateId;
-
-      if (existing != null && existing.id != articleId) {
-        currentById.remove(existing.id);
+    final Map<String, Map<String, Article>> currentBySourceAndUrl =
+        <String, Map<String, Article>>{};
+    for (final Article article in _articles) {
+      if (article.url.trim().isNotEmpty) {
+        currentBySourceAndUrl
+            .putIfAbsent(article.sourceId, () => <String, Article>{})
+            [article.url] = article;
       }
+    }
 
-      currentById[articleId] = Article(
-        id: articleId,
-        sourceId: source.id,
-        title: draft.title,
-        author: draft.author,
-        publishedAt: draft.publishedAt,
-        summary: draft.summary,
-        summaryHtml: draft.summaryHtml,
-        content: draft.content,
-        contentHtml: draft.contentHtml,
-        url: draft.url,
-        readState: existing?.readState ?? ArticleReadState.unread,
-        starred: existing?.starred ?? false,
-        savedForLater: existing?.savedForLater ?? false,
-      );
+    for (int i = 0; i < sources.length; i++) {
+      final FeedSource source = sources[i];
+      final List<ParsedArticleDraft> drafts = draftsPerSource[i];
+      final Map<String, Article> sourceUrlMap =
+          currentBySourceAndUrl[source.id] ?? const <String, Article>{};
 
-      if (draftUrl.isNotEmpty) {
-        currentByUrl[draftUrl] = currentById[articleId]!;
+      for (final ParsedArticleDraft draft in drafts) {
+        final String draftUrl = draft.url.trim();
+        final String candidateId = _rssService.stableArticleId(source.id, draft);
+        final Article? existing =
+            currentById[candidateId] ?? sourceUrlMap[draftUrl];
+        final String articleId = existing?.id ?? candidateId;
+
+        if (existing != null && existing.id != articleId) {
+          currentById.remove(existing.id);
+        }
+
+        final Article nextArticle = Article(
+          id: articleId,
+          sourceId: source.id,
+          title: draft.title,
+          author: draft.author,
+          publishedAt: draft.publishedAt,
+          summary: draft.summary,
+          summaryHtml: draft.summaryHtml,
+          content: draft.content,
+          contentHtml: draft.contentHtml,
+          url: draft.url,
+          readState: existing?.readState ?? ArticleReadState.unread,
+          starred: existing?.starred ?? false,
+          savedForLater: existing?.savedForLater ?? false,
+        );
+        currentById[articleId] = nextArticle;
+
+        if (draftUrl.isNotEmpty) {
+          currentBySourceAndUrl
+              .putIfAbsent(source.id, () => <String, Article>{})
+              [draftUrl] = nextArticle;
+        }
       }
     }
 
@@ -2101,3 +2183,14 @@ class ReaderController extends ChangeNotifier {
     return Uint8List.fromList(img.encodeJpg(resized, quality: 88));
   }
 }
+
+class _ControllerFeedFetchResult {
+  const _ControllerFeedFetchResult({
+    required this.source,
+    required this.parsedResult,
+  });
+
+  final FeedSource source;
+  final ParsedFeedResult parsedResult;
+}
+

@@ -40,7 +40,7 @@ class ArticleListPanel extends StatefulWidget {
 
 class _ArticleListPanelState extends State<ArticleListPanel> {
   late final ScrollController _ownedScrollController = ScrollController();
-  final List<GlobalKey> _articleItemKeys = <GlobalKey>[];
+  final GlobalKey _activeItemKey = GlobalKey();
   String? _keyboardSelectedArticleId;
 
   ScrollController get _effectiveScrollController =>
@@ -50,15 +50,6 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
   void dispose() {
     _ownedScrollController.dispose();
     super.dispose();
-  }
-
-  void _syncArticleItemKeys(int count) {
-    while (_articleItemKeys.length < count) {
-      _articleItemKeys.add(GlobalKey());
-    }
-    if (_articleItemKeys.length > count) {
-      _articleItemKeys.removeRange(count, _articleItemKeys.length);
-    }
   }
 
   String? _activeArticleIdForList(List<Article> articles) {
@@ -145,35 +136,29 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
   }
 
   int _firstVisibleArticleIndex(int articleCount) {
-    for (int index = 0;
-        index < articleCount && index < _articleItemKeys.length;
-        index++) {
-      final BuildContext? context = _articleItemKeys[index].currentContext;
-      if (context == null) {
-        continue;
-      }
-      final RenderObject? object = context.findRenderObject();
-      if (object is! RenderBox || !object.hasSize) {
-        continue;
-      }
-      final Offset topLeft = object.localToGlobal(Offset.zero);
-      final Offset bottomRight = object.localToGlobal(
-        Offset(0, object.size.height),
-      );
-      if (bottomRight.dy > 0 &&
-          topLeft.dy < MediaQuery.sizeOf(context).height) {
-        return index;
-      }
+    if (!_effectiveScrollController.hasClients) {
+      return 0;
     }
-    return 0;
+    final double offset = _effectiveScrollController.offset;
+    if (offset <= 0) {
+      return 0;
+    }
+    final bool compact = widget.compact;
+    final AppRouteId route = widget.routeOverride ?? widget.controller.currentRoute;
+    final bool compactHome = compact && route == AppRouteId.allArticles;
+    final bool compactBookmarkRestyled =
+        compact && widget.mobileRestyled && route == AppRouteId.bookmarks;
+    final bool compactMobileListRoute = compactHome || compactBookmarkRestyled;
+    final bool useLayeredCards = compactMobileListRoute || !compact;
+
+    final double itemHeight = useLayeredCards ? 160.0 : 120.0;
+    final int estimatedIndex = (offset / itemHeight).floor();
+    return estimatedIndex.clamp(0, articleCount - 1);
   }
 
   void _ensureArticleVisible(int index) {
-    if (index < 0 || index >= _articleItemKeys.length) {
-      return;
-    }
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final BuildContext? context = _articleItemKeys[index].currentContext;
+      final BuildContext? context = _activeItemKey.currentContext;
       if (!mounted || context == null) {
         return;
       }
@@ -211,7 +196,6 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
         : controller.settings.desktopWorkspaceMode ==
             DesktopWorkspaceMode.focusedReader;
     final String? activeArticleId = _activeArticleIdForList(articles);
-    _syncArticleItemKeys(articles.length);
 
     final Widget content = Padding(
       padding: EdgeInsets.fromLTRB(
@@ -330,7 +314,7 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
                     final Article article = articles[index];
                     final bool active = activeArticleId == article.id;
                     return KeyedSubtree(
-                      key: _articleItemKeys[index],
+                      key: active ? _activeItemKey : ValueKey<String>(article.id),
                       child: _ArticleTile(
                         compact: compact,
                         article: article,
