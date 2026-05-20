@@ -28,7 +28,6 @@ class AccountSettingsView extends StatefulWidget {
 
 class _AccountSettingsViewState extends State<AccountSettingsView> {
   final TextEditingController _identityCodeController = TextEditingController();
-  static const int _officialCloudCapacityBytes = 20 * 1024 * 1024;
   static const List<IconData> _officialCloudUsageIcons = <IconData>[
     Icons.cloud_queue_rounded,
     Icons.auto_awesome_rounded,
@@ -256,10 +255,6 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
           subtitle: null,
           subtitleWidget: _CloudConnectionSelector(
             connectionLabel: _cloudConnectionLabel(context),
-            currentOptionLabel: _cloudServiceOptionLabel(
-              context,
-              controller.cloudContentMode,
-            ),
             selectedMode: controller.cloudContentMode,
             onSelected: controller.isBusy
                 ? null
@@ -537,101 +532,22 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
   }
 
   Widget _buildOfficialCloudStatusPanel(BuildContext context) {
-    final ReaderPalette palette = AppTheme.paletteOf(context);
-
     return FutureBuilder<int>(
       future: controller.estimateCurrentUserContentSyncBytes(),
       builder: (BuildContext context, AsyncSnapshot<int> snapshot) {
         final int bytes = snapshot.data ?? 0;
-        final double ratio =
-            (bytes / _officialCloudCapacityBytes).clamp(0, 1).toDouble();
+        final int percent =
+            ((bytes / (20 * 1024 * 1024)) * 100).clamp(0, 100).round();
 
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    _localizedText(
-                      context,
-                      zhHans: '云端占用',
-                      zhHant: '雲端佔用',
-                      en: 'Cloud Usage',
-                    ),
-                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                          color: palette.secondaryText,
-                          fontWeight: FontWeight.w700,
-                        ),
-                  ),
-                  const SizedBox(height: 10),
-                  AbsorbPointer(
-                    child: M3EElevatedButton(
-                      onPressed: () {},
-                      size: M3EButtonSize.custom(
-                        height: 134,
-                        width: double.infinity,
-                        hPadding: 18,
-                      ),
-                      decoration: M3EButtonDecoration.styleFrom(
-                        backgroundColor:
-                            Theme.of(context).colorScheme.surfaceContainerHigh,
-                        foregroundColor:
-                            Theme.of(context).colorScheme.onSurface,
-                        borderRadius: 26,
-                      ),
-                      child: SizedBox(
-                        width: double.infinity,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: <Widget>[
-                            Row(
-                              children: <Widget>[
-                                Icon(_officialCloudUsageIcon, size: 24),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    _formatStorageUsageText(context, bytes),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .titleSmall
-                                        ?.copyWith(
-                                          fontWeight: FontWeight.w800,
-                                        ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            ClipRRect(
-                              borderRadius: BorderRadius.circular(999),
-                              child: LinearProgressIndicator(
-                                minHeight: 8,
-                                value: ratio,
-                                backgroundColor:
-                                    palette.border.withValues(alpha: 0.45),
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            Text(
-                              _formatStorageRatioText(context, ratio),
-                              style: Theme.of(context)
-                                  .textTheme
-                                  .bodySmall
-                                  ?.copyWith(
-                                    color: palette.secondaryText,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+              child: _OfficialCloudUsageVisual(
+                icon: _officialCloudUsageIcon,
+                percentText: '$percent%',
+                palette: AppTheme.paletteOf(context),
+                colorScheme: Theme.of(context).colorScheme,
               ),
             ),
             const SizedBox(width: 16),
@@ -675,25 +591,63 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
 
   Widget _buildCloudStatusSummary(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
+    final bool synced =
+        controller.currentCloudSyncStatus == CloudSyncStatus.synced;
+    final bool failed =
+        controller.currentCloudSyncStatus == CloudSyncStatus.failed;
+    final Color accent = failed
+        ? Theme.of(context).colorScheme.error
+        : (synced
+            ? Theme.of(context).colorScheme.primary
+            : palette.secondaryText);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
+        Row(
+          children: <Widget>[
+            Container(
+              width: 10,
+              height: 10,
+              decoration: BoxDecoration(
+                color: accent,
+                shape: BoxShape.circle,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              _localizedText(
+                context,
+                zhHans: '同步状态',
+                zhHant: '同步狀態',
+                en: 'Sync Status',
+              ),
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                    color: palette.secondaryText,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 0.3,
+                  ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
         Text(
           _cloudStatusText(context),
-          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
+          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                height: 1.35,
                 color: _cloudStatusTextColor(context),
               ),
         ),
         if (controller.currentCloudSyncAt != null) ...<Widget>[
-          const SizedBox(height: 8),
+          const SizedBox(height: 12),
           Text(
             context.strings.accountCloudLastSync(
               _formatSyncTime(controller.currentCloudSyncAt!),
             ),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                   color: palette.secondaryText,
+                  height: 1.3,
                 ),
           ),
         ],
@@ -1168,13 +1122,11 @@ class _AccountInfoListRow extends StatelessWidget {
 class _CloudConnectionSelector extends StatelessWidget {
   const _CloudConnectionSelector({
     required this.connectionLabel,
-    required this.currentOptionLabel,
     required this.selectedMode,
     required this.onSelected,
   });
 
   final String connectionLabel;
-  final String currentOptionLabel;
   final CloudContentMode selectedMode;
   final ValueChanged<CloudContentMode>? onSelected;
 
@@ -1184,40 +1136,140 @@ class _CloudConnectionSelector extends StatelessWidget {
 
     return SizedBox(
       height: 22,
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Text(
-              connectionLabel,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: palette.secondaryText,
-                  ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          _CloudModeMenuButton(
-            currentOptionLabel: currentOptionLabel,
-            selectedMode: selectedMode,
-            onSelected: onSelected,
-          ),
-        ],
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: _CloudModeMenuButton(
+          connectionLabel: connectionLabel,
+          selectedMode: selectedMode,
+          onSelected: onSelected,
+          textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: palette.secondaryText,
+              ),
+        ),
       ),
     );
   }
 }
 
-class _CloudModeMenuButton extends StatelessWidget {
-  const _CloudModeMenuButton({
-    required this.currentOptionLabel,
-    required this.selectedMode,
-    required this.onSelected,
+class _OfficialCloudUsageVisual extends StatelessWidget {
+  const _OfficialCloudUsageVisual({
+    required this.icon,
+    required this.percentText,
+    required this.palette,
+    required this.colorScheme,
   });
 
-  final String currentOptionLabel;
+  final IconData icon;
+  final String percentText;
+  final ReaderPalette palette;
+  final ColorScheme colorScheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Stack(
+          alignment: Alignment.center,
+          children: <Widget>[
+            _buildUsageButton(
+              icon: icon,
+              style: _UsageVisualStyle.filled,
+              shape: M3EButtonShape.square,
+              size: M3EButtonSize.custom(width: 164, height: 132, hPadding: 22),
+              background: colorScheme.primaryContainer,
+              foreground: colorScheme.onPrimaryContainer,
+            ),
+            IgnorePointer(
+              child: Text(
+                percentText,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: -0.4,
+                      color: colorScheme.onPrimaryContainer,
+                    ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildUsageButton({
+    required IconData icon,
+    required _UsageVisualStyle style,
+    required M3EButtonShape shape,
+    required M3EButtonSize size,
+    required Color background,
+    required Color foreground,
+  }) {
+    final M3EButtonDecoration decoration = M3EButtonDecoration.styleFrom(
+      backgroundColor: background,
+      foregroundColor: foreground,
+      borderRadius: shape == M3EButtonShape.square ? 22 : 28,
+      side: BorderSide(color: palette.border.withValues(alpha: 0.45)),
+      haptic: M3EHapticFeedback.none,
+    );
+
+    final Widget buttonChild = Icon(icon);
+    switch (style) {
+      case _UsageVisualStyle.filled:
+        return IgnorePointer(
+          child: M3EFilledButton(
+            onPressed: () {},
+            shape: shape,
+            size: size,
+            decoration: decoration,
+            child: buttonChild,
+          ),
+        );
+      case _UsageVisualStyle.tonal:
+        return IgnorePointer(
+          child: M3EFilledButton.tonal(
+            onPressed: () {},
+            shape: shape,
+            size: size,
+            decoration: decoration,
+            child: buttonChild,
+          ),
+        );
+      case _UsageVisualStyle.elevated:
+        return IgnorePointer(
+          child: M3EElevatedButton(
+            onPressed: () {},
+            shape: shape,
+            size: size,
+            decoration: decoration,
+            child: buttonChild,
+          ),
+        );
+      case _UsageVisualStyle.outlined:
+        return IgnorePointer(
+          child: M3EOutlinedButton(
+            onPressed: () {},
+            shape: shape,
+            size: size,
+            decoration: decoration,
+            child: buttonChild,
+          ),
+        );
+    }
+  }
+}
+
+class _CloudModeMenuButton extends StatelessWidget {
+  const _CloudModeMenuButton({
+    required this.connectionLabel,
+    required this.selectedMode,
+    required this.onSelected,
+    required this.textStyle,
+  });
+
+  final String connectionLabel;
   final CloudContentMode selectedMode;
   final ValueChanged<CloudContentMode>? onSelected;
+  final TextStyle? textStyle;
 
   @override
   Widget build(BuildContext context) {
@@ -1262,17 +1314,16 @@ class _CloudModeMenuButton extends StatelessWidget {
       ],
       child: Opacity(
         opacity: onSelected == null ? 0.55 : 1,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
+        child: Wrap(
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 4,
           children: <Widget>[
             Text(
-              currentOptionLabel,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: palette.secondaryText,
-                  ),
+              connectionLabel,
+              style: textStyle?.copyWith(
+                fontWeight: FontWeight.w600,
+              ),
             ),
-            const SizedBox(width: 4),
             Icon(
               Icons.unfold_more_rounded,
               size: 18,
@@ -1332,6 +1383,13 @@ class _CloudModeMenuItem extends StatelessWidget {
       ],
     );
   }
+}
+
+enum _UsageVisualStyle {
+  filled,
+  tonal,
+  elevated,
+  outlined,
 }
 
 class _PrivateCloudServerSheet extends StatefulWidget {

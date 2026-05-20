@@ -93,4 +93,9 @@ flutter {
 
 dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
+    // Flutter's Android embedding still references Play Core split-install
+    // classes during release shrinking, even when the app does not actively
+    // use deferred components. Keep the dependency present so R8 can resolve
+    // those symbols in CI and release builds.
+    implementation("com.google.android.play:core:1.10.3")
 }
