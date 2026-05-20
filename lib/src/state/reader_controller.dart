@@ -180,6 +180,14 @@ class ReaderController extends ChangeNotifier {
         _currentRoute == AppRouteId.readerDetail;
   }
 
+  Future<int> estimateCurrentUserContentSyncBytes() async {
+    final String identityCode = currentIdentityCodeDisplay.trim();
+    if (identityCode.isEmpty) {
+      return 0;
+    }
+    return _store.estimateCurrentUserContentSyncBytes(identityCode);
+  }
+
   int get totalUnreadCount => _totalUnreadCount;
 
   String get currentRouteTitle => _strings.routeTitle(
@@ -1153,7 +1161,8 @@ class ReaderController extends ChangeNotifier {
             final FeedSource original = result.source;
             final ParsedFeedResult parsed = result.parsedResult;
             final FeedSource refreshedSource = original.copyWith(
-              title: original.title.trim().isEmpty ? parsed.title : original.title,
+              title:
+                  original.title.trim().isEmpty ? parsed.title : original.title,
               siteUrl: parsed.siteUrl,
               iconUrl: parsed.iconUrl,
               lastFetchedAt: DateTime.now(),
@@ -1496,9 +1505,8 @@ class ReaderController extends ChangeNotifier {
         <String, Map<String, Article>>{};
     for (final Article article in _articles) {
       if (article.url.trim().isNotEmpty) {
-        currentBySourceAndUrl
-            .putIfAbsent(article.sourceId, () => <String, Article>{})
-            [article.url] = article;
+        currentBySourceAndUrl.putIfAbsent(
+            article.sourceId, () => <String, Article>{})[article.url] = article;
       }
     }
 
@@ -1510,7 +1518,8 @@ class ReaderController extends ChangeNotifier {
 
       for (final ParsedArticleDraft draft in drafts) {
         final String draftUrl = draft.url.trim();
-        final String candidateId = _rssService.stableArticleId(source.id, draft);
+        final String candidateId =
+            _rssService.stableArticleId(source.id, draft);
         final Article? existing =
             currentById[candidateId] ?? sourceUrlMap[draftUrl];
         final String articleId = existing?.id ?? candidateId;
@@ -1537,9 +1546,8 @@ class ReaderController extends ChangeNotifier {
         currentById[articleId] = nextArticle;
 
         if (draftUrl.isNotEmpty) {
-          currentBySourceAndUrl
-              .putIfAbsent(source.id, () => <String, Article>{})
-              [draftUrl] = nextArticle;
+          currentBySourceAndUrl.putIfAbsent(
+              source.id, () => <String, Article>{})[draftUrl] = nextArticle;
         }
       }
     }
@@ -2193,4 +2201,3 @@ class _ControllerFeedFetchResult {
   final FeedSource source;
   final ParsedFeedResult parsedResult;
 }
-

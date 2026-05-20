@@ -1,5 +1,8 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:m3e_buttons/m3e_buttons.dart';
 
 import '../../localization/app_strings.dart';
 import '../../models/reader_settings.dart';
@@ -25,7 +28,18 @@ class AccountSettingsView extends StatefulWidget {
 
 class _AccountSettingsViewState extends State<AccountSettingsView> {
   final TextEditingController _identityCodeController = TextEditingController();
+  static const int _officialCloudCapacityBytes = 20 * 1024 * 1024;
+  static const List<IconData> _officialCloudUsageIcons = <IconData>[
+    Icons.cloud_queue_rounded,
+    Icons.auto_awesome_rounded,
+    Icons.data_object_rounded,
+    Icons.widgets_outlined,
+    Icons.cloud_sync_outlined,
+    Icons.blur_on_rounded,
+  ];
   bool _showManualCodeInput = false;
+  late final IconData _officialCloudUsageIcon = _officialCloudUsageIcons[
+      Random().nextInt(_officialCloudUsageIcons.length)];
 
   ReaderController get controller => widget.controller;
 
@@ -194,9 +208,11 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
           iconBackground: const Color(0xFFD7F2E3),
           title: strings.accountPersonalInfoTitle,
           subtitle: null,
-          child: Column(
+          centerHeaderContent: true,
+          child: _AccountInfoGroup(
             children: <Widget>[
-              _AccountInfoRow(
+              _AccountInfoListRow(
+                icon: Icons.person_outline_rounded,
                 label: strings.accountDisplayNameLabel,
                 value: controller.currentUserDisplayName,
                 trailing: TextButton(
@@ -206,8 +222,8 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                   child: Text(strings.accountEditDisplayName),
                 ),
               ),
-              const SizedBox(height: 12),
-              _AccountInfoRow(
+              _AccountInfoListRow(
+                icon: Icons.photo_camera_outlined,
                 label: strings.accountAvatarLabel,
                 value: strings.accountAvatarHint,
                 trailing: OutlinedButton(
@@ -217,8 +233,8 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                   child: Text(strings.accountChangeAvatar),
                 ),
               ),
-              const SizedBox(height: 12),
-              _AccountInfoRow(
+              _AccountInfoListRow(
+                icon: Icons.vpn_key_outlined,
                 label: strings.accountIdentityCodeLabel,
                 value: controller.currentIdentityCodeDisplay,
                 trailing: IconButton(
@@ -290,24 +306,10 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      _cloudStatusText(context),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: _cloudStatusTextColor(context),
-                          ),
-                    ),
-                    if (controller.currentCloudSyncAt != null) ...<Widget>[
-                      const SizedBox(height: 6),
-                      Text(
-                        strings.accountCloudLastSync(
-                          _formatSyncTime(controller.currentCloudSyncAt!),
-                        ),
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: AppTheme.paletteOf(context).secondaryText,
-                            ),
-                      ),
-                    ],
+                    if (!controller.usesPrivateContentCloud)
+                      _buildOfficialCloudStatusPanel(context)
+                    else
+                      _buildCompactCloudStatusPanel(context, strings),
                   ],
                 ),
               ),
@@ -534,6 +536,171 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
     return context.strings.accountSignedOutHintCloud;
   }
 
+  Widget _buildOfficialCloudStatusPanel(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return FutureBuilder<int>(
+      future: controller.estimateCurrentUserContentSyncBytes(),
+      builder: (BuildContext context, AsyncSnapshot<int> snapshot) {
+        final int bytes = snapshot.data ?? 0;
+        final double ratio =
+            (bytes / _officialCloudCapacityBytes).clamp(0, 1).toDouble();
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    _localizedText(
+                      context,
+                      zhHans: '云端占用',
+                      zhHant: '雲端佔用',
+                      en: 'Cloud Usage',
+                    ),
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: palette.secondaryText,
+                          fontWeight: FontWeight.w700,
+                        ),
+                  ),
+                  const SizedBox(height: 10),
+                  AbsorbPointer(
+                    child: M3EElevatedButton(
+                      onPressed: () {},
+                      size: M3EButtonSize.custom(
+                        height: 134,
+                        width: double.infinity,
+                        hPadding: 18,
+                      ),
+                      decoration: M3EButtonDecoration.styleFrom(
+                        backgroundColor:
+                            Theme.of(context).colorScheme.surfaceContainerHigh,
+                        foregroundColor:
+                            Theme.of(context).colorScheme.onSurface,
+                        borderRadius: 26,
+                      ),
+                      child: SizedBox(
+                        width: double.infinity,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: <Widget>[
+                            Row(
+                              children: <Widget>[
+                                Icon(_officialCloudUsageIcon, size: 24),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _formatStorageUsageText(context, bytes),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .titleSmall
+                                        ?.copyWith(
+                                          fontWeight: FontWeight.w800,
+                                        ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(999),
+                              child: LinearProgressIndicator(
+                                minHeight: 8,
+                                value: ratio,
+                                backgroundColor:
+                                    palette.border.withValues(alpha: 0.45),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              _formatStorageRatioText(context, ratio),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .bodySmall
+                                  ?.copyWith(
+                                    color: palette.secondaryText,
+                                  ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildCloudStatusSummary(context),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildCompactCloudStatusPanel(
+    BuildContext context,
+    AppStrings strings,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          _cloudStatusText(context),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: _cloudStatusTextColor(context),
+              ),
+        ),
+        if (controller.currentCloudSyncAt != null) ...<Widget>[
+          const SizedBox(height: 6),
+          Text(
+            strings.accountCloudLastSync(
+              _formatSyncTime(controller.currentCloudSyncAt!),
+            ),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: AppTheme.paletteOf(context).secondaryText,
+                ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildCloudStatusSummary(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(
+          _cloudStatusText(context),
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: _cloudStatusTextColor(context),
+              ),
+        ),
+        if (controller.currentCloudSyncAt != null) ...<Widget>[
+          const SizedBox(height: 8),
+          Text(
+            context.strings.accountCloudLastSync(
+              _formatSyncTime(controller.currentCloudSyncAt!),
+            ),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: palette.secondaryText,
+                ),
+          ),
+        ],
+      ],
+    );
+  }
+
   String _identityCloudUnavailableText(BuildContext context) {
     if (controller.usesPrivateIdentityCloud) {
       return _localizedText(
@@ -633,6 +800,34 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
           ? 'Current connection: Personal Cloud'
           : 'Current connection: Origami Cloud',
     );
+  }
+
+  String _formatStorageUsageText(BuildContext context, int bytes) {
+    final String used = _formatMegabytes(bytes);
+    return _localizedText(
+      context,
+      zhHans: '$used / 20 MB',
+      zhHant: '$used / 20 MB',
+      en: '$used / 20 MB',
+    );
+  }
+
+  String _formatStorageRatioText(BuildContext context, double ratio) {
+    final int percent = (ratio * 100).round();
+    return _localizedText(
+      context,
+      zhHans: '按本地待同步内容估算，当前约 $percent%',
+      zhHant: '按本地待同步內容估算，目前約 $percent%',
+      en: 'Estimated from local pending content: $percent%',
+    );
+  }
+
+  String _formatMegabytes(int bytes) {
+    final double value = bytes / (1024 * 1024);
+    if (value >= 10) {
+      return value.toStringAsFixed(1);
+    }
+    return value.toStringAsFixed(2);
   }
 
   String _cloudServiceOptionLabel(
@@ -789,6 +984,7 @@ class _AccountInfoCard extends StatelessWidget {
     required this.child,
     this.subtitleWidget,
     this.headerTrailing,
+    this.centerHeaderContent = false,
   });
 
   final bool wideLayout;
@@ -800,6 +996,7 @@ class _AccountInfoCard extends StatelessWidget {
   final Widget child;
   final Widget? subtitleWidget;
   final Widget? headerTrailing;
+  final bool centerHeaderContent;
 
   @override
   Widget build(BuildContext context) {
@@ -809,7 +1006,9 @@ class _AccountInfoCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: centerHeaderContent
+                ? CrossAxisAlignment.center
+                : CrossAxisAlignment.start,
             children: <Widget>[
               Container(
                 width: 52,
@@ -825,6 +1024,9 @@ class _AccountInfoCard extends StatelessWidget {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: centerHeaderContent
+                      ? MainAxisAlignment.center
+                      : MainAxisAlignment.start,
                   children: <Widget>[
                     Text(
                       title,
@@ -857,6 +1059,106 @@ class _AccountInfoCard extends StatelessWidget {
           ),
           const SizedBox(height: 18),
           child,
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountInfoGroup extends StatelessWidget {
+  const _AccountInfoGroup({
+    required this.children,
+  });
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: palette.panelMutedBackground.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: palette.border),
+      ),
+      child: Column(
+        children: <Widget>[
+          for (int index = 0; index < children.length; index++) ...<Widget>[
+            if (index > 0)
+              Divider(
+                height: 1,
+                thickness: 1,
+                indent: 84,
+                endIndent: 16,
+                color: palette.border.withValues(alpha: 0.9),
+              ),
+            children[index],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _AccountInfoListRow extends StatelessWidget {
+  const _AccountInfoListRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.trailing,
+  });
+
+  final IconData icon;
+  final String label;
+  final String value;
+  final Widget trailing;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: <Widget>[
+          SizedBox(
+            width: 52,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: Icon(
+                icon,
+                size: 24,
+                color: palette.secondaryText,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  value,
+                  style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        color: Theme.of(context).colorScheme.onSurface,
+                        fontWeight: FontWeight.w500,
+                      ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          trailing,
         ],
       ),
     );

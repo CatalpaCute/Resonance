@@ -161,6 +161,18 @@ class JsonStore {
     }
   }
 
+  Future<int> estimateCurrentUserContentSyncBytes(String identityCode) async {
+    final Directory root = await _ensureRoot();
+    final File feedsFile = File(_path(root, _feedsFileName));
+    final File articlesFile = File(_path(root, _articlesFileName));
+    final File avatarFile =
+        File(_path(_userDirectory(root, identityCode), _avatarFileName));
+
+    return await _safeFileLength(feedsFile) +
+        await _safeFileLength(articlesFile) +
+        await _safeFileLength(avatarFile);
+  }
+
   Future<Directory> _ensureRoot() async {
     final Directory documentsDir = await _documentsDirectoryResolver();
     final Directory appRoot = Directory(_path(documentsDir, _appFolderName));
@@ -242,5 +254,12 @@ class JsonStore {
 
   String _prettyJson(Object value) {
     return const JsonEncoder.withIndent('  ').convert(value);
+  }
+
+  Future<int> _safeFileLength(File file) async {
+    if (!await file.exists()) {
+      return 0;
+    }
+    return file.length();
   }
 }
