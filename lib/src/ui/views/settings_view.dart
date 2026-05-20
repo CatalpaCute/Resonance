@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 import 'dart:ui';
 
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -1040,12 +1039,66 @@ class _GitHubMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FaIcon(
-      FontAwesomeIcons.github,
-      size: size,
-      color: color,
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(
+        painter: _GitHubPainter(color: color),
+      ),
     );
   }
+}
+
+class _GitHubPainter extends CustomPainter {
+  const _GitHubPainter({required this.color});
+
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Paint paint = Paint()
+      ..color = color
+      ..style = PaintingStyle.fill;
+
+    final Path path = Path();
+    // GitHub logo path scaled to 1.0 x 1.0 bounding box
+    path.moveTo(0.5, 0);
+    path.cubicTo(0.224, 0, 0, 0.224, 0, 0.5);
+    path.cubicTo(0, 0.72, 0.143, 0.907, 0.341, 0.973);
+    path.cubicTo(0.366, 0.978, 0.375, 0.962, 0.375, 0.949);
+    path.cubicTo(0.375, 0.937, 0.375, 0.906, 0.375, 0.865);
+    path.cubicTo(0.236, 0.895, 0.207, 0.798, 0.207, 0.798);
+    path.cubicTo(0.184, 0.74, 0.151, 0.724, 0.151, 0.724);
+    path.cubicTo(0.106, 0.693, 0.152, 0.694, 0.152, 0.694);
+    path.cubicTo(0.202, 0.697, 0.228, 0.745, 0.228, 0.745);
+    path.cubicTo(0.272, 0.821, 0.344, 0.799, 0.372, 0.786);
+    path.cubicTo(0.376, 0.754, 0.389, 0.732, 0.403, 0.72);
+    path.cubicTo(0.292, 0.707, 0.175, 0.664, 0.175, 0.472);
+    path.cubicTo(0.175, 0.417, 0.195, 0.373, 0.227, 0.338);
+    path.cubicTo(0.222, 0.325, 0.205, 0.274, 0.232, 0.206);
+    path.cubicTo(0.232, 0.206, 0.274, 0.193, 0.37, 0.258);
+    path.cubicTo(0.41, 0.247, 0.453, 0.241, 0.496, 0.241);
+    path.cubicTo(0.539, 0.241, 0.582, 0.247, 0.622, 0.258);
+    path.cubicTo(0.718, 0.193, 0.76, 0.206, 0.76, 0.206);
+    path.cubicTo(0.787, 0.274, 0.77, 0.325, 0.765, 0.338);
+    path.cubicTo(0.797, 0.373, 0.817, 0.417, 0.817, 0.472);
+    path.cubicTo(0.817, 0.665, 0.7, 0.707, 0.589, 0.719);
+    path.cubicTo(0.607, 0.735, 0.623, 0.766, 0.623, 0.814);
+    path.cubicTo(0.623, 0.883, 0.623, 0.938, 0.623, 0.949);
+    path.cubicTo(0.623, 0.962, 0.632, 0.978, 0.658, 0.973);
+    path.cubicTo(0.856, 0.907, 1, 0.72, 1, 0.5);
+    path.cubicTo(1, 0.224, 0.776, 0, 0.5, 0);
+    path.close();
+
+    canvas.save();
+    canvas.scale(size.width, size.height);
+    canvas.drawPath(path, paint);
+    canvas.restore();
+  }
+
+  @override
+  bool shouldRepaint(covariant _GitHubPainter oldDelegate) =>
+      color != oldDelegate.color;
 }
 
 class _SettingsChoiceOption<T> {

@@ -76,6 +76,13 @@ android {
 
             // Keep a debug-signing fallback for local release builds when CI secrets are absent.
             signingConfig = if (hasReleaseSigning) releaseSigning else signingConfigs.getByName("debug")
+
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
