@@ -28,17 +28,59 @@ class AccountSettingsView extends StatefulWidget {
 
 class _AccountSettingsViewState extends State<AccountSettingsView> {
   final TextEditingController _identityCodeController = TextEditingController();
-  static const List<IconData> _officialCloudUsageIcons = <IconData>[
-    Icons.cloud_queue_rounded,
-    Icons.auto_awesome_rounded,
-    Icons.data_object_rounded,
-    Icons.widgets_outlined,
-    Icons.cloud_sync_outlined,
-    Icons.blur_on_rounded,
+  static const List<_OfficialCloudUsagePreset> _officialCloudUsagePresets =
+      <_OfficialCloudUsagePreset>[
+    _OfficialCloudUsagePreset(
+      style: _UsageVisualStyle.filled,
+      shape: M3EButtonShape.square,
+      width: 164,
+      height: 132,
+      hPadding: 18,
+      borderRadius: 24,
+      rotationDegrees: -8,
+    ),
+    _OfficialCloudUsagePreset(
+      style: _UsageVisualStyle.tonal,
+      shape: M3EButtonShape.square,
+      width: 154,
+      height: 138,
+      hPadding: 16,
+      borderRadius: 32,
+      rotationDegrees: 10,
+    ),
+    _OfficialCloudUsagePreset(
+      style: _UsageVisualStyle.elevated,
+      shape: M3EButtonShape.round,
+      width: 172,
+      height: 124,
+      hPadding: 20,
+      borderRadius: 40,
+      rotationDegrees: -6,
+    ),
+    _OfficialCloudUsagePreset(
+      style: _UsageVisualStyle.outlined,
+      shape: M3EButtonShape.square,
+      width: 160,
+      height: 128,
+      hPadding: 18,
+      borderRadius: 18,
+      rotationDegrees: 14,
+    ),
+    _OfficialCloudUsagePreset(
+      style: _UsageVisualStyle.filled,
+      shape: M3EButtonShape.round,
+      width: 176,
+      height: 116,
+      hPadding: 22,
+      borderRadius: 48,
+      rotationDegrees: 5,
+    ),
   ];
   bool _showManualCodeInput = false;
-  late final IconData _officialCloudUsageIcon = _officialCloudUsageIcons[
-      Random().nextInt(_officialCloudUsageIcons.length)];
+  late final _OfficialCloudUsagePreset _officialCloudUsagePreset =
+      _officialCloudUsagePresets[
+        Random().nextInt(_officialCloudUsagePresets.length)
+      ];
 
   ReaderController get controller => widget.controller;
 
@@ -568,7 +610,7 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
           children: <Widget>[
             Expanded(
               child: _OfficialCloudUsageVisual(
-                icon: _officialCloudUsageIcon,
+                preset: _officialCloudUsagePreset,
                 percentText: '$percent%',
                 tooltipText:
                     '${_formatStorageRatioText(context, percent / 100)} ${_formatMegabytes(bytes)} MB',
@@ -1183,14 +1225,14 @@ class _CloudConnectionSelector extends StatelessWidget {
 
 class _OfficialCloudUsageVisual extends StatelessWidget {
   const _OfficialCloudUsageVisual({
-    required this.icon,
+    required this.preset,
     required this.percentText,
     required this.tooltipText,
     required this.palette,
     required this.colorScheme,
   });
 
-  final IconData icon;
+  final _OfficialCloudUsagePreset preset;
   final String percentText;
   final String tooltipText;
   final ReaderPalette palette;
@@ -1206,14 +1248,13 @@ class _OfficialCloudUsageVisual extends StatelessWidget {
           child: Stack(
             alignment: Alignment.center,
             children: <Widget>[
-              _buildUsageButton(
-                icon: icon,
-                style: _UsageVisualStyle.filled,
-                shape: M3EButtonShape.square,
-                size:
-                    M3EButtonSize.custom(width: 164, height: 132, hPadding: 22),
-                background: colorScheme.primaryContainer,
-                foreground: colorScheme.onPrimaryContainer,
+              Transform.rotate(
+                angle: preset.rotationRadians,
+                child: _buildUsageButton(
+                  preset: preset,
+                  background: _backgroundForStyle(),
+                  foreground: _foregroundForStyle(),
+                ),
               ),
               IgnorePointer(
                 child: Text(
@@ -1232,29 +1273,57 @@ class _OfficialCloudUsageVisual extends StatelessWidget {
     );
   }
 
+  Color _backgroundForStyle() {
+    switch (preset.style) {
+      case _UsageVisualStyle.filled:
+        return colorScheme.primaryContainer;
+      case _UsageVisualStyle.tonal:
+        return colorScheme.secondaryContainer;
+      case _UsageVisualStyle.elevated:
+        return colorScheme.surfaceContainerHigh;
+      case _UsageVisualStyle.outlined:
+        return colorScheme.surface;
+    }
+  }
+
+  Color _foregroundForStyle() {
+    switch (preset.style) {
+      case _UsageVisualStyle.filled:
+        return colorScheme.onPrimaryContainer;
+      case _UsageVisualStyle.tonal:
+        return colorScheme.onSecondaryContainer;
+      case _UsageVisualStyle.elevated:
+        return colorScheme.onSurface;
+      case _UsageVisualStyle.outlined:
+        return colorScheme.onSurface;
+    }
+  }
+
   Widget _buildUsageButton({
-    required IconData icon,
-    required _UsageVisualStyle style,
-    required M3EButtonShape shape,
-    required M3EButtonSize size,
+    required _OfficialCloudUsagePreset preset,
     required Color background,
     required Color foreground,
   }) {
     final M3EButtonDecoration decoration = M3EButtonDecoration.styleFrom(
       backgroundColor: background,
       foregroundColor: foreground,
-      borderRadius: shape == M3EButtonShape.square ? 22 : 28,
+      borderRadius: preset.borderRadius,
       side: BorderSide(color: palette.border.withValues(alpha: 0.45)),
       haptic: M3EHapticFeedback.none,
     );
 
-    final Widget buttonChild = Icon(icon);
-    switch (style) {
+    final M3EButtonSize size = M3EButtonSize.custom(
+      width: preset.width,
+      height: preset.height,
+      hPadding: preset.hPadding,
+    );
+    const Widget buttonChild = SizedBox.shrink();
+    switch (preset.style) {
       case _UsageVisualStyle.filled:
         return IgnorePointer(
           child: M3EFilledButton(
             onPressed: () {},
-            shape: shape,
+            shape: preset.shape,
             size: size,
             decoration: decoration,
             child: buttonChild,
@@ -1264,7 +1333,7 @@ class _OfficialCloudUsageVisual extends StatelessWidget {
         return IgnorePointer(
           child: M3EFilledButton.tonal(
             onPressed: () {},
-            shape: shape,
+            shape: preset.shape,
             size: size,
             decoration: decoration,
             child: buttonChild,
@@ -1274,7 +1343,7 @@ class _OfficialCloudUsageVisual extends StatelessWidget {
         return IgnorePointer(
           child: M3EElevatedButton(
             onPressed: () {},
-            shape: shape,
+            shape: preset.shape,
             size: size,
             decoration: decoration,
             child: buttonChild,
@@ -1284,7 +1353,7 @@ class _OfficialCloudUsageVisual extends StatelessWidget {
         return IgnorePointer(
           child: M3EOutlinedButton(
             onPressed: () {},
-            shape: shape,
+            shape: preset.shape,
             size: size,
             decoration: decoration,
             child: buttonChild,
@@ -1426,6 +1495,28 @@ enum _UsageVisualStyle {
   tonal,
   elevated,
   outlined,
+}
+
+class _OfficialCloudUsagePreset {
+  const _OfficialCloudUsagePreset({
+    required this.style,
+    required this.shape,
+    required this.width,
+    required this.height,
+    required this.hPadding,
+    required this.borderRadius,
+    required this.rotationDegrees,
+  });
+
+  final _UsageVisualStyle style;
+  final M3EButtonShape shape;
+  final double width;
+  final double height;
+  final double hPadding;
+  final double borderRadius;
+  final double rotationDegrees;
+
+  double get rotationRadians => rotationDegrees * pi / 180;
 }
 
 class _PrivateCloudServerSheet extends StatefulWidget {
