@@ -37,13 +37,16 @@ class ReaderController extends ChangeNotifier {
     required JsonStore store,
     required CloudServiceResolver cloudServiceResolver,
     required RssService rssService,
+    Duration contentAutoSyncDebounceDuration = const Duration(seconds: 15),
   })  : _store = store,
         _cloudServiceResolver = cloudServiceResolver,
-        _rssService = rssService;
+        _rssService = rssService,
+        _contentAutoSyncDebounceDuration = contentAutoSyncDebounceDuration;
 
   final JsonStore _store;
   final CloudServiceResolver _cloudServiceResolver;
   final RssService _rssService;
+  final Duration _contentAutoSyncDebounceDuration;
   late final AutoRefreshEngine _autoRefreshEngine = AutoRefreshEngine(
     store: _store,
     rssService: _rssService,
@@ -82,6 +85,10 @@ class ReaderController extends ChangeNotifier {
   String? _statusMessage;
   final Set<String> _refreshingFeedIds = <String>{};
   bool _syncingPendingAccountState = false;
+  Timer? _contentCloudSyncDebounceTimer;
+  bool _contentCloudSyncPending = false;
+  bool _syncingContentCloudAutoSync = false;
+  bool _downloadingContentFromCloud = false;
 
   List<FeedSource> get feeds => _readonlyFeeds;
   List<Article> get articles => _readonlyArticles;
@@ -141,6 +148,7 @@ class ReaderController extends ChangeNotifier {
   PrivateCloudProtocol get privateCloudProtocol =>
       _settings.privateCloudProtocol;
   bool get cloudServiceEnabled => _settings.cloudServiceEnabled;
+  bool get cloudAutoSyncEnabled => _settings.cloudAutoSyncEnabled;
   String get privateCloudBaseUrl => _settings.privateCloudBaseUrl;
   String get privateCloudUsername => _settings.privateCloudUsername;
   String get privateCloudPassword => _settings.privateCloudPassword;
@@ -552,6 +560,21 @@ class ReaderController extends ChangeNotifier {
   Future<void> setCloudServiceEnabled(bool value) async {
     _setSettings(_settings.copyWith(cloudServiceEnabled: value));
     await _persistSettings();
+    if (!value) {
+      _cancelContentAutoSync();
+      return;
+    }
+    _triggerContentAutoSyncIfPossible();
+  }
+
+  Future<void> setCloudAutoSyncEnabled(bool value) async {
+    _setSettings(_settings.copyWith(cloudAutoSyncEnabled: value));
+    await _persistSettings();
+    if (!value) {
+      _cancelContentAutoSync();
+      return;
+    }
+    _triggerContentAutoSyncIfPossible();
   }
 
   Future<void> setCloudContentModeSelection(CloudContentMode mode) async {
@@ -569,6 +592,7 @@ class ReaderController extends ChangeNotifier {
       ),
     );
     await _persistSettings();
+    _triggerContentAutoSyncIfPossible();
   }
 
   Future<void> setPrivateCloudProtocol(PrivateCloudProtocol protocol) async {
@@ -592,6 +616,7 @@ class ReaderController extends ChangeNotifier {
     );
     await _persistSettings();
     _triggerPendingAccountSyncIfPossible();
+    _triggerContentAutoSyncIfPossible();
   }
 
   Future<void> setAdvancedCloudModeEnabled(bool value) async {
@@ -709,6 +734,7 @@ class ReaderController extends ChangeNotifier {
   Future<void> signOutUser() async {
     _errorMessage = null;
     try {
+      _cancelContentAutoSync(resetPending: true);
       _currentUserSession = const CurrentUserSession.signedOut();
       _currentUser = null;
       await _store.clearCurrentUserSession();
@@ -776,6 +802,7 @@ class ReaderController extends ChangeNotifier {
   /// 不做后台低频轮询，避免长期驻留重试。
   Future<void> handleAppResumed() async {
     await _syncPendingAccountStateIfNeeded();
+    _triggerContentAutoSyncIfPossible(immediate: true);
   }
 
   Future<void> pickAndSaveUserAvatar() async {
@@ -849,39 +876,11 @@ class ReaderController extends ChangeNotifier {
     }
 
     await _runUserBusyTask(() async {
-      if (usesPrivateIdentityCloud) {
-        final CloudUserLookupResult userLookup =
-            await _identitySyncService.getUser(profile.identityCode);
-        if (!userLookup.exists) {
-          await _identitySyncService.createUser(
-            profile.identityCode,
-            _normalizeCloudUserName(profile.displayName),
-          );
-        } else {
-          await _identitySyncService.updateUser(
-            profile.identityCode,
-            _normalizeCloudUserName(profile.displayName),
-          );
-        }
-      }
-      await _contentSyncService.uploadFeeds(
-        profile.identityCode,
-        buildCloudFeedsPayload(profile.identityCode, _feeds),
+      await _uploadCurrentContentToCloud(
+        profile,
+        includeAvatar: true,
+        syncIdentityIfNeeded: usesPrivateIdentityCloud,
       );
-      await _contentSyncService.uploadArticles(
-        profile.identityCode,
-        buildCloudArticlesPayload(profile.identityCode, _articles),
-      );
-      if (profile.hasAvatar) {
-        final File avatarFile = File(profile.avatarPath!);
-        if (await avatarFile.exists()) {
-          await _contentSyncService.uploadAvatar(
-            profile.identityCode,
-            await avatarFile.readAsBytes(),
-            'image/jpeg',
-          );
-        }
-      }
       _currentUser = await _persistUserProfile(profile.copyWith(
         lastCloudSyncAt: DateTime.now(),
         lastCloudSyncStatus: CloudSyncStatus.synced,
@@ -891,6 +890,7 @@ class ReaderController extends ChangeNotifier {
         pendingCloudAvatarSync: false,
         updatedAt: DateTime.now(),
       ));
+      _contentCloudSyncPending = false;
       _statusMessage = _cloudUploadCompletedMessage;
     }, onCloudErrorFallback: _cloudUploadFailedMessage);
   }
@@ -912,6 +912,7 @@ class ReaderController extends ChangeNotifier {
     }
 
     await _runUserBusyTask(() async {
+      _downloadingContentFromCloud = true;
       CloudUserLookupResult? identityResult;
       if (usesPrivateIdentityCloud) {
         identityResult =
@@ -952,8 +953,10 @@ class ReaderController extends ChangeNotifier {
         pendingCloudAvatarSync: false,
         updatedAt: DateTime.now(),
       ));
+      _contentCloudSyncPending = false;
       _statusMessage = _cloudDownloadCompletedMessage;
     }, onCloudErrorFallback: _cloudDownloadFailedMessage);
+    _downloadingContentFromCloud = false;
   }
 
   Future<void> downloadCurrentUserFromOfficialCloud() {
@@ -1007,6 +1010,7 @@ class ReaderController extends ChangeNotifier {
         _activeSourceId = source.id;
         _currentRoute = AppRouteId.discoverAddSource;
         await _persistAll();
+        _markContentChangedForAutoSync();
         _statusMessage = _strings.addedFeed(source.title);
       },
     );
@@ -1060,6 +1064,7 @@ class ReaderController extends ChangeNotifier {
           return item.id == original.id ? nextSource : item;
         }).toList());
         await _persistAll();
+        _markContentChangedForAutoSync();
         _statusMessage = _strings.updatedFeed(nextSource.title);
       },
     );
@@ -1084,6 +1089,7 @@ class ReaderController extends ChangeNotifier {
       _selectedArticleId = null;
     }
     await _persistAll();
+    _markContentChangedForAutoSync();
     _statusMessage = _strings.removedFeed(source.title);
     notifyListeners();
   }
@@ -1108,6 +1114,7 @@ class ReaderController extends ChangeNotifier {
     nextFeeds.insert(newIndex, source);
     _setFeeds(nextFeeds);
     await _persistAll();
+    _markContentChangedForAutoSync();
   }
 
   Future<void> refreshAllFeeds() async {
@@ -1178,6 +1185,9 @@ class ReaderController extends ChangeNotifier {
           }
 
           await _persistAll();
+          if (successfulResults.isNotEmpty) {
+            _markContentChangedForAutoSync();
+          }
           _statusMessage = _strings.refreshedAllFeeds(candidates.length);
         } finally {
           for (final FeedSource source in candidates) {
@@ -1199,6 +1209,7 @@ class ReaderController extends ChangeNotifier {
       () async {
         await _refreshFeed(source);
         await _persistAll();
+        _markContentChangedForAutoSync();
         _statusMessage = _strings.refreshedFeed(source.title);
       },
     );
@@ -1237,6 +1248,9 @@ class ReaderController extends ChangeNotifier {
     }
 
     await reloadPersistedState();
+    if (result.refreshedCount > 0) {
+      _markContentChangedForAutoSync();
+    }
     return result;
   }
 
@@ -1461,6 +1475,7 @@ class ReaderController extends ChangeNotifier {
     }).toList()
       ..sort((Article a, Article b) => b.publishedAt.compareTo(a.publishedAt)));
     await _persistAll();
+    _markContentChangedForAutoSync();
   }
 
   Future<void> _refreshFeed(FeedSource source) async {
@@ -1580,6 +1595,143 @@ class ReaderController extends ChangeNotifier {
     notifyListeners();
   }
 
+  Future<void> _uploadCurrentContentToCloud(
+    UserProfile profile, {
+    required bool includeAvatar,
+    required bool syncIdentityIfNeeded,
+  }) async {
+    if (syncIdentityIfNeeded) {
+      final CloudUserLookupResult userLookup =
+          await _identitySyncService.getUser(profile.identityCode);
+      if (!userLookup.exists) {
+        await _identitySyncService.createUser(
+          profile.identityCode,
+          _normalizeCloudUserName(profile.displayName),
+        );
+      } else {
+        await _identitySyncService.updateUser(
+          profile.identityCode,
+          _normalizeCloudUserName(profile.displayName),
+        );
+      }
+    }
+    await _contentSyncService.uploadFeeds(
+      profile.identityCode,
+      buildCloudFeedsPayload(profile.identityCode, _feeds),
+    );
+    await _contentSyncService.uploadArticles(
+      profile.identityCode,
+      buildCloudArticlesPayload(profile.identityCode, _articles),
+    );
+    if (!includeAvatar || !profile.hasAvatar || profile.avatarPath == null) {
+      return;
+    }
+    final File avatarFile = File(profile.avatarPath!);
+    if (await avatarFile.exists()) {
+      await _contentSyncService.uploadAvatar(
+        profile.identityCode,
+        await avatarFile.readAsBytes(),
+        'image/jpeg',
+      );
+    }
+  }
+
+  void _markContentChangedForAutoSync() {
+    _contentCloudSyncPending = true;
+    _scheduleContentAutoSync();
+  }
+
+  void _triggerContentAutoSyncIfPossible({bool immediate = false}) {
+    if (!_contentCloudSyncPending) {
+      return;
+    }
+    _scheduleContentAutoSync(
+      delay: immediate ? Duration.zero : _contentAutoSyncDebounceDuration,
+    );
+  }
+
+  void _scheduleContentAutoSync({Duration? delay}) {
+    if (!_shouldAutoSyncContent()) {
+      return;
+    }
+    _contentCloudSyncDebounceTimer?.cancel();
+    _contentCloudSyncDebounceTimer = Timer(
+      delay ?? _contentAutoSyncDebounceDuration,
+      () => unawaited(_runContentAutoSyncUpload()),
+    );
+  }
+
+  void _cancelContentAutoSync({bool resetPending = false}) {
+    _contentCloudSyncDebounceTimer?.cancel();
+    _contentCloudSyncDebounceTimer = null;
+    if (resetPending) {
+      _contentCloudSyncPending = false;
+    }
+  }
+
+  bool _shouldAutoSyncContent() {
+    return _contentCloudSyncPending &&
+        !_downloadingContentFromCloud &&
+        !_syncingContentCloudAutoSync &&
+        !_syncingPendingAccountState &&
+        _currentUser != null &&
+        cloudServiceEnabled &&
+        cloudAutoSyncEnabled &&
+        _contentSyncService.isConfigured;
+  }
+
+  Future<void> _runContentAutoSyncUpload() async {
+    _contentCloudSyncDebounceTimer = null;
+    if (!_shouldAutoSyncContent()) {
+      return;
+    }
+    if (_isBusy) {
+      _scheduleContentAutoSync(delay: const Duration(seconds: 3));
+      return;
+    }
+
+    final UserProfile? profile = _currentUser;
+    if (profile == null) {
+      return;
+    }
+
+    _syncingContentCloudAutoSync = true;
+    try {
+      await _uploadCurrentContentToCloud(
+        profile,
+        includeAvatar: false,
+        syncIdentityIfNeeded: false,
+      );
+      _contentCloudSyncPending = false;
+      _currentUser = await _persistUserProfile(profile.copyWith(
+        lastCloudSyncAt: DateTime.now(),
+        lastCloudSyncStatus: CloudSyncStatus.synced,
+        lastCloudSyncMessage: _cloudContentAutoSyncCompletedMessage,
+      ));
+      _statusMessage = _cloudContentAutoSyncCompletedMessage;
+    } on CloudServiceException catch (error) {
+      final UserProfile? latest = _currentUser;
+      if (latest != null) {
+        _currentUser = await _persistUserProfile(latest.copyWith(
+          lastCloudSyncStatus: CloudSyncStatus.failed,
+          lastCloudSyncMessage: _cloudOperationMessage(
+            error,
+            fallback: _cloudContentAutoSyncFailedMessage,
+          ),
+        ));
+      }
+      _errorMessage = _cloudOperationMessage(
+        error,
+        fallback: _cloudContentAutoSyncFailedMessage,
+      );
+    } catch (error) {
+      _errorMessage = '$error';
+    } finally {
+      _syncingContentCloudAutoSync = false;
+      notifyListeners();
+    }
+  }
+
   Future<void> _activateUserSession(
     UserProfile profile, {
     required String statusMessage,
@@ -1592,6 +1744,12 @@ class ReaderController extends ChangeNotifier {
     _currentUserSession = session;
     _currentUser = profile;
     _statusMessage = statusMessage;
+  }
+
+  @override
+  void dispose() {
+    _cancelContentAutoSync();
+    super.dispose();
   }
 
   Future<void> _runBusy(
@@ -1937,6 +2095,21 @@ class ReaderController extends ChangeNotifier {
     return _strings.accountCloudUploadCompleted;
   }
 
+  String get _cloudContentAutoSyncCompletedMessage {
+    if (usesPrivateContentCloud) {
+      return _localizedCloudText(
+        zhHans: '订阅和文章已自动同步到个人云。',
+        zhHant: '訂閱和文章已自動同步到個人雲。',
+        en: 'Subscriptions and articles were synced to the personal cloud automatically.',
+      );
+    }
+    return _localizedCloudText(
+      zhHans: '订阅和文章已自动同步到折纸云。',
+      zhHant: '訂閱和文章已自動同步到摺紙雲。',
+      en: 'Subscriptions and articles were synced to Origami Cloud automatically.',
+    );
+  }
+
   String get _cloudUploadFailedMessage {
     if (usesPrivateContentCloud) {
       return _localizedCloudText(
@@ -1946,6 +2119,21 @@ class ReaderController extends ChangeNotifier {
       );
     }
     return _strings.accountCloudUploadFailed;
+  }
+
+  String get _cloudContentAutoSyncFailedMessage {
+    if (usesPrivateContentCloud) {
+      return _localizedCloudText(
+        zhHans: '自动同步到个人云失败了，本地内容没有丢失。',
+        zhHant: '自動同步到個人雲失敗了，本地內容沒有遺失。',
+        en: 'Automatic sync to the personal cloud failed. Local content was kept.',
+      );
+    }
+    return _localizedCloudText(
+      zhHans: '自动同步到折纸云失败了，本地内容没有丢失。',
+      zhHant: '自動同步到摺紙雲失敗了，本地內容沒有遺失。',
+      en: 'Automatic sync to Origami Cloud failed. Local content was kept.',
+    );
   }
 
   String get _cloudDownloadCompletedMessage {

@@ -255,6 +255,10 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
           subtitle: null,
           subtitleWidget: _CloudConnectionSelector(
             connectionLabel: _cloudConnectionLabel(context),
+            optionLabel: _cloudServiceOptionLabel(
+              context,
+              controller.cloudContentMode,
+            ),
             selectedMode: controller.cloudContentMode,
             onSelected: controller.isBusy
                 ? null
@@ -307,6 +311,26 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                       _buildCompactCloudStatusPanel(context, strings),
                   ],
                 ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Text(
+                      _cloudAutoSyncLabel(context),
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                          ),
+                    ),
+                  ),
+                  Switch(
+                    value: controller.cloudAutoSyncEnabled,
+                    onChanged: controller.isBusy || !controller.cloudServiceEnabled
+                        ? null
+                        : (bool value) =>
+                            controller.setCloudAutoSyncEnabled(value),
+                  ),
+                ],
               ),
               const SizedBox(height: 14),
               if (controller.cloudServiceEnabled)
@@ -546,6 +570,8 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
               child: _OfficialCloudUsageVisual(
                 icon: _officialCloudUsageIcon,
                 percentText: '$percent%',
+                tooltipText:
+                    '${_formatStorageRatioText(context, percent / 100)} ${_formatMegabytes(bytes)} MB',
                 palette: AppTheme.paletteOf(context),
                 colorScheme: Theme.of(context).colorScheme,
               ),
@@ -756,16 +782,6 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
     );
   }
 
-  String _formatStorageUsageText(BuildContext context, int bytes) {
-    final String used = _formatMegabytes(bytes);
-    return _localizedText(
-      context,
-      zhHans: '$used / 20 MB',
-      zhHant: '$used / 20 MB',
-      en: '$used / 20 MB',
-    );
-  }
-
   String _formatStorageRatioText(BuildContext context, double ratio) {
     final int percent = (ratio * 100).round();
     return _localizedText(
@@ -834,6 +850,15 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
       zhHans: '启用云服务',
       zhHant: '啟用雲服務',
       en: 'Enable Cloud Services',
+    );
+  }
+
+  String _cloudAutoSyncLabel(BuildContext context) {
+    return _localizedText(
+      context,
+      zhHans: '自动同步',
+      zhHant: '自動同步',
+      en: 'Auto Sync',
     );
   }
 
@@ -1122,11 +1147,13 @@ class _AccountInfoListRow extends StatelessWidget {
 class _CloudConnectionSelector extends StatelessWidget {
   const _CloudConnectionSelector({
     required this.connectionLabel,
+    required this.optionLabel,
     required this.selectedMode,
     required this.onSelected,
   });
 
   final String connectionLabel;
+  final String optionLabel;
   final CloudContentMode selectedMode;
   final ValueChanged<CloudContentMode>? onSelected;
 
@@ -1138,13 +1165,16 @@ class _CloudConnectionSelector extends StatelessWidget {
       height: 22,
       child: Align(
         alignment: Alignment.centerLeft,
-        child: _CloudModeMenuButton(
-          connectionLabel: connectionLabel,
-          selectedMode: selectedMode,
-          onSelected: onSelected,
-          textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: palette.secondaryText,
-              ),
+        child: Tooltip(
+          message: optionLabel,
+          child: _CloudModeMenuButton(
+            connectionLabel: connectionLabel,
+            selectedMode: selectedMode,
+            onSelected: onSelected,
+            textStyle: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: palette.secondaryText,
+                ),
+          ),
         ),
       ),
     );
@@ -1155,12 +1185,14 @@ class _OfficialCloudUsageVisual extends StatelessWidget {
   const _OfficialCloudUsageVisual({
     required this.icon,
     required this.percentText,
+    required this.tooltipText,
     required this.palette,
     required this.colorScheme,
   });
 
   final IconData icon;
   final String percentText;
+  final String tooltipText;
   final ReaderPalette palette;
   final ColorScheme colorScheme;
 
@@ -1169,28 +1201,32 @@ class _OfficialCloudUsageVisual extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        Stack(
-          alignment: Alignment.center,
-          children: <Widget>[
-            _buildUsageButton(
-              icon: icon,
-              style: _UsageVisualStyle.filled,
-              shape: M3EButtonShape.square,
-              size: M3EButtonSize.custom(width: 164, height: 132, hPadding: 22),
-              background: colorScheme.primaryContainer,
-              foreground: colorScheme.onPrimaryContainer,
-            ),
-            IgnorePointer(
-              child: Text(
-                percentText,
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: -0.4,
-                      color: colorScheme.onPrimaryContainer,
-                    ),
+        Tooltip(
+          message: tooltipText,
+          child: Stack(
+            alignment: Alignment.center,
+            children: <Widget>[
+              _buildUsageButton(
+                icon: icon,
+                style: _UsageVisualStyle.filled,
+                shape: M3EButtonShape.square,
+                size:
+                    M3EButtonSize.custom(width: 164, height: 132, hPadding: 22),
+                background: colorScheme.primaryContainer,
+                foreground: colorScheme.onPrimaryContainer,
               ),
-            ),
-          ],
+              IgnorePointer(
+                child: Text(
+                  percentText,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.4,
+                        color: colorScheme.onPrimaryContainer,
+                      ),
+                ),
+              ),
+            ],
+          ),
         ),
       ],
     );

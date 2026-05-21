@@ -90,6 +90,7 @@ class ReaderSettings {
     required this.blurEffectsEnabled,
     required this.appLanguageMode,
     required this.cloudServiceEnabled,
+    required this.cloudAutoSyncEnabled,
     required this.privateCloudEnabled,
     required this.advancedCloudModeEnabled,
     required this.cloudIdentityMode,
@@ -120,6 +121,7 @@ class ReaderSettings {
   final bool blurEffectsEnabled;
   final AppLanguageMode appLanguageMode;
   final bool cloudServiceEnabled;
+  final bool cloudAutoSyncEnabled;
   final bool privateCloudEnabled;
   final bool advancedCloudModeEnabled;
   final CloudIdentityMode cloudIdentityMode;
@@ -153,6 +155,7 @@ class ReaderSettings {
     blurEffectsEnabled: true,
     appLanguageMode: AppLanguageMode.system,
     cloudServiceEnabled: false,
+    cloudAutoSyncEnabled: false,
     privateCloudEnabled: false,
     advancedCloudModeEnabled: false,
     cloudIdentityMode: CloudIdentityMode.official,
@@ -195,6 +198,7 @@ class ReaderSettings {
     bool? blurEffectsEnabled,
     AppLanguageMode? appLanguageMode,
     bool? cloudServiceEnabled,
+    bool? cloudAutoSyncEnabled,
     bool? privateCloudEnabled,
     bool? advancedCloudModeEnabled,
     CloudIdentityMode? cloudIdentityMode,
@@ -232,6 +236,7 @@ class ReaderSettings {
       blurEffectsEnabled: blurEffectsEnabled ?? this.blurEffectsEnabled,
       appLanguageMode: appLanguageMode ?? this.appLanguageMode,
       cloudServiceEnabled: cloudServiceEnabled ?? this.cloudServiceEnabled,
+      cloudAutoSyncEnabled: cloudAutoSyncEnabled ?? this.cloudAutoSyncEnabled,
       privateCloudEnabled: privateCloudEnabled ?? this.privateCloudEnabled,
       advancedCloudModeEnabled:
           advancedCloudModeEnabled ?? this.advancedCloudModeEnabled,
@@ -268,6 +273,7 @@ class ReaderSettings {
       'blurEffectsEnabled': blurEffectsEnabled,
       'appLanguageMode': appLanguageMode.storageValue,
       'cloudServiceEnabled': cloudServiceEnabled,
+      'cloudAutoSyncEnabled': cloudAutoSyncEnabled,
       'privateCloudEnabled': privateCloudEnabled,
       'advancedCloudModeEnabled': advancedCloudModeEnabled,
       'cloudIdentityMode': cloudIdentityMode.name,
@@ -350,6 +356,8 @@ class ReaderSettings {
           AppLanguageModeX.fromStorageValue(json['appLanguageMode'] as String?),
       cloudServiceEnabled:
           json['cloudServiceEnabled'] as bool? ?? defaults.cloudServiceEnabled,
+      cloudAutoSyncEnabled:
+          json['cloudAutoSyncEnabled'] as bool? ?? defaults.cloudAutoSyncEnabled,
       privateCloudEnabled:
           json['privateCloudEnabled'] as bool? ?? defaults.privateCloudEnabled,
       advancedCloudModeEnabled: json['advancedCloudModeEnabled'] as bool? ??

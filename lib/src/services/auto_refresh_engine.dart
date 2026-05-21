@@ -394,18 +394,6 @@ class AutoRefreshEngine {
     );
   }
 
-  _MergeArticlesResult _mergeArticlesForSource({
-    required FeedSource source,
-    required List<ParsedArticleDraft> drafts,
-    required List<Article> currentArticles,
-  }) {
-    return _mergeArticlesForSources(
-      sources: <FeedSource>[source],
-      draftsPerSource: <List<ParsedArticleDraft>>[drafts],
-      currentArticles: currentArticles,
-    );
-  }
-
   _MergeArticlesResult _mergeArticlesForSources({
     required List<FeedSource> sources,
     required List<List<ParsedArticleDraft>> draftsPerSource,

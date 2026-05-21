@@ -87,6 +87,7 @@ void main() {
       expect(find.text('Resonance Account'), findsOneWidget);
       expect(find.text('Personal Info'), findsOneWidget);
       expect(find.text('Cloud Services'), findsOneWidget);
+      expect(find.text('Auto Sync'), findsOneWidget);
       expect(find.text('Sign Out'), findsOneWidget);
       expect(find.text('AbCd1234EfGh56'), findsAtLeastNWidgets(1));
       expect(
@@ -119,6 +120,7 @@ void main() {
 
       expect(find.text('Upload to Origami Cloud'), findsOneWidget);
       expect(find.text('Download from Origami Cloud'), findsOneWidget);
+      expect(find.text('Auto Sync'), findsOneWidget);
       expect(find.text('Current connection: Origami Cloud'), findsOneWidget);
       expect(find.textContaining('provided by CzWorks'), findsNothing);
     });

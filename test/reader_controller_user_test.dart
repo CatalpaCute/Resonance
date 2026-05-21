@@ -31,6 +31,7 @@ void main() {
           officialCloudService: cloudService,
         ),
         rssService: RssService(),
+        contentAutoSyncDebounceDuration: const Duration(milliseconds: 20),
       );
       await controller.initialize();
     });
@@ -252,6 +253,79 @@ void main() {
       final PersistedReaderState persisted = await store.load();
       expect(persisted.feeds.first.id, 'feed_cloud');
       expect(persisted.articles.first.id, 'article_cloud');
+    });
+
+    test('debounces content auto sync into a single upload', () async {
+      cloudService.usersByIdentityCode['AbCd1234EfGh56'] = 'Cloud Catal';
+      await store.saveFeeds(<FeedSource>[
+        FeedSource(
+          id: 'feed_1',
+          title: 'Feed One',
+          url: 'https://example.com/rss.xml',
+          enabled: true,
+          autoRefreshEnabled: false,
+          notificationEnabled: false,
+          autoRefreshIntervalMinutes: 60,
+        ),
+      ]);
+      await store.saveArticles(<Article>[
+        Article(
+          id: 'article_1',
+          sourceId: 'feed_1',
+          title: 'Article One',
+          publishedAt: DateTime.parse('2026-05-18T12:00:00Z'),
+          url: 'https://example.com/article-1',
+          readState: ArticleReadState.unread,
+          starred: false,
+          savedForLater: false,
+        ),
+      ]);
+      await controller.reloadPersistedState();
+      await controller.signInWithIdentityCode('AbCd1234EfGh56');
+      await controller.setCloudServiceEnabled(true);
+      await controller.setCloudAutoSyncEnabled(true);
+
+      await controller.toggleStarred(controller.articles.first);
+      await controller.toggleSavedForLater(controller.articles.first);
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+
+      expect(cloudService.uploadLog, <String>['feeds', 'articles']);
+    });
+
+    test('does not auto sync content while the auto-sync switch is off',
+        () async {
+      cloudService.usersByIdentityCode['AbCd1234EfGh56'] = 'Cloud Catal';
+      await store.saveFeeds(<FeedSource>[
+        FeedSource(
+          id: 'feed_1',
+          title: 'Feed One',
+          url: 'https://example.com/rss.xml',
+          enabled: true,
+          autoRefreshEnabled: false,
+          notificationEnabled: false,
+          autoRefreshIntervalMinutes: 60,
+        ),
+      ]);
+      await store.saveArticles(<Article>[
+        Article(
+          id: 'article_1',
+          sourceId: 'feed_1',
+          title: 'Article One',
+          publishedAt: DateTime.parse('2026-05-18T12:00:00Z'),
+          url: 'https://example.com/article-1',
+          readState: ArticleReadState.unread,
+          starred: false,
+          savedForLater: false,
+        ),
+      ]);
+      await controller.reloadPersistedState();
+      await controller.signInWithIdentityCode('AbCd1234EfGh56');
+      await controller.setCloudServiceEnabled(true);
+
+      await controller.toggleStarred(controller.articles.first);
+      await Future<void>.delayed(const Duration(milliseconds: 80));
+
+      expect(cloudService.uploadLog, isEmpty);
     });
   });
 }
