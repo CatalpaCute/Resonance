@@ -1,0 +1,20 @@
+{
+  "string": [
+    {
+      "name": "EntryAbility_desc",
+      "value": "Resonance entry ability"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "Resonance"
+    },
+    {
+      "name": "internet_permission_reason",
+      "value": "Resonance needs network access to refresh RSS feeds and sync data."
+    },
+    {
+      "name": "module_desc",
+      "value": "Resonance Flutter entry module"
+    }
+  ]
+}

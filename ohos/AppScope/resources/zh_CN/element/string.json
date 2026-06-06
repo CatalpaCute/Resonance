@@ -1,0 +1,12 @@
+{
+  "string": [
+    {
+      "name": "app_name",
+      "value": "回响"
+    },
+    {
+      "name": "app_description",
+      "value": "本地优先的 RSS 阅读器"
+    }
+  ]
+}

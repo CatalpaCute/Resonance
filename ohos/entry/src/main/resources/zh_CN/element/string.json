@@ -1,0 +1,20 @@
+{
+  "string": [
+    {
+      "name": "EntryAbility_desc",
+      "value": "Resonance 应用入口"
+    },
+    {
+      "name": "EntryAbility_label",
+      "value": "回响"
+    },
+    {
+      "name": "internet_permission_reason",
+      "value": "回响需要联网刷新 RSS 订阅并同步数据。"
+    },
+    {
+      "name": "module_desc",
+      "value": "Resonance Flutter 入口模块"
+    }
+  ]
+}

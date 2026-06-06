@@ -1,0 +1,12 @@
+{
+  "modelVersion": "5.0.0",
+  "name": "entry",
+  "version": "0.16.0",
+  "description": "Resonance entry module.",
+  "main": "",
+  "author": "CatalpaCute",
+  "license": "MIT",
+  "dependencies": {
+    "@ohos/flutter_ohos": "file:../har/flutter.har"
+  }
+}

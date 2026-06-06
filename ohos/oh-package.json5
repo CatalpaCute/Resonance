@@ -1,0 +1,15 @@
+{
+  "modelVersion": "5.0.0",
+  "name": "rsstool",
+  "version": "0.16.0",
+  "description": "Resonance is a local-first RSS reader built with Flutter.",
+  "main": "",
+  "author": "CatalpaCute",
+  "license": "MIT",
+  "dependencies": {
+    "@ohos/flutter_ohos": "file:./har/flutter.har"
+  },
+  "overrides": {
+    "@ohos/flutter_ohos": "file:./har/flutter.har"
+  }
+}

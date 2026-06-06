@@ -28,7 +28,8 @@ final bool _useWindowsWindowChrome =
     !kIsWeb && defaultTargetPlatform == TargetPlatform.windows;
 final bool _isNativeMobilePlatform = !kIsWeb &&
     (defaultTargetPlatform == TargetPlatform.android ||
-        defaultTargetPlatform == TargetPlatform.iOS);
+        defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform.name == 'ohos');
 const Duration _shellMotionDuration = Duration(milliseconds: 280);
 const Curve _shellMotionCurve = Cubic(0.18, 0.92, 0.28, 1.0);
 

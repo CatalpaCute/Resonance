@@ -44,3 +44,19 @@ app.*.map.json
 /android/app/profile
 /android/app/release
 /androidpwd
+
+# OpenHarmony / HarmonyOS build artifacts
+/ohos/.hvigor/
+/ohos/.preview/
+/ohos/BuildProfile.ets
+/ohos/build/
+/ohos/har/
+/ohos/local.properties
+/ohos/oh-package-lock.json5
+/ohos/oh_modules/
+/ohos/entry/.preview/
+/ohos/entry/BuildProfile.ets
+/ohos/entry/build/
+/ohos/entry/oh-package-lock.json5
+/ohos/entry/oh_modules/
+/ohos/entry/src/main/resources/rawfile/flutter_assets/

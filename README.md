@@ -13,7 +13,7 @@
   <a href="https://github.com/CatalpaCute/Resonance/releases"><img src="https://img.shields.io/github/v/release/CatalpaCute/Resonance?display_name=tag" alt="Latest Release" /></a>
   <img src="https://img.shields.io/badge/Flutter-3.4%2B-02569B?logo=flutter&logoColor=white" alt="Flutter 3.4+" />
   <img src="https://img.shields.io/badge/Dart-3.4%2B-0175C2?logo=dart&logoColor=white" alt="Dart 3.4+" />
-  <img src="https://img.shields.io/badge/platform-Android%20%7C%20Windows%20%7C%20Linux-6C757D" alt="Platforms" />
+  <img src="https://img.shields.io/badge/platform-Android%20%7C%20HarmonyOS%20%7C%20Windows%20%7C%20Linux-6C757D" alt="Platforms" />
 </p>
 
 ---
@@ -25,7 +25,7 @@
 **Resonance（回声）** 是一个使用 Flutter 构建的 **local RSS 阅读器**。  
 它是一个一个轻量、安静的个人阅读工作台：管理订阅、拉取内容、筛选未读、沉浸阅读，并把阅读状态与设置保存在本地。
 
-当前项目已经完成 RSS / Atom 订阅解析、本地 JSON 持久化、桌面三栏阅读工作区、移动端适配、文章富文本渲染与文本模式、主题与语言切换等核心能力，已经具备比较完整的阅读闭环。
+当前项目已经完成 RSS / Atom 订阅解析、本地 JSON 持久化、桌面三栏阅读工作区、移动端适配、文章富文本渲染与文本模式、主题与语言切换、HarmonyOS / OpenHarmony 打包骨架等核心能力，已经具备比较完整的阅读闭环。
 
 ### 项目定位
 
@@ -55,6 +55,7 @@ Resonance 不是“什么都做”的内容平台，而是一个偏个人效率�
 - 订阅源页部分和添加订阅合并
 - 支持主题切换，并已提供当前主题方案
 - 支持界面语言切换：简体中文 / 繁体中文 / English
+- HarmonyOS / OpenHarmony HAP 工程骨架与打包说明
 - Windows 桌面端窗口样式适配
 - [x] 订阅源文章页选择
 
@@ -80,6 +81,7 @@ Resonance 不是“什么都做”的内容平台，而是一个偏个人效率�
 - `path_provider`
 - `url_launcher`
 - `window_manager`
+- OpenHarmony Flutter SDK（HarmonyOS / OpenHarmony 打包）
 
 ### 项目结构
 
@@ -93,6 +95,7 @@ lib/
    ├─ state/                  # ReaderController 状态管理
    ├─ theme/                  # 主题与调色板
    └─ ui/                     # 应用壳层、页面、组件
+ohos/                         # HarmonyOS / OpenHarmony Stage 模型工程
 ```
 
 ### 运行方式
@@ -123,6 +126,16 @@ flutter build apk --release
 flutter build windows --release
 ```
 
+#### HarmonyOS / OpenHarmony
+
+仓库已提供 `ohos/` 工程骨架，需要使用 OpenHarmony 适配版 Flutter SDK 构建：
+
+```bash
+flutter build hap --release --target-platform ohos-arm64
+```
+
+插件兼容性、签名和环境配置见 [HarmonyOS / OpenHarmony 打包适配](docs/harmony-os-build.md)。
+
 ### 发布说明
 
 仓库当前已经整理了基于 GitHub Release 的发布流程。  
@@ -130,6 +143,8 @@ flutter build windows --release
 
 - Android Release APK
 - Windows Release ZIP
+
+HarmonyOS / OpenHarmony HAP 目前作为手动或专用 CI 构建路径维护，需要使用对应 Flutter SDK 与签名配置。
 
 ---
 
@@ -140,7 +155,7 @@ flutter build windows --release
 **Resonance** is a **local-first RSS reader** built with Flutter.  
 It is designed as a lightweight personal reading workspace: manage subscriptions, fetch articles, filter unread items, read in a focused interface, and keep reading state and preferences locally instead of relying on an account system or backend service.
 
-At its current stage, the project already includes RSS / Atom parsing, local JSON persistence, a desktop three-pane reading workspace, mobile adaptation, rich article rendering with text-only fallback, and theme / language switching. In other words, the core reading loop is already in place.
+At its current stage, the project already includes RSS / Atom parsing, local JSON persistence, a desktop three-pane reading workspace, mobile adaptation, rich article rendering with text-only fallback, theme / language switching, and a HarmonyOS / OpenHarmony packaging scaffold. In other words, the core reading loop is already in place.
 
 ### Positioning
 
@@ -171,6 +186,7 @@ It is a reading-focused product with a few clear priorities:
 - Merged subscription management with the add-subscription flow
 - Theme switching with the current built-in theme set
 - Interface language switching: Simplified Chinese / Traditional Chinese / English
+- HarmonyOS / OpenHarmony HAP project scaffold and build notes
 - Windows desktop window styling support
 
 #### Planned
@@ -196,6 +212,7 @@ It is a reading-focused product with a few clear priorities:
 - `path_provider`
 - `url_launcher`
 - `window_manager`
+- OpenHarmony Flutter SDK for HarmonyOS / OpenHarmony packaging
 
 ### Project structure
 
@@ -209,6 +226,7 @@ lib/
    ├─ state/                  # ReaderController state management
    ├─ theme/                  # themes and palette
    └─ ui/                     # app shell, views, widgets
+ohos/                         # HarmonyOS / OpenHarmony Stage-model project
 ```
 
 ### Getting started
@@ -239,6 +257,16 @@ flutter build apk --release
 flutter build windows --release
 ```
 
+#### HarmonyOS / OpenHarmony
+
+The repository includes an `ohos/` scaffold. Build it with an OpenHarmony-enabled Flutter SDK:
+
+```bash
+flutter build hap --release --target-platform ohos-arm64
+```
+
+See [HarmonyOS / OpenHarmony packaging](docs/harmony-os-build.md) for plugin compatibility, signing, and environment notes.
+
 ### Release notes
 
 The repository is already structured around a GitHub Release based build flow.  
@@ -246,3 +274,5 @@ For formal releases, it can build:
 
 - Android Release APK
 - Windows Release ZIP
+
+HarmonyOS / OpenHarmony HAP is currently maintained as a manual or dedicated-CI build path and requires the matching Flutter SDK and signing config.
