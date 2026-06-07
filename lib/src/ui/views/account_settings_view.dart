@@ -2,7 +2,6 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:m3e_buttons/m3e_buttons.dart';
 
 import '../../localization/app_strings.dart';
 import '../../models/reader_settings.dart';
@@ -31,56 +30,46 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
   static const List<_OfficialCloudUsagePreset> _officialCloudUsagePresets =
       <_OfficialCloudUsagePreset>[
     _OfficialCloudUsagePreset(
-      style: _UsageVisualStyle.filled,
-      shape: M3EButtonShape.square,
+      shape: _OfficialCloudBadgeShape.pentagon,
       width: 164,
       height: 132,
-      hPadding: 18,
-      borderRadius: 24,
       rotationDegrees: -8,
     ),
     _OfficialCloudUsagePreset(
-      style: _UsageVisualStyle.tonal,
-      shape: M3EButtonShape.square,
+      shape: _OfficialCloudBadgeShape.hexagon,
       width: 154,
       height: 138,
-      hPadding: 16,
-      borderRadius: 32,
       rotationDegrees: 10,
     ),
     _OfficialCloudUsagePreset(
-      style: _UsageVisualStyle.elevated,
-      shape: M3EButtonShape.round,
+      shape: _OfficialCloudBadgeShape.octagon,
       width: 172,
       height: 124,
-      hPadding: 20,
-      borderRadius: 40,
       rotationDegrees: -6,
     ),
     _OfficialCloudUsagePreset(
-      style: _UsageVisualStyle.outlined,
-      shape: M3EButtonShape.square,
+      shape: _OfficialCloudBadgeShape.cutCorner,
       width: 160,
       height: 128,
-      hPadding: 18,
-      borderRadius: 18,
       rotationDegrees: 14,
     ),
     _OfficialCloudUsagePreset(
-      style: _UsageVisualStyle.filled,
-      shape: M3EButtonShape.round,
+      shape: _OfficialCloudBadgeShape.skewed,
       width: 176,
       height: 116,
-      hPadding: 22,
-      borderRadius: 48,
       rotationDegrees: 5,
+    ),
+    _OfficialCloudUsagePreset(
+      shape: _OfficialCloudBadgeShape.crystal,
+      width: 166,
+      height: 130,
+      rotationDegrees: -12,
     ),
   ];
   bool _showManualCodeInput = false;
   late final _OfficialCloudUsagePreset _officialCloudUsagePreset =
       _officialCloudUsagePresets[
-        Random().nextInt(_officialCloudUsagePresets.length)
-      ];
+          Random().nextInt(_officialCloudUsagePresets.length)];
 
   ReaderController get controller => widget.controller;
 
@@ -367,10 +356,11 @@ class _AccountSettingsViewState extends State<AccountSettingsView> {
                   ),
                   Switch(
                     value: controller.cloudAutoSyncEnabled,
-                    onChanged: controller.isBusy || !controller.cloudServiceEnabled
-                        ? null
-                        : (bool value) =>
-                            controller.setCloudAutoSyncEnabled(value),
+                    onChanged:
+                        controller.isBusy || !controller.cloudServiceEnabled
+                            ? null
+                            : (bool value) =>
+                                controller.setCloudAutoSyncEnabled(value),
                   ),
                 ],
               ),
@@ -1250,10 +1240,10 @@ class _OfficialCloudUsageVisual extends StatelessWidget {
             children: <Widget>[
               Transform.rotate(
                 angle: preset.rotationRadians,
-                child: _buildUsageButton(
+                child: _OfficialCloudBadgeShapeView(
                   preset: preset,
-                  background: _backgroundForStyle(),
-                  foreground: _foregroundForStyle(),
+                  fill: _badgeFill(),
+                  border: palette.border.withValues(alpha: 0.5),
                 ),
               ),
               IgnorePointer(
@@ -1273,94 +1263,11 @@ class _OfficialCloudUsageVisual extends StatelessWidget {
     );
   }
 
-  Color _backgroundForStyle() {
-    switch (preset.style) {
-      case _UsageVisualStyle.filled:
-        return colorScheme.primaryContainer;
-      case _UsageVisualStyle.tonal:
-        return colorScheme.secondaryContainer;
-      case _UsageVisualStyle.elevated:
-        return colorScheme.surfaceContainerHigh;
-      case _UsageVisualStyle.outlined:
-        return colorScheme.surface;
-    }
-  }
-
-  Color _foregroundForStyle() {
-    switch (preset.style) {
-      case _UsageVisualStyle.filled:
-        return colorScheme.onPrimaryContainer;
-      case _UsageVisualStyle.tonal:
-        return colorScheme.onSecondaryContainer;
-      case _UsageVisualStyle.elevated:
-        return colorScheme.onSurface;
-      case _UsageVisualStyle.outlined:
-        return colorScheme.onSurface;
-    }
-  }
-
-  Widget _buildUsageButton({
-    required _OfficialCloudUsagePreset preset,
-    required Color background,
-    required Color foreground,
-  }) {
-    final M3EButtonDecoration decoration = M3EButtonDecoration.styleFrom(
-      backgroundColor: background,
-      foregroundColor: foreground,
-      borderRadius: preset.borderRadius,
-      side: BorderSide(color: palette.border.withValues(alpha: 0.45)),
-      haptic: M3EHapticFeedback.none,
-    );
-
-    final M3EButtonSize size = M3EButtonSize.custom(
-      width: preset.width,
-      height: preset.height,
-      hPadding: preset.hPadding,
-    );
-    const Widget buttonChild = SizedBox.shrink();
-    switch (preset.style) {
-      case _UsageVisualStyle.filled:
-        return IgnorePointer(
-          child: M3EFilledButton(
-            onPressed: () {},
-            shape: preset.shape,
-            size: size,
-            decoration: decoration,
-            child: buttonChild,
-          ),
-        );
-      case _UsageVisualStyle.tonal:
-        return IgnorePointer(
-          child: M3EFilledButton.tonal(
-            onPressed: () {},
-            shape: preset.shape,
-            size: size,
-            decoration: decoration,
-            child: buttonChild,
-          ),
-        );
-      case _UsageVisualStyle.elevated:
-        return IgnorePointer(
-          child: M3EElevatedButton(
-            onPressed: () {},
-            shape: preset.shape,
-            size: size,
-            decoration: decoration,
-            child: buttonChild,
-          ),
-        );
-      case _UsageVisualStyle.outlined:
-        return IgnorePointer(
-          child: M3EOutlinedButton(
-            onPressed: () {},
-            shape: preset.shape,
-            size: size,
-            decoration: decoration,
-            child: buttonChild,
-          ),
-        );
-    }
-  }
+  Color _badgeFill() => Color.lerp(
+        colorScheme.primaryContainer,
+        colorScheme.surfaceContainerHighest,
+        0.24,
+      )!;
 }
 
 class _CloudModeMenuButton extends StatelessWidget {
@@ -1490,30 +1397,166 @@ class _CloudModeMenuItem extends StatelessWidget {
   }
 }
 
-enum _UsageVisualStyle {
-  filled,
-  tonal,
-  elevated,
-  outlined,
+class _OfficialCloudBadgeShapeView extends StatelessWidget {
+  const _OfficialCloudBadgeShapeView({
+    required this.preset,
+    required this.fill,
+    required this.border,
+  });
+
+  final _OfficialCloudUsagePreset preset;
+  final Color fill;
+  final Color border;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: CustomPaint(
+        size: Size(preset.width, preset.height),
+        painter: _OfficialCloudBadgePainter(
+          shape: preset.shape,
+          fill: fill,
+          border: border,
+        ),
+      ),
+    );
+  }
+}
+
+class _OfficialCloudBadgePainter extends CustomPainter {
+  const _OfficialCloudBadgePainter({
+    required this.shape,
+    required this.fill,
+    required this.border,
+  });
+
+  final _OfficialCloudBadgeShape shape;
+  final Color fill;
+  final Color border;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final Path path = _buildPath(size);
+    final Paint shadowPaint = Paint()
+      ..color = Colors.black.withValues(alpha: 0.08)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
+    canvas
+      ..save()
+      ..translate(0, 3)
+      ..drawPath(path, shadowPaint)
+      ..restore();
+
+    canvas.drawPath(path, Paint()..color = fill);
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = border
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
+  }
+
+  Path _buildPath(Size size) {
+    switch (shape) {
+      case _OfficialCloudBadgeShape.pentagon:
+        return _regularPolygon(size, 5);
+      case _OfficialCloudBadgeShape.hexagon:
+        return _regularPolygon(size, 6);
+      case _OfficialCloudBadgeShape.octagon:
+        return _regularPolygon(size, 8);
+      case _OfficialCloudBadgeShape.cutCorner:
+        return _cutCornerPath(size);
+      case _OfficialCloudBadgeShape.skewed:
+        return _pointsPath(size, <Offset>[
+          Offset(size.width * 0.16, 0),
+          Offset(size.width, size.height * 0.10),
+          Offset(size.width * 0.84, size.height),
+          Offset(0, size.height * 0.90),
+        ]);
+      case _OfficialCloudBadgeShape.crystal:
+        return _pointsPath(size, <Offset>[
+          Offset(size.width * 0.34, 0),
+          Offset(size.width * 0.82, size.height * 0.06),
+          Offset(size.width, size.height * 0.42),
+          Offset(size.width * 0.88, size.height * 0.88),
+          Offset(size.width * 0.44, size.height),
+          Offset(size.width * 0.08, size.height * 0.74),
+          Offset(0, size.height * 0.28),
+        ]);
+    }
+  }
+
+  Path _regularPolygon(Size size, int sides) {
+    final Offset center = Offset(size.width / 2, size.height / 2);
+    final double radiusX = size.width / 2;
+    final double radiusY = size.height / 2;
+    final Path path = Path();
+    for (int index = 0; index < sides; index++) {
+      final double angle = -pi / 2 + index * 2 * pi / sides;
+      final Offset point = Offset(
+        center.dx + cos(angle) * radiusX,
+        center.dy + sin(angle) * radiusY,
+      );
+      if (index == 0) {
+        path.moveTo(point.dx, point.dy);
+      } else {
+        path.lineTo(point.dx, point.dy);
+      }
+    }
+    return path..close();
+  }
+
+  Path _cutCornerPath(Size size) {
+    final double insetX = size.width * 0.16;
+    final double insetY = size.height * 0.16;
+    return _pointsPath(size, <Offset>[
+      Offset(insetX, 0),
+      Offset(size.width - insetX, 0),
+      Offset(size.width, insetY),
+      Offset(size.width, size.height - insetY),
+      Offset(size.width - insetX, size.height),
+      Offset(insetX, size.height),
+      Offset(0, size.height - insetY),
+      Offset(0, insetY),
+    ]);
+  }
+
+  Path _pointsPath(Size size, List<Offset> points) {
+    final Path path = Path()..moveTo(points.first.dx, points.first.dy);
+    for (final Offset point in points.skip(1)) {
+      path.lineTo(point.dx, point.dy);
+    }
+    return path..close();
+  }
+
+  @override
+  bool shouldRepaint(_OfficialCloudBadgePainter oldDelegate) {
+    return shape != oldDelegate.shape ||
+        fill != oldDelegate.fill ||
+        border != oldDelegate.border;
+  }
+}
+
+enum _OfficialCloudBadgeShape {
+  pentagon,
+  hexagon,
+  octagon,
+  cutCorner,
+  skewed,
+  crystal,
 }
 
 class _OfficialCloudUsagePreset {
   const _OfficialCloudUsagePreset({
-    required this.style,
     required this.shape,
     required this.width,
     required this.height,
-    required this.hPadding,
-    required this.borderRadius,
     required this.rotationDegrees,
   });
 
-  final _UsageVisualStyle style;
-  final M3EButtonShape shape;
+  final _OfficialCloudBadgeShape shape;
   final double width;
   final double height;
-  final double hPadding;
-  final double borderRadius;
   final double rotationDegrees;
 
   double get rotationRadians => rotationDegrees * pi / 180;

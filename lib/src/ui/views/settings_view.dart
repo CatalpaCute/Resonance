@@ -651,8 +651,6 @@ class SettingsViewState extends State<SettingsView> {
       case TargetPlatform.macOS:
       case TargetPlatform.fuchsia:
         return strings.autoRefreshSettingsHintDefault;
-      default:
-        return strings.autoRefreshSettingsHintDefault;
     }
   }
 }
