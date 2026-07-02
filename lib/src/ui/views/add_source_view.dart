@@ -11,6 +11,7 @@ import '../widgets/auto_refresh_interval_picker.dart';
 import '../widgets/desktop_smooth_scroll.dart';
 import '../widgets/feed_editor_dialog.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/network_image_box.dart';
 
 class AddSourceView extends StatefulWidget {
   const AddSourceView({
@@ -823,23 +824,15 @@ class _FeedAvatar extends StatelessWidget {
         borderRadius: BorderRadius.circular(10),
       ),
       clipBehavior: Clip.antiAlias,
-      child: feed.iconUrl == null
-          ? Icon(
-              Icons.rss_feed_rounded,
-              size: 18,
-              color: Theme.of(context).colorScheme.primary,
-            )
-          : Image.network(
-              feed.iconUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) {
-                return Icon(
-                  Icons.public_rounded,
-                  size: 18,
-                  color: Theme.of(context).colorScheme.primary,
-                );
-              },
-            ),
+      child: NetworkImageBox(
+        url: feed.iconUrl,
+        placeholderIcon: feed.iconUrl == null
+            ? Icons.rss_feed_rounded
+            : Icons.public_rounded,
+        iconColor: Theme.of(context).colorScheme.primary,
+        iconSize: 18,
+        decodeWidth: compact ? 34 : 38,
+      ),
     );
   }
 }

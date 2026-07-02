@@ -6,6 +6,7 @@ import '../../models/app_route.dart';
 import '../../models/article.dart';
 import '../../models/reader_settings.dart';
 import '../../state/reader_controller.dart';
+import '../../theme/app_dimens.dart';
 import '../../theme/app_theme.dart';
 import 'desktop_smooth_scroll.dart';
 import 'motion.dart';
@@ -156,6 +157,21 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
     return estimatedIndex.clamp(0, articleCount - 1);
   }
 
+  bool _canPullToRefresh(AppRouteId route) {
+    return route == AppRouteId.allArticles ||
+        route == AppRouteId.sourceDetail ||
+        route == AppRouteId.sources;
+  }
+
+  Future<void> _handlePullToRefresh(ReaderController controller) async {
+    final String? sourceId = controller.activeSourceId;
+    if (sourceId == null) {
+      await controller.refreshAllFeeds();
+    } else {
+      await controller.refreshSource(sourceId);
+    }
+  }
+
   void _ensureArticleVisible(int index) {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final BuildContext? context = _activeItemKey.currentContext;
@@ -280,71 +296,82 @@ class _ArticleListPanelState extends State<ArticleListPanel> {
             )
           else
             Expanded(
-              child: DesktopSmoothScroll(
-                controller: _effectiveScrollController,
-                keyboardScrollId: 'article-list',
-                keyboardScrollOrder: 1,
-                onKeyboardEvent: (KeyEvent event) {
-                  return _handleArticleListKeyboard(
-                    event,
-                    articles,
-                    useSeparateReaderRoute,
-                  );
-                },
-                child: ListView.separated(
-                  physics: DesktopSmoothScroll.physics,
-                  padding: EdgeInsets.only(
-                    bottom: compactMobileListRoute ? 18 : 8,
-                  ),
-                  key: PageStorageKey<String>(
-                    'article-list-${route.storageValue}-${compact ? 'compact' : 'desktop'}',
-                  ),
+              child: RefreshIndicator(
+                // 仅移动端、且当前路由可刷新时启用下拉刷新；桌面端有刷新按钮与
+                // 自动刷新，notificationPredicate 返回 false 即完全旁路该手势。
+                onRefresh: () => _handlePullToRefresh(controller),
+                notificationPredicate: (_) =>
+                    compact && _canPullToRefresh(route),
+                child: DesktopSmoothScroll(
                   controller: _effectiveScrollController,
-                  itemCount: articles.length,
-                  separatorBuilder: (_, __) {
-                    if (useLayeredCards) {
-                      return SizedBox(height: compactMobileListRoute ? 14 : 10);
-                    }
-                    return Divider(
-                      height: 1,
-                      color: AppTheme.paletteOf(context).divider,
+                  keyboardScrollId: 'article-list',
+                  keyboardScrollOrder: 1,
+                  onKeyboardEvent: (KeyEvent event) {
+                    return _handleArticleListKeyboard(
+                      event,
+                      articles,
+                      useSeparateReaderRoute,
                     );
                   },
-                  itemBuilder: (BuildContext context, int index) {
-                    final Article article = articles[index];
-                    final bool active = activeArticleId == article.id;
-                    return KeyedSubtree(
-                      key: active ? _activeItemKey : ValueKey<String>(article.id),
-                      child: _ArticleTile(
-                        compact: compact,
-                        article: article,
-                        active: active,
-                        sourceTitle: controller.sourceTitleForArticle(article),
-                        density: controller.settings.articleListDensity,
-                        mobileEmphasis: compactMobileListRoute,
-                        hideBottomActions: mobileHomeRestyled,
-                        layered: useLayeredCards,
-                        onOpen: () {
-                          setState(() {
-                            _keyboardSelectedArticleId = article.id;
-                          });
-                          controller.selectArticle(
-                            article,
-                            openInReaderRoute: useSeparateReaderRoute,
-                          );
-                        },
-                        onStarToggle: () {
-                          controller.toggleStarred(article);
-                        },
-                        onSaveToggle: () {
-                          controller.toggleSavedForLater(article);
-                        },
-                        onReadToggle: () {
-                          controller.toggleReadState(article);
-                        },
-                      ),
-                    );
-                  },
+                  child: ListView.separated(
+                    physics: DesktopSmoothScroll.physics,
+                    padding: EdgeInsets.only(
+                      bottom: compactMobileListRoute ? 18 : 8,
+                    ),
+                    key: PageStorageKey<String>(
+                      'article-list-${route.storageValue}-${compact ? 'compact' : 'desktop'}',
+                    ),
+                    controller: _effectiveScrollController,
+                    itemCount: articles.length,
+                    separatorBuilder: (_, __) {
+                      if (useLayeredCards) {
+                        return SizedBox(
+                            height: compactMobileListRoute ? 14 : 10);
+                      }
+                      return Divider(
+                        height: 1,
+                        color: AppTheme.paletteOf(context).divider,
+                      );
+                    },
+                    itemBuilder: (BuildContext context, int index) {
+                      final Article article = articles[index];
+                      final bool active = activeArticleId == article.id;
+                      return KeyedSubtree(
+                        key: active
+                            ? _activeItemKey
+                            : ValueKey<String>(article.id),
+                        child: _ArticleTile(
+                          compact: compact,
+                          article: article,
+                          active: active,
+                          sourceTitle:
+                              controller.sourceTitleForArticle(article),
+                          density: controller.settings.articleListDensity,
+                          mobileEmphasis: compactMobileListRoute,
+                          hideBottomActions: mobileHomeRestyled,
+                          layered: useLayeredCards,
+                          onOpen: () {
+                            setState(() {
+                              _keyboardSelectedArticleId = article.id;
+                            });
+                            controller.selectArticle(
+                              article,
+                              openInReaderRoute: useSeparateReaderRoute,
+                            );
+                          },
+                          onStarToggle: () {
+                            controller.toggleStarred(article);
+                          },
+                          onSaveToggle: () {
+                            controller.toggleSavedForLater(article);
+                          },
+                          onReadToggle: () {
+                            controller.toggleReadState(article);
+                          },
+                        ),
+                      );
+                    },
+                  ),
                 ),
               ),
             ),
@@ -408,7 +435,9 @@ class _ArticleTile extends StatelessWidget {
     final int titleLines = mobileEmphasis ? 3 : 2;
     final int summaryLines =
         mobileEmphasis ? 3 : (density == ArticleListDensity.compact ? 2 : 3);
-    final double cardRadius = mobileEmphasis ? 18 : (compact ? 16 : 14);
+    final double cardRadius = mobileEmphasis
+        ? AppDimens.radiusLg
+        : (compact ? 16 : AppDimens.radiusMd);
     final bool showBottomActions = !hideBottomActions;
     final Color cardColor = layered
         ? palette.panelBackground
@@ -566,6 +595,7 @@ class _ArticleTile extends StatelessWidget {
                           ? Icons.star_rounded
                           : Icons.star_border_rounded,
                       active: article.starred,
+                      compact: compact,
                       tooltip: strings.starAction(article.starred),
                       onTap: onStarToggle,
                     ),
@@ -574,6 +604,7 @@ class _ArticleTile extends StatelessWidget {
                           ? Icons.schedule_rounded
                           : Icons.schedule_outlined,
                       active: article.savedForLater,
+                      compact: compact,
                       tooltip: strings.readLaterAction(article.savedForLater),
                       onTap: onSaveToggle,
                     ),
@@ -582,6 +613,7 @@ class _ArticleTile extends StatelessWidget {
                           ? Icons.mark_email_unread_outlined
                           : Icons.done_rounded,
                       active: article.isRead,
+                      compact: compact,
                       tooltip: strings.readStateAction(article.isRead),
                       onTap: onReadToggle,
                     ),
@@ -630,33 +662,75 @@ class _ReadMarker extends StatelessWidget {
   }
 }
 
-class _TinyAction extends StatelessWidget {
+class _TinyAction extends StatefulWidget {
   const _TinyAction({
     required this.icon,
     required this.active,
+    required this.compact,
     required this.tooltip,
     required this.onTap,
   });
 
   final IconData icon;
   final bool active;
+  final bool compact;
   final String tooltip;
   final VoidCallback onTap;
 
   @override
+  State<_TinyAction> createState() => _TinyActionState();
+}
+
+class _TinyActionState extends State<_TinyAction>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: kFluidMotionFastDuration,
+  );
+  late final Animation<double> _scale = Tween<double>(
+    begin: 1,
+    end: 1.32,
+  ).animate(CurvedAnimation(parent: _controller, curve: kFluidMotionCurve));
+
+  @override
+  void didUpdateWidget(covariant _TinyAction oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // 只在切到"激活态"时回弹一次：点亮收藏/已读给出即时反馈，取消时不弹。
+    if (widget.active && !oldWidget.active) {
+      _controller.forward(from: 0).then((_) {
+        if (mounted) {
+          _controller.reverse();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final ReaderPalette palette = AppTheme.paletteOf(context);
+    // 移动端把触控区放大到无障碍最小目标，桌面端保持紧凑。
+    final double target =
+        widget.compact ? AppDimens.minTouchTarget : 28;
 
     return IconButton(
       visualDensity: VisualDensity.compact,
-      splashRadius: 16,
-      constraints: const BoxConstraints.tightFor(width: 28, height: 28),
-      onPressed: onTap,
-      icon: Icon(icon, size: 16),
-      color: active
+      splashRadius: target * 0.5,
+      constraints: BoxConstraints.tightFor(width: target, height: target),
+      onPressed: widget.onTap,
+      icon: ScaleTransition(
+        scale: _scale,
+        child: Icon(widget.icon, size: 16),
+      ),
+      color: widget.active
           ? Theme.of(context).colorScheme.primary
           : palette.secondaryText,
-      tooltip: tooltip,
+      tooltip: widget.tooltip,
     );
   }
 }

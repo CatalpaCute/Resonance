@@ -418,6 +418,64 @@ class SettingsViewState extends State<SettingsView> {
             },
           ),
         ),
+        _SettingsFlatSection(
+          title: strings.readerFontSizeTitle,
+          child: _SettingsChoiceBar<ReaderFontSize>(
+            direction: compact ? Axis.vertical : Axis.horizontal,
+            value: controller.settings.readerFontSize,
+            options: ReaderFontSize.values
+                .map(
+                  (ReaderFontSize value) => _SettingsChoiceOption<ReaderFontSize>(
+                    value: value,
+                    label: strings.readerFontSizeLabel(value),
+                  ),
+                )
+                .toList(),
+            onChanged: (ReaderFontSize value) {
+              controller.setReaderFontSize(value);
+            },
+          ),
+        ),
+        _SettingsFlatSection(
+          title: strings.readerLineHeightTitle,
+          child: _SettingsChoiceBar<ReaderLineHeight>(
+            direction: compact ? Axis.vertical : Axis.horizontal,
+            value: controller.settings.readerLineHeight,
+            options: ReaderLineHeight.values
+                .map(
+                  (ReaderLineHeight value) =>
+                      _SettingsChoiceOption<ReaderLineHeight>(
+                    value: value,
+                    label: strings.readerLineHeightLabel(value),
+                  ),
+                )
+                .toList(),
+            onChanged: (ReaderLineHeight value) {
+              controller.setReaderLineHeight(value);
+            },
+          ),
+        ),
+        if (wideLayout)
+          _SettingsFlatSection(
+            title: strings.readerContentWidthTitle,
+            subtitle: strings.readerContentWidthHint,
+            child: _SettingsChoiceBar<ReaderContentWidth>(
+              direction: Axis.horizontal,
+              value: controller.settings.readerContentWidth,
+              options: ReaderContentWidth.values
+                  .map(
+                    (ReaderContentWidth value) =>
+                        _SettingsChoiceOption<ReaderContentWidth>(
+                      value: value,
+                      label: strings.readerContentWidthLabel(value),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (ReaderContentWidth value) {
+                controller.setReaderContentWidth(value);
+              },
+            ),
+          ),
         if (!wideLayout) ...<Widget>[
           _buildMobileSidebarSection(context, compact: compact),
           _SettingsFlatSection(

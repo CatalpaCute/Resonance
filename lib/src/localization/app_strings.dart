@@ -419,6 +419,51 @@ class AppStrings {
         zhHant: '完整版保留圖片與媒體佔位，純文字只顯示段落與換行。',
         en: 'Rich mode keeps images and media placeholders. Text-only mode shows paragraphs and line breaks only.',
       );
+  String get readerFontSizeTitle =>
+      _text(zhCn: '正文字号', zhHant: '正文字級', en: 'Reading Font Size');
+  String readerFontSizeLabel(ReaderFontSize size) {
+    switch (size) {
+      case ReaderFontSize.small:
+        return _text(zhCn: '小', zhHant: '小', en: 'Small');
+      case ReaderFontSize.medium:
+        return _text(zhCn: '标准', zhHant: '標準', en: 'Medium');
+      case ReaderFontSize.large:
+        return _text(zhCn: '大', zhHant: '大', en: 'Large');
+      case ReaderFontSize.xlarge:
+        return _text(zhCn: '特大', zhHant: '特大', en: 'X-Large');
+    }
+  }
+
+  String get readerLineHeightTitle =>
+      _text(zhCn: '正文行距', zhHant: '正文行距', en: 'Line Spacing');
+  String readerLineHeightLabel(ReaderLineHeight lineHeight) {
+    switch (lineHeight) {
+      case ReaderLineHeight.compact:
+        return _text(zhCn: '紧凑', zhHant: '緊湊', en: 'Compact');
+      case ReaderLineHeight.normal:
+        return _text(zhCn: '标准', zhHant: '標準', en: 'Normal');
+      case ReaderLineHeight.relaxed:
+        return _text(zhCn: '宽松', zhHant: '寬鬆', en: 'Relaxed');
+    }
+  }
+
+  String get readerContentWidthTitle =>
+      _text(zhCn: '正文宽度', zhHant: '正文寬度', en: 'Content Width');
+  String get readerContentWidthHint => _text(
+        zhCn: '仅在桌面宽屏下生效，控制阅读区的最大宽度。',
+        zhHant: '僅在桌面寬螢幕下生效，控制閱讀區的最大寬度。',
+        en: 'Applies on wide desktop layouts only; limits the maximum width of the reading area.',
+      );
+  String readerContentWidthLabel(ReaderContentWidth width) {
+    switch (width) {
+      case ReaderContentWidth.narrow:
+        return _text(zhCn: '窄', zhHant: '窄', en: 'Narrow');
+      case ReaderContentWidth.medium:
+        return _text(zhCn: '标准', zhHant: '標準', en: 'Medium');
+      case ReaderContentWidth.wide:
+        return _text(zhCn: '宽', zhHant: '寬', en: 'Wide');
+    }
+  }
   String get subscriptionNotificationModeTitle => _text(
         zhCn: '订阅通知方式',
         zhHant: '訂閱通知方式',

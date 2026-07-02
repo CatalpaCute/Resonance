@@ -22,6 +22,7 @@ import 'widgets/article_reader_panel.dart';
 import 'widgets/desktop_smooth_scroll.dart';
 import 'widgets/motion.dart';
 import 'widgets/navigation_sidebar.dart';
+import 'widgets/network_image_box.dart';
 import 'widgets/source_panel.dart';
 
 final bool _useWindowsWindowChrome =
@@ -3376,23 +3377,15 @@ class _SearchSourceAvatar extends StatelessWidget {
         borderRadius: BorderRadius.circular(14),
       ),
       clipBehavior: Clip.antiAlias,
-      child: iconUrl == null
-          ? Icon(
-              Icons.rss_feed_rounded,
-              color: Theme.of(context).colorScheme.primary,
-              size: size * 0.46,
-            )
-          : Image.network(
-              iconUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) {
-                return Icon(
-                  Icons.public_rounded,
-                  color: Theme.of(context).colorScheme.primary,
-                  size: size * 0.46,
-                );
-              },
-            ),
+      child: NetworkImageBox(
+        url: iconUrl,
+        placeholderIcon: iconUrl == null
+            ? Icons.rss_feed_rounded
+            : Icons.public_rounded,
+        iconColor: Theme.of(context).colorScheme.primary,
+        iconSize: size * 0.46,
+        decodeWidth: size,
+      ),
     );
   }
 }
@@ -3754,23 +3747,15 @@ class _MobileHeaderSourceAvatar extends StatelessWidget {
         borderRadius: BorderRadius.circular(mobileRestyled ? 12 : 9),
       ),
       clipBehavior: Clip.antiAlias,
-      child: iconUrl == null
-          ? Icon(
-              Icons.rss_feed_rounded,
-              size: mobileRestyled ? 17 : 15,
-              color: Theme.of(context).colorScheme.primary,
-            )
-          : Image.network(
-              iconUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) {
-                return Icon(
-                  Icons.public_rounded,
-                  size: mobileRestyled ? 17 : 15,
-                  color: Theme.of(context).colorScheme.primary,
-                );
-              },
-            ),
+      child: NetworkImageBox(
+        url: iconUrl,
+        placeholderIcon: iconUrl == null
+            ? Icons.rss_feed_rounded
+            : Icons.public_rounded,
+        iconColor: Theme.of(context).colorScheme.primary,
+        iconSize: mobileRestyled ? 17 : 15,
+        decodeWidth: size,
+      ),
     );
   }
 }

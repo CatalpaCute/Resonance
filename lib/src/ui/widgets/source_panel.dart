@@ -10,6 +10,7 @@ import '../../state/reader_controller.dart';
 import '../../theme/app_theme.dart';
 import 'desktop_smooth_scroll.dart';
 import 'glass_card.dart';
+import 'network_image_box.dart';
 
 const Duration _compactFilterMotionDuration = Duration(milliseconds: 220);
 const Curve _compactFilterMotionCurve = Curves.easeOutCubic;
@@ -1197,25 +1198,17 @@ class _SourceTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 clipBehavior: Clip.antiAlias,
-                child: iconUrl == null
-                    ? Icon(
-                        source == null
-                            ? Icons.layers_rounded
-                            : Icons.public_rounded,
-                        size: 18,
-                        color: Theme.of(context).colorScheme.primary,
-                      )
-                    : Image.network(
-                        iconUrl,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) {
-                          return Icon(
-                            Icons.public_rounded,
-                            size: 18,
-                            color: Theme.of(context).colorScheme.primary,
-                          );
-                        },
-                      ),
+                child: NetworkImageBox(
+                  url: iconUrl,
+                  placeholderIcon: iconUrl == null
+                      ? (source == null
+                          ? Icons.layers_rounded
+                          : Icons.public_rounded)
+                      : Icons.public_rounded,
+                  iconColor: Theme.of(context).colorScheme.primary,
+                  iconSize: 18,
+                  decodeWidth: compact ? 30 : 34,
+                ),
               ),
               SizedBox(width: compact ? 8 : 10),
               Expanded(

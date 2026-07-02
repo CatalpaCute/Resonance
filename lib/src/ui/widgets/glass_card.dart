@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../models/reader_settings.dart';
+import '../../theme/app_dimens.dart';
 import '../../theme/app_theme.dart';
 
 enum GlassCardSurface {
@@ -23,8 +24,8 @@ class GlassCard extends StatelessWidget {
   const GlassCard({
     super.key,
     required this.child,
-    this.padding = const EdgeInsets.all(18),
-    this.radius = 18,
+    this.padding = const EdgeInsets.all(AppDimens.radiusLg),
+    this.radius = AppDimens.radiusLg,
     this.margin,
     this.surface = GlassCardSurface.layered,
   });

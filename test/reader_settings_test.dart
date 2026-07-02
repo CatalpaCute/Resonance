@@ -20,6 +20,9 @@ void main() {
         desktopSidebarCollapsed: true,
         articleListDensity: ArticleListDensity.compact,
         articleContentMode: ArticleContentMode.textOnly,
+        readerFontSize: ReaderFontSize.large,
+        readerLineHeight: ReaderLineHeight.relaxed,
+        readerContentWidth: ReaderContentWidth.wide,
         blurEffectsEnabled: false,
         appLanguageMode: AppLanguageMode.zhHant,
         cloudServiceEnabled: true,
@@ -63,6 +66,9 @@ void main() {
       expect(restored.desktopSidebarCollapsed, isTrue);
       expect(restored.articleListDensity, ArticleListDensity.compact);
       expect(restored.articleContentMode, ArticleContentMode.textOnly);
+      expect(restored.readerFontSize, ReaderFontSize.large);
+      expect(restored.readerLineHeight, ReaderLineHeight.relaxed);
+      expect(restored.readerContentWidth, ReaderContentWidth.wide);
       expect(restored.blurEffectsEnabled, isFalse);
       expect(restored.appLanguageMode, AppLanguageMode.zhHant);
       expect(restored.cloudServiceEnabled, isTrue);
@@ -86,6 +92,18 @@ void main() {
 
       expect(restored.startupHomeMode, ReaderSettings.defaults.startupHomeMode);
       expect(restored.themeId, ReaderSettings.defaults.themeId);
+      expect(
+        restored.readerFontSize,
+        ReaderSettings.defaults.readerFontSize,
+      );
+      expect(
+        restored.readerLineHeight,
+        ReaderSettings.defaults.readerLineHeight,
+      );
+      expect(
+        restored.readerContentWidth,
+        ReaderSettings.defaults.readerContentWidth,
+      );
       expect(
         restored.mobileSidebarMode,
         ReaderSettings.defaults.mobileSidebarMode,

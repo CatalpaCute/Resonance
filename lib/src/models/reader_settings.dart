@@ -45,6 +45,69 @@ enum ArticleContentMode {
   textOnly,
 }
 
+enum ReaderFontSize {
+  small,
+  medium,
+  large,
+  xlarge,
+}
+
+enum ReaderLineHeight {
+  compact,
+  normal,
+  relaxed,
+}
+
+enum ReaderContentWidth {
+  narrow,
+  medium,
+  wide,
+}
+
+/// 阅读排版的取值映射，集中在模型层，UI 只消费结果。
+extension ReaderFontSizeX on ReaderFontSize {
+  /// 相对基准字号的缩放系数（medium 即当前默认观感）。
+  double get scale {
+    switch (this) {
+      case ReaderFontSize.small:
+        return 0.9;
+      case ReaderFontSize.medium:
+        return 1.0;
+      case ReaderFontSize.large:
+        return 1.13;
+      case ReaderFontSize.xlarge:
+        return 1.27;
+    }
+  }
+}
+
+extension ReaderLineHeightX on ReaderLineHeight {
+  double get value {
+    switch (this) {
+      case ReaderLineHeight.compact:
+        return 1.5;
+      case ReaderLineHeight.normal:
+        return 1.78;
+      case ReaderLineHeight.relaxed:
+        return 2.0;
+    }
+  }
+}
+
+extension ReaderContentWidthX on ReaderContentWidth {
+  /// 桌面端正文最大宽度（逻辑像素）；移动端忽略，始终占满。
+  double get maxWidth {
+    switch (this) {
+      case ReaderContentWidth.narrow:
+        return 620;
+      case ReaderContentWidth.medium:
+        return 760;
+      case ReaderContentWidth.wide:
+        return 920;
+    }
+  }
+}
+
 enum AutoRefreshMode {
   allOff,
   partial,
@@ -87,6 +150,9 @@ class ReaderSettings {
     required this.desktopSidebarCollapsed,
     required this.articleListDensity,
     required this.articleContentMode,
+    required this.readerFontSize,
+    required this.readerLineHeight,
+    required this.readerContentWidth,
     required this.blurEffectsEnabled,
     required this.appLanguageMode,
     required this.cloudServiceEnabled,
@@ -118,6 +184,9 @@ class ReaderSettings {
   final bool desktopSidebarCollapsed;
   final ArticleListDensity articleListDensity;
   final ArticleContentMode articleContentMode;
+  final ReaderFontSize readerFontSize;
+  final ReaderLineHeight readerLineHeight;
+  final ReaderContentWidth readerContentWidth;
   final bool blurEffectsEnabled;
   final AppLanguageMode appLanguageMode;
   final bool cloudServiceEnabled;
@@ -152,6 +221,9 @@ class ReaderSettings {
     desktopSidebarCollapsed: false,
     articleListDensity: ArticleListDensity.comfortable,
     articleContentMode: ArticleContentMode.rich,
+    readerFontSize: ReaderFontSize.medium,
+    readerLineHeight: ReaderLineHeight.normal,
+    readerContentWidth: ReaderContentWidth.medium,
     blurEffectsEnabled: true,
     appLanguageMode: AppLanguageMode.system,
     cloudServiceEnabled: false,
@@ -195,6 +267,9 @@ class ReaderSettings {
     bool? desktopSidebarCollapsed,
     ArticleListDensity? articleListDensity,
     ArticleContentMode? articleContentMode,
+    ReaderFontSize? readerFontSize,
+    ReaderLineHeight? readerLineHeight,
+    ReaderContentWidth? readerContentWidth,
     bool? blurEffectsEnabled,
     AppLanguageMode? appLanguageMode,
     bool? cloudServiceEnabled,
@@ -233,6 +308,9 @@ class ReaderSettings {
           desktopSidebarCollapsed ?? this.desktopSidebarCollapsed,
       articleListDensity: articleListDensity ?? this.articleListDensity,
       articleContentMode: articleContentMode ?? this.articleContentMode,
+      readerFontSize: readerFontSize ?? this.readerFontSize,
+      readerLineHeight: readerLineHeight ?? this.readerLineHeight,
+      readerContentWidth: readerContentWidth ?? this.readerContentWidth,
       blurEffectsEnabled: blurEffectsEnabled ?? this.blurEffectsEnabled,
       appLanguageMode: appLanguageMode ?? this.appLanguageMode,
       cloudServiceEnabled: cloudServiceEnabled ?? this.cloudServiceEnabled,
@@ -270,6 +348,9 @@ class ReaderSettings {
       'desktopSidebarCollapsed': desktopSidebarCollapsed,
       'articleListDensity': articleListDensity.name,
       'articleContentMode': articleContentMode.name,
+      'readerFontSize': readerFontSize.name,
+      'readerLineHeight': readerLineHeight.name,
+      'readerContentWidth': readerContentWidth.name,
       'blurEffectsEnabled': blurEffectsEnabled,
       'appLanguageMode': appLanguageMode.storageValue,
       'cloudServiceEnabled': cloudServiceEnabled,
@@ -349,6 +430,18 @@ class ReaderSettings {
       articleContentMode: ArticleContentMode.values.firstWhere(
         (ArticleContentMode value) => value.name == json['articleContentMode'],
         orElse: () => defaults.articleContentMode,
+      ),
+      readerFontSize: ReaderFontSize.values.firstWhere(
+        (ReaderFontSize value) => value.name == json['readerFontSize'],
+        orElse: () => defaults.readerFontSize,
+      ),
+      readerLineHeight: ReaderLineHeight.values.firstWhere(
+        (ReaderLineHeight value) => value.name == json['readerLineHeight'],
+        orElse: () => defaults.readerLineHeight,
+      ),
+      readerContentWidth: ReaderContentWidth.values.firstWhere(
+        (ReaderContentWidth value) => value.name == json['readerContentWidth'],
+        orElse: () => defaults.readerContentWidth,
       ),
       blurEffectsEnabled:
           json['blurEffectsEnabled'] as bool? ?? defaults.blurEffectsEnabled,

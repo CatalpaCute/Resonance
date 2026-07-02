@@ -8,10 +8,12 @@ import '../../localization/app_strings.dart';
 import '../../models/article.dart';
 import '../../models/reader_settings.dart';
 import '../../state/reader_controller.dart';
+import '../../theme/app_dimens.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/reader_progress.dart';
 import 'desktop_smooth_scroll.dart';
 import 'motion.dart';
+import 'network_image_box.dart';
 
 class ArticleReaderPanel extends StatelessWidget {
   const ArticleReaderPanel({
@@ -193,6 +195,8 @@ class _MobileArticleReaderState extends State<_MobileArticleReader> {
                       compact: true,
                       contentMode:
                           widget.controller.settings.articleContentMode,
+                      fontSize: widget.controller.settings.readerFontSize,
+                      lineHeight: widget.controller.settings.readerLineHeight,
                       strings: strings,
                       onOpenUrl: widget.onOpenOriginal,
                       onCompleteReadLater: widget.showReadLaterDone
@@ -393,7 +397,10 @@ class _DesktopArticleReaderState extends State<_DesktopArticleReader> {
                   child: Align(
                     alignment: Alignment.topCenter,
                     child: ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 760),
+                      constraints: BoxConstraints(
+                        maxWidth: widget
+                            .controller.settings.readerContentWidth.maxWidth,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: <Widget>[
@@ -425,6 +432,10 @@ class _DesktopArticleReaderState extends State<_DesktopArticleReader> {
                             compact: false,
                             contentMode:
                                 widget.controller.settings.articleContentMode,
+                            fontSize:
+                                widget.controller.settings.readerFontSize,
+                            lineHeight:
+                                widget.controller.settings.readerLineHeight,
                             strings: strings,
                             onOpenUrl: widget.onOpenOriginal,
                             onCompleteReadLater: widget.showReadLaterDone
@@ -983,23 +994,15 @@ class _SourceAvatar extends StatelessWidget {
         borderRadius: BorderRadius.circular(999),
       ),
       clipBehavior: Clip.antiAlias,
-      child: iconUrl == null
-          ? Icon(
-              Icons.rss_feed_rounded,
-              size: 14,
-              color: Theme.of(context).colorScheme.primary,
-            )
-          : Image.network(
-              iconUrl!,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) {
-                return Icon(
-                  Icons.public_rounded,
-                  size: 14,
-                  color: Theme.of(context).colorScheme.primary,
-                );
-              },
-            ),
+      child: NetworkImageBox(
+        url: iconUrl,
+        placeholderIcon: iconUrl == null
+            ? Icons.rss_feed_rounded
+            : Icons.public_rounded,
+        iconColor: Theme.of(context).colorScheme.primary,
+        iconSize: 14,
+        decodeWidth: 24,
+      ),
     );
   }
 }
@@ -1039,6 +1042,8 @@ class _ReaderContent extends StatelessWidget {
     required this.article,
     required this.compact,
     required this.contentMode,
+    required this.fontSize,
+    required this.lineHeight,
     required this.strings,
     required this.onOpenUrl,
     this.onCompleteReadLater,
@@ -1047,6 +1052,8 @@ class _ReaderContent extends StatelessWidget {
   final Article article;
   final bool compact;
   final ArticleContentMode contentMode;
+  final ReaderFontSize fontSize;
+  final ReaderLineHeight lineHeight;
   final AppStrings strings;
   final Future<void> Function(String url) onOpenUrl;
   final Future<void> Function()? onCompleteReadLater;
@@ -1058,10 +1065,16 @@ class _ReaderContent extends StatelessWidget {
     final ReaderPalette palette = AppTheme.paletteOf(context);
     final bool useTextOnly = contentMode == ArticleContentMode.textOnly;
     final String linkColor = _cssColor(palette.linkText);
+    final String codeBgColor = _cssColor(palette.panelMutedBackground);
+    final String tableBorderColor = _cssColor(palette.border);
+    // 基准字号按平台给定，再乘以用户选择的缩放系数；行距直接取用户设置。
+    final double baseFontSize =
+        compact ? (Theme.of(context).textTheme.bodyLarge?.fontSize ?? 16) : 18;
+    final double scaledFontSize = baseFontSize * fontSize.scale;
     final TextStyle? readerStyle =
         Theme.of(context).textTheme.bodyLarge?.copyWith(
-              fontSize: compact ? null : 18,
-              height: compact ? 1.75 : 1.88,
+              fontSize: scaledFontSize,
+              height: lineHeight.value,
             );
 
     if (readerHtml.isEmpty && readerText.isEmpty) {
@@ -1085,6 +1098,24 @@ class _ReaderContent extends StatelessWidget {
               await onOpenUrl(url);
               return true;
             },
+            customWidgetBuilder: (element) {
+              // 代码块：等宽字体 + 底色 + 横向滚动，长行不再被强制换行打乱缩进。
+              if (element.localName == 'pre') {
+                final String code = element.text.replaceAll(
+                  RegExp(r'\s+$'),
+                  '',
+                );
+                if (code.trim().isEmpty) {
+                  return null;
+                }
+                return _CodeBlock(
+                  code: code,
+                  fontSize: scaledFontSize * 0.92,
+                  compact: compact,
+                );
+              }
+              return null;
+            },
             customStylesBuilder: (element) {
               final String tagName = element.localName ?? '';
               if (tagName == 'img') {
@@ -1107,6 +1138,54 @@ class _ReaderContent extends StatelessWidget {
               if (tagName == 'p') {
                 return <String, String>{
                   'margin': compact ? '0 0 14px 0' : '0 0 18px 0',
+                };
+              }
+              // 标题分级：用 em 单位让字号随用户的正文字号缩放。
+              const Map<String, String> headingSizes = <String, String>{
+                'h1': '1.6em',
+                'h2': '1.45em',
+                'h3': '1.3em',
+                'h4': '1.15em',
+                'h5': '1.05em',
+                'h6': '1em',
+              };
+              if (headingSizes.containsKey(tagName)) {
+                return <String, String>{
+                  'font-size': headingSizes[tagName]!,
+                  'font-weight': '700',
+                  'margin': '1.3em 0 0.55em',
+                  'line-height': '1.3',
+                };
+              }
+              // 行内代码：底色 + 内边距 + 等宽，与代码块视觉呼应。
+              if (tagName == 'code') {
+                return <String, String>{
+                  'font-family': 'monospace',
+                  'background-color': codeBgColor,
+                  'padding': '1px 5px',
+                  'border-radius': '5px',
+                };
+              }
+              if (tagName == 'table') {
+                return <String, String>{
+                  'border-collapse': 'collapse',
+                  'width': '100%',
+                  'margin': compact ? '12px 0' : '18px 0',
+                };
+              }
+              if (tagName == 'th') {
+                return <String, String>{
+                  'border': '1px solid $tableBorderColor',
+                  'padding': '6px 10px',
+                  'background-color': codeBgColor,
+                  'font-weight': '700',
+                  'text-align': 'left',
+                };
+              }
+              if (tagName == 'td') {
+                return <String, String>{
+                  'border': '1px solid $tableBorderColor',
+                  'padding': '6px 10px',
                 };
               }
               if (tagName == 'a' &&
@@ -1142,6 +1221,50 @@ class _ReaderContent extends StatelessWidget {
 
 int _readableCharacterCount(String text) {
   return text.replaceAll(RegExp(r'\s+'), '').runes.length;
+}
+
+class _CodeBlock extends StatelessWidget {
+  const _CodeBlock({
+    required this.code,
+    required this.fontSize,
+    required this.compact,
+  });
+
+  final String code;
+  final double fontSize;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final ReaderPalette palette = AppTheme.paletteOf(context);
+
+    return Container(
+      width: double.infinity,
+      margin: EdgeInsets.symmetric(vertical: compact ? 12 : 18),
+      decoration: BoxDecoration(
+        color: palette.panelMutedBackground,
+        borderRadius: BorderRadius.circular(AppDimens.radiusMd),
+        border: Border.all(color: palette.border),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppDimens.spaceLg,
+          vertical: AppDimens.spaceMd,
+        ),
+        child: SelectableText(
+          code,
+          style: TextStyle(
+            fontFamily: 'monospace',
+            fontSize: fontSize,
+            height: 1.5,
+            color: palette.secondaryText,
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 int _estimatedReadMinutes(Article article) {
@@ -1259,6 +1382,17 @@ class _ReaderHtmlWidgetFactory extends WidgetFactory {
       builder: (BuildContext context, BoxConstraints constraints) {
         final double maxWidth =
             constraints.maxWidth.isFinite ? constraints.maxWidth : 680;
+        // 按渲染宽度降采样解码：正文图常远大于显示尺寸，全分辨率解码既费内存
+        // 又易触发缓存驱逐。这里把解码宽度钉在显示宽度（含像素比），其余按比例。
+        final int decodeWidth =
+            (maxWidth * MediaQuery.devicePixelRatioOf(context))
+                .round()
+                .clamp(1, 4096);
+        final ImageProvider<Object> displayProvider = ResizeImage(
+          resolvedProvider,
+          width: decodeWidth,
+          policy: ResizeImagePolicy.fit,
+        );
         return ClipRRect(
           borderRadius: BorderRadius.circular(14),
           child: SizedBox(
@@ -1288,7 +1422,7 @@ class _ReaderHtmlWidgetFactory extends WidgetFactory {
               fit: BoxFit.fitWidth,
               alignment: Alignment.center,
               filterQuality: FilterQuality.medium,
-              image: resolvedProvider,
+              image: displayProvider,
               semanticLabel: semanticLabel,
             ),
           ),

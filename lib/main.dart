@@ -51,6 +51,10 @@ Future<void> _initializePlatformServices(ReaderController controller) async {
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // 放宽图片内存缓存上限：列表/阅读页频繁滚动复用 favicon、头像与正文图，
+  // 默认 ~100MB 容量偏小，遇到大图时容易被驱逐导致重复请求与闪烁。
+  PaintingBinding.instance.imageCache.maximumSizeBytes = 200 << 20;
+
   if (defaultTargetPlatform == TargetPlatform.android) {
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
     await AndroidAutoRefreshScheduler.initialize();

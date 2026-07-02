@@ -552,6 +552,21 @@ class ReaderController extends ChangeNotifier {
     await _persistSettings();
   }
 
+  Future<void> setReaderFontSize(ReaderFontSize size) async {
+    _setSettings(_settings.copyWith(readerFontSize: size));
+    await _persistSettings();
+  }
+
+  Future<void> setReaderLineHeight(ReaderLineHeight lineHeight) async {
+    _setSettings(_settings.copyWith(readerLineHeight: lineHeight));
+    await _persistSettings();
+  }
+
+  Future<void> setReaderContentWidth(ReaderContentWidth width) async {
+    _setSettings(_settings.copyWith(readerContentWidth: width));
+    await _persistSettings();
+  }
+
   Future<void> setBlurEffectsEnabled(bool value) async {
     _setSettings(_settings.copyWith(blurEffectsEnabled: value));
     await _persistSettings();
